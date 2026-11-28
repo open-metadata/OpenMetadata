@@ -16,8 +16,20 @@ package org.openmetadata.service.cache;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.time.Duration;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.ListFilter;
 
@@ -147,5 +159,39 @@ class ListCountCacheTest {
             .addQueryParam("root", "true")
             .addQueryParam("service", "aws_s3");
     assertEquals(ListCountCache.hashFilter(ab), ListCountCache.hashFilter(ba));
+  }
+
+  @Test
+  void aCountScopedToTheCallerIsNeitherReadFromNorWrittenToTheSharedCache() {
+    CacheProvider provider = mock(CacheProvider.class);
+    when(provider.available()).thenReturn(true);
+    when(provider.hget(anyString(), anyString())).thenReturn(Optional.of("999"));
+    ListFilter shared = new ListFilter(Include.NON_DELETED);
+    ListFilter scoped =
+        new ListFilter(Include.NON_DELETED) {
+          @Override
+          public boolean isScopedToCaller() {
+            return true;
+          }
+        };
+    AtomicInteger sharedCounts = new AtomicInteger();
+
+    try (MockedStatic<CacheBundle> bundle = Mockito.mockStatic(CacheBundle.class)) {
+      bundle.when(CacheBundle::getCacheProvider).thenReturn(provider);
+      bundle.when(CacheBundle::getCacheConfig).thenReturn(new CacheConfig());
+
+      int fromCache =
+          ListCountCache.getOrCompute("table", shared, () -> sharedCounts.incrementAndGet());
+      verify(provider).hget(anyString(), anyString());
+
+      Mockito.clearInvocations(provider);
+      int forCaller = ListCountCache.getOrCompute("table", scoped, () -> 7);
+
+      assertEquals(999, fromCache);
+      assertEquals(0, sharedCounts.get());
+      assertEquals(7, forCaller);
+      verify(provider, never()).hget(anyString(), anyString());
+      verify(provider, never()).hset(anyString(), any(Map.class), any(Duration.class));
+    }
   }
 }

@@ -22,12 +22,14 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.listaccess.CallerScope;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -71,6 +73,12 @@ public class NoopAuthorizer implements Authorizer {
   public void authorizeRequests(
       SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic) {
     /* Always authorize */
+  }
+
+  @Override
+  public CallerScope listScope(
+      SecurityContext securityContext, String entityType, List<MetadataOperation> operations) {
+    return CallerScope.allRows();
   }
 
   @Override
