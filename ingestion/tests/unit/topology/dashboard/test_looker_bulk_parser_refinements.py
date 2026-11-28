@@ -263,3 +263,93 @@ def test_imported_project_views_are_refined_but_their_refinements_are_skipped(tm
 
     assert parser.find_view("customers").sql_table_name == "local.customers"
     assert parser.find_view("orders").sql_table_name == "raw.orders"
+
+
+def test_model_scoped_refinements_prevent_cross_model_bleed(tmp_path):
+    """Two models including different refinement files for the same base view get isolated definitions."""
+    parser = parse(
+        tmp_path,
+        {
+            "views/orders.view.lkml": ORDERS_VIEW,
+            "refinements/eu_orders.lkml": """
+view: +orders {
+  sql_table_name: eu.orders ;;
+  dimension: vat_id {
+    type: string
+    sql: ${TABLE}.vat_id ;;
+  }
+}
+""",
+            "refinements/us_orders.lkml": """
+view: +orders {
+  sql_table_name: us.orders ;;
+  dimension: sales_tax {
+    type: number
+    sql: ${TABLE}.sales_tax ;;
+  }
+}
+""",
+            "models/eu_sales.model.lkml": """
+include: "/views/orders.view.lkml"
+include: "/refinements/eu_orders.lkml"
+explore: orders {}
+""",
+            "models/us_sales.model.lkml": """
+include: "/views/orders.view.lkml"
+include: "/refinements/us_orders.lkml"
+explore: orders {}
+""",
+        },
+    )
+
+    eu_orders = parser.find_view("orders", model_name="eu_sales")
+    us_orders = parser.find_view("orders", model_name="us_sales")
+
+    assert eu_orders.sql_table_name == "eu.orders"
+    assert {dim.name for dim in eu_orders.dimensions} == {"id", "vat_id"}
+
+    assert us_orders.sql_table_name == "us.orders"
+    assert {dim.name for dim in us_orders.dimensions} == {"id", "sales_tax"}
+
+
+def test_model_include_patterns_and_cycle_safe_expansion(tmp_path):
+    """Supports `/`, `./`, `../`, `*`, `**`, `?`, optional `.lkml` suffix, `//project/`, and cyclic includes."""
+    parser = parse(
+        tmp_path,
+        {
+            "views/base/orders.view.lkml": ORDERS_VIEW,
+            "imported_projects/shared_proj/refinements/shared.lkml": """
+view: +orders {
+  description: "From imported project"
+}
+""",
+            "explores/cycle_a.explore.lkml": """
+include: "./cycle_b.explore"
+view: +orders {
+  sql_table_name: refined.orders ;;
+}
+""",
+            "explores/cycle_b.explore.lkml": """
+include: "../explores/cycle_a.explore.lkml"
+include: "//shared_proj/refinements/shared"
+view: +orders {
+  dimension: cycle_flag {
+    type: yesno
+  }
+}
+""",
+            "models/analytics.model.lkml": """
+include: "/views/**/*.view"
+include: "../escape_attempt/*.lkml"
+include: "/explores/cycle_?.explore"
+explore: orders {}
+""",
+        },
+    )
+
+    view = parser.find_view("orders", model_name="analytics")
+    assert view.sql_table_name == "refined.orders"
+    assert view.description == "From imported project"
+    assert {dim.name for dim in view.dimensions} == {"id", "cycle_flag"}
+    # Unknown model falls back to project-wide cache
+    assert parser.find_view("orders", model_name="unknown_model") is not None

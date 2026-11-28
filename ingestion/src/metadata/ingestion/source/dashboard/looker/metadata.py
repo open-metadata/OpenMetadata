@@ -869,6 +869,7 @@ class LookerSource(DashboardServiceSource):
 
         for project_name, view_name, datamodel_view_name in self._pending_views:
             data_model = resolve(datamodel_view_name)
+            self._views_cache[datamodel_view_name] = data_model
             self._views_cache[view_name] = data_model
             self._project_views_cache[(project_name, view_name)] = data_model
         self._pending_views = []
@@ -1073,6 +1074,48 @@ class LookerSource(DashboardServiceSource):
 
         return None
 
+    @staticmethod
+    def _find_project_view(
+        project_parser: BulkLkmlParser,
+        view_name: ViewName,
+        model_name: str | None = None,
+    ) -> LookMlView | None:
+        if model_name:
+            try:
+                return project_parser.find_view(view_name=view_name, model_name=model_name)
+            except TypeError:
+                pass
+        return project_parser.find_view(view_name=view_name)
+
+    def _resolve_extended_view_model(
+        self,
+        extended_view_name: str,
+        model_name: str | None,
+    ) -> DashboardDataModel | None:
+        extended_datamodel_name = f"{build_datamodel_name(model_name, extended_view_name)}_view" if model_name else None
+        if extended_datamodel_name and (same_model := self._views_cache.get(extended_datamodel_name)):
+            return same_model
+
+        cached = self._views_cache.get(extended_view_name)
+        if cached is not None:
+            cached_name = model_str(cached.name)
+            if not extended_datamodel_name or cached_name in (extended_view_name, extended_datamodel_name):
+                return cached
+
+        if extended_datamodel_name:
+            try:
+                resolved = self._build_data_model(extended_datamodel_name)
+                if resolved:
+                    self._views_cache[extended_datamodel_name] = resolved
+                    return resolved
+            except Exception:
+                logger.debug(
+                    "Extended view [%s] not found in cache or OpenMetadata",
+                    extended_view_name,
+                )
+
+        return None
+
     def _process_view(
         self, view_name: ViewName, explore: LookmlModelExplore
     ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
@@ -1088,7 +1131,9 @@ class LookerSource(DashboardServiceSource):
 
         project_parser = self.parser.get(explore.project_name)
         if project_parser:
-            view: LookMlView | None = project_parser.find_view(view_name=view_name)
+            view: LookMlView | None = self._find_project_view(
+                project_parser, view_name=view_name, model_name=explore.model_name
+            )
 
             if view:
                 if view.tags and self.source_config.includeTags:
@@ -1372,15 +1417,18 @@ class LookerSource(DashboardServiceSource):
             if view.extends__all:
                 for extended_views_list in view.extends__all:
                     for extended_view_name in extended_views_list:
-                        extended_view_model = self._views_cache.get(extended_view_name)
+                        extended_datamodel_name = f"{model_name}_{extended_view_name}_view"
+                        extended_view_model = self._views_cache.get(
+                            extended_datamodel_name
+                        ) or self._resolve_extended_view_model(
+                            extended_view_name=extended_view_name,
+                            model_name=model_name,
+                        )
 
                         # If not in cache, try to fetch from OpenMetadata
                         if not extended_view_model:
                             try:
-                                # Try with _view suffix first (common pattern for views)
-                                extended_datamodel_name = f"{model_name}_{extended_view_name}_view"
                                 extended_view_model = self._build_data_model(extended_datamodel_name)
-
                                 if extended_view_model:
                                     logger.debug(
                                         f"Extended view [{extended_view_name}] found in OpenMetadata for standalone view [{view.name}]"
@@ -1502,15 +1550,18 @@ class LookerSource(DashboardServiceSource):
             if view.extends__all:
                 for extended_views_list in view.extends__all:
                     for extended_view_name in extended_views_list:
-                        extended_view_model = self._views_cache.get(extended_view_name)
+                        extended_datamodel_name = f"{explore.model_name}_{extended_view_name}_view"
+                        extended_view_model = self._views_cache.get(
+                            extended_datamodel_name
+                        ) or self._resolve_extended_view_model(
+                            extended_view_name=extended_view_name,
+                            model_name=explore.model_name,
+                        )
 
                         # If not in cache, try to fetch from OpenMetadata
                         if not extended_view_model:
                             try:
-                                # Try with _view suffix first (common pattern for views)
-                                extended_datamodel_name = f"{explore.model_name}_{extended_view_name}_view"
                                 extended_view_model = self._build_data_model(extended_datamodel_name)
-
                                 if extended_view_model:
                                     logger.debug(
                                         f"Extended view [{extended_view_name}] found in OpenMetadata for view [{view.name}]"
