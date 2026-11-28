@@ -51,8 +51,10 @@ class TrinoProfilerInterface(ProfilerWithStatistics, TrinoStoredStatisticsSource
         and returns the values
 
         Args:
-            column: the column to compute the metrics against
             metrics: list of metrics to compute
+            runner: the query runner to run the metrics against
+            kwargs: expects "column" (the column to compute the metrics
+                against) and optionally "session"
         Returns:
             dictionnary of results
         """
