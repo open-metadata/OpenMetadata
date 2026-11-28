@@ -361,7 +361,7 @@ class QueryRunner:
             yield from rows
 
     def dispatch_query_select_first(self, *entities, **kwargs):
-        """Dispatch query to sample or all table.
+        """Alias for `select_first_from_sample`.
         Note: Kept for backward compatibility
 
         Args:
