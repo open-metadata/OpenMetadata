@@ -165,6 +165,13 @@ const DEFAULT_INDENT_PX = 12;
 const EXPANDER_GUTTER_PX = 16;
 
 /**
+ * Stable empty stand-in for `disabledRowKeys` when no `getCheckboxProps` is
+ * supplied, so the selection resolver can branch on a `Set` without rebuilding
+ * one each call. Read-only and never mutated.
+ */
+const EMPTY_DISABLED: ReadonlySet<string> = new Set();
+
+/**
  * AntD's size scale mapped onto the core component's.
  *
  * Only `small` is a step down; everything else, a table that sets no size
@@ -1704,6 +1711,18 @@ const TableV2 = <T extends object>(
    * child is resolved like any other row rather than being missed inside its
    * parent record, and two rows sharing a `rowKey` stay distinct — resolving by
    * key handed the call site both when only one was selected.
+   *
+   * React Aria stores a select-all as the literal `'all'` sentinel and only
+   * excludes `disabledKeys` when `'all'` is read back through
+   * `SelectionManager.selectedKeys` (via `canSelectItem`). Materialising `'all'`
+   * straight to `rowEntries` here — without consulting `disabledRowKeys` —
+   * would report `getCheckboxProps`-disabled rows as selected to the caller,
+   * breaking parity with AntD's `useSelection` (whose header select-all filters
+   * disabled rows out of `recordKeys`) and with react-stately's own view of the
+   * selection. The same filter guards the `Set` branch: react-stately never
+   * surfaces disabled ids there under normal interaction, but a controlled
+   * `selectedRowKeys` echo through `preserveSelectedRowKeys` could, and the
+   * cost is one `has` check per row.
    */
   const handleSelectionChange = useCallback(
     (keys: AriaSelection) => {
@@ -1719,8 +1738,13 @@ const TableV2 = <T extends object>(
                 Boolean(entry)
               );
 
-      let selectedKeys: React.Key[] = selected.map(({ key }) => key);
-      const selectedRecords = selected.map(({ record }) => record);
+      const disabled = disabledRowKeys ?? EMPTY_DISABLED;
+      const selectedFiltered = selected.filter(
+        (entry) => !disabled.has(entry.id)
+      );
+
+      let selectedKeys: React.Key[] = selectedFiltered.map(({ key }) => key);
+      const selectedRecords = selectedFiltered.map(({ record }) => record);
 
       // AntD's `preserveSelectedRowKeys` keeps rows selected on other pages.
       // React Aria's collection is only the current page, so onSelectionChange
@@ -1743,7 +1767,13 @@ const TableV2 = <T extends object>(
         type: selectionMode === 'single' ? 'single' : 'multiple',
       });
     },
-    [rest.rowSelection, rowEntries, rowEntryById, selectionMode]
+    [
+      rest.rowSelection,
+      rowEntries,
+      rowEntryById,
+      selectionMode,
+      disabledRowKeys,
+    ]
   );
 
   // ─── Render ───────────────────────────────────────────────────────────────
