@@ -13,8 +13,8 @@
 
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import {
-  COLUMN_GRID_FILTERS,
   COLUMN_GLOSSARY_FIELD,
+  COLUMN_GRID_FILTERS,
   COLUMN_TAG_FIELD,
 } from './ColumnGrid.constants';
 
