@@ -100,6 +100,7 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.services.ingestionpipelines.ProgressSseManager;
 import org.openmetadata.service.secrets.DBSecretsManager;
 import org.openmetadata.service.secrets.SecretMapOwnership;
+import org.openmetadata.service.secrets.SecretMapOwnership.WriteContext;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -803,12 +804,22 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return true;
   }
 
+  private static final ThreadLocal<Map<UUID, WriteContext<IngestionPipeline>>> SECRET_WRITES =
+      new ThreadLocal<>();
+
   @Override
   protected IngestionPipeline prepareForStorage(IngestionPipeline ingestionPipeline) {
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
-      secretsManager.encryptIngestionPipeline(ingestionPipeline);
+      Map<UUID, WriteContext<IngestionPipeline>> writes = SECRET_WRITES.get();
+      WriteContext<IngestionPipeline> context =
+          writes == null ? null : writes.get(ingestionPipeline.getId());
+      if (context == null) {
+        secretsManager.encryptIngestionPipeline(ingestionPipeline);
+      } else {
+        secretsManager.encryptIngestionPipelineForWrite(ingestionPipeline, context);
+      }
     }
     return ingestionPipeline;
   }
@@ -867,28 +878,47 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       write.run();
       return;
     }
-    List<SecretInventory> inputs =
-        entities.stream().map(entity -> secretInventory(manager, entity)).toList();
+    List<String> roots = entities.stream().map(manager::validatePipelineSecretWrite).toList();
     executeInTransaction(
         () -> {
           SecretMapOwnership ownership =
               new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
           ownership.lock();
-          List<SecretInventory> originals =
+          List<IngestionPipeline> originalEntities =
               entities.stream()
-                  .map(
-                      entity ->
-                          update
-                              ? secretInventory(manager, lockStoredForSecretWrite(entity))
-                              : null)
+                  .map(entity -> update ? lockStoredForSecretWrite(entity) : null)
+                  .toList();
+          List<SecretInventory> originals =
+              originalEntities.stream()
+                  .map(original -> original == null ? null : secretInventory(manager, original))
                   .toList();
           SecretMapOwnership.preserveWriteInputs(daoCollection, entities);
-          write.run();
+          Map<UUID, WriteContext<IngestionPipeline>> previousWrites = SECRET_WRITES.get();
+          Map<UUID, WriteContext<IngestionPipeline>> scopedWrites =
+              previousWrites == null ? new HashMap<>() : new HashMap<>(previousWrites);
+          for (int i = 0; i < entities.size(); i++) {
+            UUID id = entities.get(i).getId();
+            scopedWrites.put(
+                id, ownership.forWrite(daoCollection, id, roots.get(i), originalEntities.get(i)));
+          }
+          SECRET_WRITES.set(scopedWrites);
+          try {
+            write.run();
+          } finally {
+            if (previousWrites == null) {
+              SECRET_WRITES.remove();
+            } else {
+              SECRET_WRITES.set(previousWrites);
+            }
+          }
           for (int i = 0; i < entities.size(); i++) {
             IngestionPipeline entity = entities.get(i);
             ownership.recordWrite(
-                entity.getId(), originals.get(i), inputs.get(i), secretInventory(manager, entity));
-            String root = inputs.get(i).root();
+                entity.getId(),
+                originals.get(i),
+                secretInventory(manager, entity),
+                scopedWrites.get(entity.getId()));
+            String root = roots.get(i);
             PostCommitActionQueue.runOrDefer(() -> cleanOwnedSecrets(manager, root));
           }
           return null;

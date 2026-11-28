@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -136,6 +137,30 @@ public abstract class ExternalSecretsManager extends SecretsManager {
       throw isNameReserved(e) ? new SecretNameReservedException(secretId, e) : e;
     }
     return SECRET_FIELD_PREFIX + secretId;
+  }
+
+  String storeFreshValue(
+      String fieldName, String secretId, String value, Consumer<String> onCreated) {
+    rejectReservedPlaceholder(fieldName, value);
+    throttle();
+    try {
+      storeSecret(secretId, value, onCreated);
+    } catch (RuntimeException e) {
+      throw isNameReserved(e)
+          ? new SecretNameReservedException(secretId, e)
+          : upsertFailure(secretId, e);
+    }
+    return SECRET_FIELD_PREFIX + secretId;
+  }
+
+  void storeSecret(String secretName, String secretValue, Consumer<String> onCreated) {
+    storeSecret(secretName, secretValue);
+    onCreated.accept(secretName);
+  }
+
+  @Override
+  protected void validateSecretValue(String fieldName, String value) {
+    rejectReservedPlaceholder(fieldName, value);
   }
 
   /**

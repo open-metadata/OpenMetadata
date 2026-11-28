@@ -1,9 +1,9 @@
 # MCP service server names are unique, and a masked value is kept only where a stored value exists
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-14 (checked on any server change, order included); v3 2026-11-19 (secret ids of list elements stay distinct once cleaned)
+- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-14 (checked on any server change, order included); v3 2026-11-19 (secret ids of list elements stay distinct once cleaned); v4 2026-11-23 (allocate a fresh id when another element still references a list element's default id); v5 2026-11-27 (stage replacements for committed fresh ids and retire them after commit); v6 2026-11-27 (retain references shared between configurations)
 - **Deciders:** backend
-- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
+- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`, `SecretMapEntriesExternalStoreTest.renamingAServerThenReusingItsOldNameInALaterSaveKeepsBothKeys`, `ListSecretReferenceAllocationTest`, `SecretsManagerNullSecretIT.renamedMcpServerKeepsItsApiKeyWhenOldNameIsReusedAndSwapped`, `SecretsManagerNullSecretIT.replacingACommittedFreshReferenceStagesItsValueUntilCommit`, `SecretsManagerNullSecretIT.clearingARenamedFreshReferenceRetainsItUntilItsLastAliasCommits`, `SecretsManagerNullSecretIT.anotherServiceCanResolveTheCredentialAfterItsOwnerChanges`, `SecretsManagerNullSecretIT.anExistingPipelineReferenceProtectsADeletedServicesCredential`, `SecretsManagerNullSecretIT.aStoredTestConnectionWorkflowKeepsItsCredentialUntilHardDeletion`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
 - **Related:** open-metadata/openmetadata-collate#7962, ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged
 
 ## Context
@@ -52,3 +52,69 @@ deleted from, the id computed for the element on that save. With position ids, s
 and then editing one key overwrote, or deleted, the secret the other server still referenced.
 Server names are still only refused when they repeat exactly: `Prod` and `prod` are accepted, keep
 their own keys through a reorder, and get distinct, stable secret ids.
+
+## Amendment (v4, 2026-11-23)
+
+Renaming a list element (or deleting a position-keyed element so a later element shifts down) keeps
+the element's existing `secret:` reference pointing at its old id. Writing a new secret under that
+old name or position previously overwrote (or, when cleared, deleted) the secret the renamed or
+shifted element still referenced.
+
+- **Reference-based allocation:** before writing or clearing a password field inside a collection
+  element on an external secrets manager, `SecretsManager` collects every `secret:` reference from
+  both the locked stored config (passed by `ServiceEntityRepository` / `IngestionPipelineRepository`)
+  and the incoming config — never probing the vault. References are compared by the provider's
+  `canonicalSecretName`.
+- **Overwrite vs. fresh id:** a new value writes to the element's default id or reuses a fresh id
+  already held by that exact slot and recorded in the ownership ledger. Either id can be used
+  only when no other slot in the stored or incoming config references it. Otherwise, or if the
+  provider refuses a soft-deleted name (such as Azure Key Vault 409), it tries up to eight fresh id
+  candidates. The standard form is `<defaultId><sep><13-char base32 suffix>`. If that exceeds the
+  provider limit, use `<root><sep>f<first 16 hex digits of SHA-256(canonical default id)><sep><suffix>`.
+  Both formats are recognized when reusing owned ids.
+- **Clearing:** clearing a list element's secret preserves ids referenced by another slot and
+  fresh-shaped references absent from the ownership ledger. Clearing a recorded fresh id schedules
+  cleanup after the updated config commits, when the ledger no longer shows a live reference.
+- **Ownership and rollback safety:** checking the stored config prevents a save that later fails in
+  the database from overwriting a secret another slot in the committed entity still references. `SecretMapOwnership`
+  records the actual secret id written for each plaintext slot (including fresh ids), so hard delete
+  removes owned secrets while leaving user-supplied references untouched. When the database rolls
+  back, its rollback callback attempts to remove each confirmed fresh creation from that transaction.
+
+## Amendment (v5, 2026-11-27)
+
+When a list slot contains a committed, ledger-owned fresh reference, stage a replacement under
+a new id. A failed entity write discards the staged value and
+preserves the committed reference and its value. The ledger records generated keys for reference-based
+cleanup, including keys written before this change. Whether an edit clears, omits or replaces
+a renamed key, cleanup checks all remaining references after commit before deleting its value.
+Passing through a reference unchanged keeps its id.
+
+## Amendment (v6, 2026-11-27)
+
+A key owned by a service or ingestion pipeline may also be referenced by another service, pipeline,
+or automation workflow. When the last known local reference disappears, check their current rows,
+including soft-deleted rows, under the existing database lock. Collect candidates from the current
+namespace and each owner it releases, then inspect persisted configurations once for that set.
+Skip the scan if the set is empty. Read bounded pages and stop as soon as every candidate has
+a reference. This also covers configurations written before the ownership ledger and references
+wrapped in Fernet. The check reads local references without fetching provider values. If a key
+is still in use, keep its ownership and record its namespace against the normalized key. When
+another config releases the key, revisit the recorded owner after commit. Workflow writes share
+the same lock as service and pipeline writes, including bulk writes. A soft-deleted workflow can
+be restored and continues to hold its reference.
+
+Before a workflow is hard-deleted, record its owned credentials and the service or pipeline
+namespaces whose references it releases. Commit that record and a retry marker with the row
+deletion, including bulk deletes. After commit, check remaining references before removing
+provider credentials. If the process stops or a provider fails, a subsequent service or pipeline
+write retries up to 100 pending workflow namespaces after its own cleanup commits. A persisted
+cursor advances independently of individual retries. Each retry commits separately, so a provider
+error for one key leaves its marker in place and other namespaces can finish. Rolling back the
+delete retains the workflow and discards its cleanup record.
+
+## Write validation and ownership
+
+Validate every configuration in a service or ingestion pipeline batch before writing to the credential provider.
+The ownership ledger records the names returned by the provider for values that OpenMetadata wrote.
+A masked update preserves the existing reference. Cleanup releases an owned value after its last persisted reference is removed.

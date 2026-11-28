@@ -2,6 +2,8 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,7 +35,9 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
+import org.openmetadata.service.secrets.SecretMapOwnership.WriteContext;
 import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 
 /**
@@ -300,6 +304,8 @@ class SecretMapEntriesExternalStoreTest {
     assertEquals(2, secretsManager.getSecretsMap().size());
 
     McpConnection updated = encryptMcp(List.of(created.getServers().getFirst()), created);
+    ownership.clean(mcpRoot());
+    assertEquals(2, secretsManager.getSecretsMap().size());
     ownership.removeOwner(owner, secretsManager.secretInventory(updated, mcpRoot()));
     ownership.clean(mcpRoot());
 
@@ -354,16 +360,310 @@ class SecretMapEntriesExternalStoreTest {
     assertEquals("replaced-key", storedKey(updated, "prod"));
   }
 
+  @Test
+  void renamingAServerThenReusingItsOldNameInALaterSaveKeepsBothKeys() {
+    McpConnection created = encryptMcp(List.of(mcpServer("alpha", "alpha-key")), null);
+    McpConnection renamed =
+        encryptMcp(List.of(copy(created.getServers().getFirst()).withName("beta")), created);
+
+    McpConnection reused =
+        encryptMcp(
+            List.of(copy(renamed.getServers().getFirst()), mcpServer("alpha", "new-alpha-key")),
+            renamed);
+
+    assertEquals("alpha-key", storedKey(reused, "beta"));
+    assertEquals("new-alpha-key", storedKey(reused, "alpha"));
+    assertNotEquals(storedReference(reused, "beta"), storedReference(reused, "alpha"));
+
+    // Rotate the fresh id without changing its committed value before cleanup.
+    String freshRef = storedReference(reused, "alpha");
+    McpConnection rotated =
+        encryptMcp(
+            List.of(copy(reused.getServers().getFirst()), mcpServer("alpha", "rotated-alpha-key")),
+            reused);
+    assertEquals("alpha-key", storedKey(rotated, "beta"));
+    assertEquals("rotated-alpha-key", storedKey(rotated, "alpha"));
+    assertNotEquals(freshRef, storedReference(rotated, "alpha"));
+    assertEquals("new-alpha-key", secretsManager.getSecretValue(freshRef));
+    ownership.clean(mcpRoot());
+    assertFalse(
+        secretsManager
+            .getSecretsMap()
+            .containsKey(freshRef.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+    assertEquals(2, secretsManager.getSecretsMap().size());
+
+    ownership.removeOwner(owner, secretsManager.secretInventory(rotated, mcpRoot()));
+    ownership.clean(mcpRoot());
+    assertTrue(secretsManager.getSecretsMap().isEmpty());
+  }
+
+  @Test
+  void clearingAnOwnedFreshIdReleasesOwnershipAfterCleanup() {
+    McpConnection created = encryptMcp(List.of(mcpServer("alpha", "first-key")), null);
+    McpConnection reused =
+        encryptMcp(
+            List.of(
+                copy(created.getServers().getFirst()).withName("beta"),
+                mcpServer("alpha", "second-key")),
+            created);
+    String freshName =
+        storedReference(reused, "alpha").substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+
+    McpConnection cleared =
+        encryptMcp(List.of(copy(reused.getServers().getFirst()), mcpServer("alpha", "")), reused);
+    assertEquals("second-key", secretsManager.getSecretsMap().get(freshName));
+    ownership.clean(mcpRoot());
+    assertFalse(secretsManager.getSecretsMap().containsKey(freshName));
+    assertEquals("first-key", storedKey(cleared, "beta"));
+
+    secretsManager.upsertSecret(freshName, "external-key");
+    ownership.removeOwner(owner, secretsManager.secretInventory(cleared, mcpRoot()));
+    ownership.clean(mcpRoot());
+    assertEquals(Map.of(freshName, "external-key"), secretsManager.getSecretsMap());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void legacyGeneratedScalarsSurviveUntilTheLastReferencingOwnerReleasesThem(boolean compact) {
+    String originalSlot = mcpRoot() + "/servers/alpha/apikey";
+    String base =
+        compact ? mcpRoot() + "/" + secretsManager.compactFieldTag(originalSlot) : originalSlot;
+    String name = base + "/" + SecretKeyEncoding.freshSuffix();
+    String reference = SecretsManager.SECRET_FIELD_PREFIX + name;
+    secretsManager.upsertSecret(name, "synthetic-legacy-value");
+    McpConnection original =
+        new McpConnection().withServers(List.of(mcpServer("renamed", reference)));
+    McpConnection plaintext =
+        new McpConnection().withServers(List.of(mcpServer("renamed", "synthetic-legacy-value")));
+    SecretInventory saved = secretsManager.secretInventory(original, mcpRoot());
+    // Prior ledgers kept a generated key written by this owner in its scalar list.
+    ownership.recordWrite(owner, null, secretsManager.secretInventory(plaintext, mcpRoot()), saved);
+    UUID aliasOwner = UUID.randomUUID();
+    ownership.recordWrite(aliasOwner, null, saved, saved);
+
+    encryptMcp(List.of(mcpServer("renamed", null)), original);
+    ownership.clean(mcpRoot());
+    assertEquals("synthetic-legacy-value", secretsManager.getSecretValue(reference));
+
+    ownership.removeOwner(aliasOwner, saved);
+    ownership.clean(mcpRoot());
+    assertFalse(secretsManager.getSecretsMap().containsKey(name));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void renamingAServerThenReusingItsOldNameInTheSameSaveKeepsBothKeys(boolean newAlphaFirst) {
+    McpConnection created = encryptMcp(List.of(mcpServer("alpha", "alpha-key")), null);
+    McpServerConfig renamedBeta = copy(created.getServers().getFirst()).withName("beta");
+    McpServerConfig newAlpha = mcpServer("alpha", "new-alpha-key");
+    List<McpServerConfig> servers =
+        newAlphaFirst ? List.of(newAlpha, renamedBeta) : List.of(renamedBeta, newAlpha);
+
+    McpConnection updated = encryptMcp(servers, created);
+
+    assertEquals("alpha-key", storedKey(updated, "beta"));
+    assertEquals("new-alpha-key", storedKey(updated, "alpha"));
+    assertNotEquals(storedReference(updated, "beta"), storedReference(updated, "alpha"));
+  }
+
+  @Test
+  void renamingBackAfterAKeyChangeProtectsActiveReferenceAndReusesFreeDefaultId() {
+    McpConnection created = encryptMcp(List.of(mcpServer("alpha", "key-1")), null);
+    String alphaDefaultRef = storedReference(created, "alpha");
+    McpConnection renamed =
+        encryptMcp(List.of(copy(created.getServers().getFirst()).withName("beta")), created);
+    McpConnection betaChanged =
+        encryptMcp(List.of(copy(renamed.getServers().getFirst()).withApiKey("key-2")), renamed);
+    String betaDefaultRef = storedReference(betaChanged, "beta");
+
+    // Rename beta back to alpha without changing the key, then add a new beta: alpha still reads
+    // key-2 from beta's default id, so the new beta must get a fresh id.
+    McpConnection renamedBack =
+        encryptMcp(
+            List.of(copy(betaChanged.getServers().getFirst()).withName("alpha")), betaChanged);
+    McpConnection addedBeta =
+        encryptMcp(
+            List.of(copy(renamedBack.getServers().getFirst()), mcpServer("beta", "key-3")),
+            renamedBack);
+    assertEquals("key-2", storedKey(addedBeta, "alpha"));
+    assertEquals("key-3", storedKey(addedBeta, "beta"));
+    assertEquals(betaDefaultRef, storedReference(addedBeta, "alpha"));
+    assertNotEquals(betaDefaultRef, storedReference(addedBeta, "beta"));
+
+    // Editing alpha's key now can reuse alpha's unreferenced default id even though key-1 still
+    // sits in the vault under that id.
+    McpConnection alphaEdited =
+        encryptMcp(
+            List.of(
+                copy(addedBeta.getServers().getFirst()).withApiKey("key-4"),
+                copy(addedBeta.getServers().get(1))),
+            addedBeta);
+    assertEquals(alphaDefaultRef, storedReference(alphaEdited, "alpha"));
+    assertEquals("key-4", storedKey(alphaEdited, "alpha"));
+    assertEquals("key-3", storedKey(alphaEdited, "beta"));
+
+    ownership.removeOwner(owner, secretsManager.secretInventory(alphaEdited, mcpRoot()));
+    ownership.clean(mcpRoot());
+    assertTrue(secretsManager.getSecretsMap().isEmpty());
+  }
+
+  @Test
+  void swappingServerNamesThenEditingOneOrBothKeysKeepsEachKey() {
+    McpConnection created =
+        encryptMcp(List.of(mcpServer("alpha", "key-1"), mcpServer("beta", "key-2")), null);
+    McpConnection swapped =
+        encryptMcp(
+            List.of(
+                copy(created.getServers().getFirst()).withName("beta"),
+                copy(created.getServers().get(1)).withName("alpha")),
+            created);
+    assertEquals("key-1", storedKey(swapped, "beta"));
+    assertEquals("key-2", storedKey(swapped, "alpha"));
+
+    // Edit alpha's key only: beta still references alpha's default id, so alpha gets a fresh id.
+    McpConnection oneEdited =
+        encryptMcp(
+            List.of(
+                copy(swapped.getServers().getFirst()),
+                copy(swapped.getServers().get(1)).withApiKey("key-3")),
+            swapped);
+    assertEquals("key-1", storedKey(oneEdited, "beta"));
+    assertEquals("key-3", storedKey(oneEdited, "alpha"));
+
+    // Edit both keys in one save directly from the swapped state: both default ids are referenced
+    // by the other server in the saved config, so neither original secret is overwritten.
+    McpConnection bothEdited =
+        encryptMcp(
+            List.of(
+                copy(swapped.getServers().getFirst()).withApiKey("key-4"),
+                copy(swapped.getServers().get(1)).withApiKey("key-5")),
+            swapped);
+    assertEquals("key-4", storedKey(bothEdited, "beta"));
+    assertEquals("key-5", storedKey(bothEdited, "alpha"));
+    // The original swapped references still hold their original secrets if that save rolled back.
+    assertEquals("key-1", storedKey(swapped, "beta"));
+    assertEquals("key-2", storedKey(swapped, "alpha"));
+
+    ownership.removeOwner(owner, secretsManager.secretInventory(bothEdited, mcpRoot()));
+    ownership.clean(mcpRoot());
+    assertTrue(secretsManager.getSecretsMap().isEmpty());
+  }
+
+  @Test
+  void swappingServerNamesThenClearingOneKeyKeepsTheOtherServersSecret() {
+    McpConnection created =
+        encryptMcp(List.of(mcpServer("alpha", "key-1"), mcpServer("beta", "key-2")), null);
+    McpConnection swapped =
+        encryptMcp(
+            List.of(
+                copy(created.getServers().getFirst()).withName("beta"),
+                copy(created.getServers().get(1)).withName("alpha")),
+            created);
+
+    McpConnection cleared =
+        encryptMcp(
+            List.of(
+                copy(swapped.getServers().getFirst()),
+                copy(swapped.getServers().get(1)).withApiKey("")),
+            swapped);
+
+    assertEquals("key-1", storedKey(cleared, "beta"));
+    assertNull(
+        cleared.getServers().stream()
+            .filter(server -> "alpha".equals(server.getName()))
+            .findFirst()
+            .orElseThrow()
+            .getApiKey());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void deletingAPositionKeyedElementThenAddingAnotherKeepsSurvivorsKey(boolean duplicateNames) {
+    String name = duplicateNames ? "dup" : null;
+    McpConnection created =
+        encryptMcp(
+            List.of(
+                new McpServerConfig().withName(name).withUrl("https://one").withApiKey("key-0"),
+                new McpServerConfig().withName(name).withUrl("https://two").withApiKey("key-1")),
+            null);
+
+    // Delete element 0 in one save, leaving element 1 at position #0 still referencing #1's id.
+    McpConnection deletedFirst = encryptMcp(List.of(copy(created.getServers().get(1))), created);
+
+    // Add a new element at position #1: element 0 references #1's id, so #1 gets a fresh id.
+    McpConnection addedSecond =
+        encryptMcp(
+            List.of(
+                copy(deletedFirst.getServers().getFirst()),
+                new McpServerConfig().withName(name).withUrl("https://three").withApiKey("key-2")),
+            deletedFirst);
+    assertEquals("key-1", storedKeyAt(addedSecond, 0));
+    assertEquals("key-2", storedKeyAt(addedSecond, 1));
+    String freshAtOne = storedReferenceAt(addedSecond, 1);
+
+    // Editing index 1 again stages a replacement without disturbing either committed value.
+    McpConnection editedSecond =
+        encryptMcp(
+            List.of(
+                copy(addedSecond.getServers().getFirst()),
+                copy(addedSecond.getServers().get(1)).withApiKey("key-3")),
+            addedSecond);
+    assertEquals("key-1", storedKeyAt(editedSecond, 0));
+    assertEquals("key-3", storedKeyAt(editedSecond, 1));
+    assertNotEquals(freshAtOne, storedReferenceAt(editedSecond, 1));
+    assertEquals("key-2", secretsManager.getSecretValue(freshAtOne));
+    ownership.clean(mcpRoot());
+    assertFalse(
+        secretsManager
+            .getSecretsMap()
+            .containsKey(freshAtOne.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+
+    ownership.removeOwner(owner, secretsManager.secretInventory(editedSecond, mcpRoot()));
+    ownership.clean(mcpRoot());
+    assertTrue(secretsManager.getSecretsMap().isEmpty());
+  }
+
+  @Test
+  void deletingAPositionKeyedElementAndAddingReplacementInTheSameSaveKeepsSurvivorsKey() {
+    McpConnection created =
+        encryptMcp(
+            List.of(
+                new McpServerConfig().withUrl("https://one").withApiKey("key-0"),
+                new McpServerConfig().withUrl("https://two").withApiKey("key-1")),
+            null);
+
+    McpConnection updated =
+        encryptMcp(
+            List.of(
+                copy(created.getServers().get(1)),
+                new McpServerConfig().withUrl("https://three").withApiKey("key-2")),
+            created);
+
+    assertEquals("key-1", storedKeyAt(updated, 0));
+    assertEquals("key-2", storedKeyAt(updated, 1));
+  }
+
   private String storedKey(final McpConnection connection, final String name) {
+    return secretsManager.getSecretValue(storedReference(connection, name));
+  }
+
+  private String storedReference(final McpConnection connection, final String name) {
     final String apiKey =
         connection.getServers().stream()
             .filter(server -> name.equals(server.getName()))
             .findFirst()
             .orElseThrow()
             .getApiKey();
-    final String reference =
-        Fernet.isTokenized(apiKey) ? Fernet.getInstance().decrypt(apiKey) : apiKey;
-    return secretsManager.getSecretValue(reference);
+    return Fernet.isTokenized(apiKey) ? Fernet.getInstance().decrypt(apiKey) : apiKey;
+  }
+
+  private String storedKeyAt(final McpConnection connection, final int index) {
+    return secretsManager.getSecretValue(storedReferenceAt(connection, index));
+  }
+
+  private String storedReferenceAt(final McpConnection connection, final int index) {
+    final String apiKey = connection.getServers().get(index).getApiKey();
+    return Fernet.isTokenized(apiKey) ? Fernet.getInstance().decrypt(apiKey) : apiKey;
   }
 
   private static McpServerConfig copy(final McpServerConfig server) {
@@ -372,16 +672,25 @@ class SecretMapEntriesExternalStoreTest {
 
   private McpConnection encryptMcp(List<McpServerConfig> servers, McpConnection original) {
     McpConnection config = new McpConnection().withServers(servers);
-    SecretInventory input = secretsManager.secretInventory(config, mcpRoot());
+    WriteContext<Object> context =
+        ownership.forWrite(
+            mock(CollectionDAO.class),
+            owner,
+            mcpRoot(),
+            original == null ? null : JsonUtils.deepCopy(original, McpConnection.class));
     McpConnection stored =
         (McpConnection)
-            secretsManager.encryptServiceConnectionConfig(
-                JsonUtils.deepCopy(config, McpConnection.class), "Mcp", SERVICE, ServiceType.MCP);
+            secretsManager.encryptServiceConnectionConfigForWrite(
+                JsonUtils.deepCopy(config, McpConnection.class),
+                "Mcp",
+                SERVICE,
+                ServiceType.MCP,
+                context);
     ownership.recordWrite(
         owner,
         original == null ? null : secretsManager.secretInventory(original, mcpRoot()),
-        input,
-        secretsManager.secretInventory(stored, mcpRoot()));
+        secretsManager.secretInventory(stored, mcpRoot()),
+        context);
     return stored;
   }
 

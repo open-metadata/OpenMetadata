@@ -59,6 +59,10 @@ final class SecretKeyEncoding {
     return BASE32.encode(bytes);
   }
 
+  static boolean isFreshSuffix(String segment) {
+    return segment.length() == FIELD_KEY_LENGTH && BASE32.canDecode(segment);
+  }
+
   /** The field path as an RFC 6901 JSON pointer, which is unambiguous whatever the segments hold. */
   static String pointer(List<String> fieldPath) {
     StringBuilder pointer = new StringBuilder();

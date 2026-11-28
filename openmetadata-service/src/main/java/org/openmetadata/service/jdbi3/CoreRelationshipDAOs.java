@@ -35,6 +35,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.SqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
@@ -80,7 +81,7 @@ public interface CoreRelationshipDAOs {
   @CreateSqlObject
   CustomPropertyReferenceDAO customPropertyReferenceDAO();
 
-  interface EntityExtensionDAO {
+  interface EntityExtensionDAO extends SqlObject {
     @ConnectionAwareSqlUpdate(
         value =
             "REPLACE INTO entity_extension(id, extension, jsonSchema, json) "

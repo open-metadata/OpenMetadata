@@ -2,23 +2,30 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.jdbi.v3.core.transaction.TransactionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -36,12 +43,20 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.schema.api.services.CreateMcpService;
+import org.openmetadata.schema.api.services.CreateMcpService.McpServiceType;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.automations.CreateWorkflow;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.entity.services.MessagingService;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -51,10 +66,16 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpHeaders;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.mcp.McpConnection.DiscoveryMethod;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig.TransportType;
 import org.openmetadata.schema.services.connections.messaging.ConsumerConfig;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.McpConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
@@ -64,11 +85,15 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.McpServiceRepository;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
+import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.secrets.ExternalSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
+import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RequestEntityCache;
 
@@ -110,6 +135,79 @@ public class SecretsManagerNullSecretIT {
   static void restoreSecretsManager() {
     SecretsManagerFactory.setSecretsManager(originalSecretsManager);
     vault.getSecretsMap().clear();
+  }
+
+  @Test
+  void distinctServersKeepTheirCredentialsDuringAMaskedUpdate(TestNamespace ns) {
+    Map<String, String> before = Map.copyOf(vault.getSecretsMap());
+    CreateMcpService request =
+        new CreateMcpService()
+            .withName(ns.prefix("catalog_connectors"))
+            .withServiceType(McpServiceType.Mcp)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("catalog", "catalog-fixture"),
+                    mcpServer("calendar", "calendar-fixture")));
+    McpService service = SdkClients.adminClient().mcpServices().create(request);
+    ns.trackRoot(Entity.MCP_SERVICE, service);
+    String serviceId = service.getId().toString();
+    Map<String, String> references = mcpBotReferences(serviceId);
+    assertNotEquals(references.get("catalog"), references.get("calendar"));
+
+    request
+        .withDescription("Updated connector descriptions")
+        .withConnection(
+            mcpDirectConnection(
+                mcpServer("catalog", PasswordEntityMasker.PASSWORD_MASK),
+                mcpServer("calendar", PasswordEntityMasker.PASSWORD_MASK)));
+    McpService updated =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/services/mcpServices", request, McpService.class);
+    assertEquals(request.getDescription(), updated.getDescription());
+    assertEquals(references, mcpBotReferences(serviceId));
+    assertEquals("catalog-fixture", vault.getSecretValue(references.get("catalog")));
+    assertEquals("calendar-fixture", vault.getSecretValue(references.get("calendar")));
+
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(serviceId, Map.of("hardDelete", "true", "recursive", "true"));
+    assertEquals(before, vault.getSecretsMap());
+  }
+
+  @Test
+  void sharedCredentialRemainsAvailableUntilBothServicesAreDeleted(TestNamespace ns) {
+    McpService owner = createCredentialReader(ns, "catalog_owner", "shared-fixture");
+    String reference = mcpBotReferences(owner.getId().toString()).get("catalog");
+    McpService reader = createCredentialReader(ns, "catalog_reader", reference);
+
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(owner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    String retained = mcpBotReferences(reader.getId().toString()).get("catalog");
+    assertEquals(reference, retained);
+    assertEquals("shared-fixture", vault.getSecretValue(retained));
+
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(reader.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    assertFalse(
+        vault
+            .getSecretsMap()
+            .containsKey(reference.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+  }
+
+  private McpService createCredentialReader(TestNamespace ns, String name, String value) {
+    McpService service =
+        SdkClients.adminClient()
+            .mcpServices()
+            .create(
+                new CreateMcpService()
+                    .withName(ns.prefix(name))
+                    .withServiceType(McpServiceType.Mcp)
+                    .withConnection(mcpDirectConnection(mcpServer("catalog", value))));
+    ns.trackRoot(Entity.MCP_SERVICE, service);
+    return service;
   }
 
   @ParameterizedTest
@@ -862,6 +960,824 @@ public class SecretsManagerNullSecretIT {
     assertTrue(stagedFields.contains("description"), stagedFields.toString());
     assertFalse(stagedFields.contains("connection"), stagedFields.toString());
     assertFalse(stagedFields.contains("serviceAttributes"), stagedFields.toString());
+  }
+
+  /**
+   * Reproduces #38241 end to end: renaming an MCP server keeps its existing secret reference, and
+   * later reusing its old name or swapping names and editing a key must allocate a fresh secret id
+   * instead of overwriting the other server's key — and hard delete must clean up all secrets.
+   */
+  @Test
+  void renamedMcpServerKeepsItsApiKeyWhenOldNameIsReusedAndSwapped(TestNamespace ns) {
+    String serviceName = ns.prefix("mcp_rename_reuse");
+    String mcpPath = "/v1/services/mcpServices";
+    CreateMcpService createRequest =
+        new CreateMcpService()
+            .withName(serviceName)
+            .withServiceType(McpServiceType.Mcp)
+            .withConnection(mcpDirectConnection(mcpServer("alpha", "alpha-key-1")));
+    McpService created = SdkClients.adminClient().mcpServices().create(createRequest);
+    ns.trackRoot(Entity.MCP_SERVICE, created);
+    String root = entitySecretRoot("mcp", serviceName);
+
+    // 1. Rename alpha -> beta via PATCH without changing its key.
+    ArrayNode renamePatch = JsonUtils.getObjectMapper().createArrayNode();
+    renamePatch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/connection/config/servers/0/name")
+        .put("value", "beta");
+    SdkClients.adminClient().mcpServices().patch(created.getId(), renamePatch);
+
+    // 2. Add a new server named alpha via PUT while keeping beta masked.
+    CreateMcpService addAlphaRequest =
+        new CreateMcpService()
+            .withName(serviceName)
+            .withServiceType(McpServiceType.Mcp)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("beta", PasswordEntityMasker.PASSWORD_MASK),
+                    mcpServer("alpha", "alpha-key-2")));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, mcpPath, addAlphaRequest, McpService.class);
+
+    Map<String, String> afterReuse = mcpBotReferences(created.getId().toString());
+    assertTrue(afterReuse.get("beta").startsWith(SecretsManager.SECRET_FIELD_PREFIX));
+    assertTrue(afterReuse.get("alpha").startsWith(SecretsManager.SECRET_FIELD_PREFIX));
+    assertFalse(afterReuse.get("beta").equals(afterReuse.get("alpha")));
+    assertEquals("alpha-key-1", vault.getSecretValue(afterReuse.get("beta")));
+    assertEquals("alpha-key-2", vault.getSecretValue(afterReuse.get("alpha")));
+
+    // 3. Swap beta <-> alpha via PATCH, then edit beta's key via PUT while keeping alpha masked.
+    ArrayNode swapPatch = JsonUtils.getObjectMapper().createArrayNode();
+    swapPatch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/connection/config/servers/0/name")
+        .put("value", "alpha");
+    swapPatch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/connection/config/servers/1/name")
+        .put("value", "beta");
+    SdkClients.adminClient().mcpServices().patch(created.getId(), swapPatch);
+
+    CreateMcpService editAfterSwap =
+        new CreateMcpService()
+            .withName(serviceName)
+            .withServiceType(McpServiceType.Mcp)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("alpha", PasswordEntityMasker.PASSWORD_MASK),
+                    mcpServer("beta", "beta-key-3")));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, mcpPath, editAfterSwap, McpService.class);
+
+    Map<String, String> afterSwapEdit = mcpBotReferences(created.getId().toString());
+    assertEquals("alpha-key-1", vault.getSecretValue(afterSwapEdit.get("alpha")));
+    assertEquals("beta-key-3", vault.getSecretValue(afterSwapEdit.get("beta")));
+
+    // 4. Hard delete cleans up every secret under this MCP service (including fresh ids).
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(created.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    assertFalse(vault.getSecretsMap().keySet().stream().anyMatch(id -> id.startsWith(root + "/")));
+  }
+
+  @Test
+  void rollingBackAFreshMcpSecretRemovesItAndKeepsTheExistingCredential(TestNamespace ns) {
+    String serviceName = ns.prefix("mcp_rollback_fresh");
+    McpService created =
+        SdkClients.adminClient()
+            .mcpServices()
+            .create(
+                new CreateMcpService()
+                    .withName(serviceName)
+                    .withServiceType(McpServiceType.Mcp)
+                    .withConnection(mcpDirectConnection(mcpServer("alpha", "first-key"))));
+    ns.trackRoot(Entity.MCP_SERVICE, created);
+    String originalSecret = entitySecretRoot("mcp", serviceName) + "/servers/alpha/apikey";
+    McpService original =
+        Entity.getCollectionDAO().mcpServiceDAO().findEntityById(created.getId(), Include.ALL);
+    org.openmetadata.schema.services.connections.mcp.McpConnection originalConfig =
+        JsonUtils.convertValue(
+            original.getConnection().getConfig(),
+            org.openmetadata.schema.services.connections.mcp.McpConnection.class);
+    McpService updated =
+        JsonUtils.deepCopy(original, McpService.class)
+            .withConnection(
+                mcpDirectConnection(
+                    originalConfig.getServers().getFirst().withName("beta"),
+                    mcpServer("alpha", "second-key")));
+    McpServiceRepository repository =
+        (McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE);
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository.executeInTransaction(
+                () -> {
+                  repository.storeEntity(updated, true);
+                  assertTrue(vault.getSecretsMap().containsValue("second-key"));
+                  throw new IllegalStateException("Injected failure before commit");
+                }));
+
+    assertEquals(
+        original,
+        Entity.getCollectionDAO().mcpServiceDAO().findEntityById(created.getId(), Include.ALL));
+    assertEquals("first-key", vault.getSecretsMap().get(originalSecret));
+    assertFalse(
+        vault.getSecretsMap().keySet().stream()
+            .anyMatch(id -> id.startsWith(originalSecret + "/")));
+
+    repository.storeEntity(updated, true);
+    RequestEntityCache.clear();
+    Map<String, String> refs = mcpBotReferences(created.getId().toString());
+    assertEquals("first-key", vault.getSecretValue(refs.get("beta")));
+    assertEquals("second-key", vault.getSecretValue(refs.get("alpha")));
+  }
+
+  @Test
+  void replacingACommittedFreshReferenceStagesItsValueUntilCommit(TestNamespace ns) {
+    McpService service = createMcpWithFreshReference(ns);
+    Map<String, String> originalRefs = mcpBotReferences(service.getId().toString());
+    String previousName =
+        originalRefs.get("alpha").substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+    McpService updated =
+        JsonUtils.deepCopy(service, McpService.class)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("beta", originalRefs.get("beta")), mcpServer("alpha", "third-key")));
+    McpServiceRepository repository =
+        (McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE);
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository.executeInTransaction(
+                () -> {
+                  repository.storeEntity(updated, true);
+                  throw new IllegalStateException("Reject replacement before commit");
+                }));
+
+    RequestEntityCache.clear();
+    assertEquals(originalRefs, mcpBotReferences(service.getId().toString()));
+    assertEquals("second-key", vault.getSecretsMap().get(previousName));
+    assertFalse(vault.getSecretsMap().containsValue("third-key"));
+
+    repository.storeEntity(updated, true);
+    RequestEntityCache.clear();
+    Map<String, String> committedRefs = mcpBotReferences(service.getId().toString());
+    assertNotEquals(originalRefs.get("alpha"), committedRefs.get("alpha"));
+    assertEquals("third-key", vault.getSecretValue(committedRefs.get("alpha")));
+    assertEquals("first-key", vault.getSecretValue(committedRefs.get("beta")));
+    assertFalse(vault.getSecretsMap().containsKey(previousName));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "omit", "replace"})
+  void clearingARenamedFreshReferenceRetainsItUntilItsLastAliasCommits(
+      String change, TestNamespace ns) {
+    McpService service = createMcpWithFreshReference(ns);
+    Map<String, String> refs = mcpBotReferences(service.getId().toString());
+    String sharedRef = refs.get("alpha");
+    String sharedName = sharedRef.substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+    McpServiceRepository repository =
+        (McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE);
+    McpService renamed =
+        JsonUtils.deepCopy(service, McpService.class)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("beta", refs.get("beta")),
+                    mcpServer("gamma", sharedRef),
+                    mcpServer("delta", sharedRef)));
+    repository.storeEntity(renamed, true);
+    renamed.setConnection(
+        mcpDirectConnection(
+            mcpServer("beta", refs.get("beta")),
+            mcpServer("gamma", ""),
+            mcpServer("delta", sharedRef)));
+    repository.storeEntity(renamed, true);
+    assertEquals("second-key", vault.getSecretsMap().get(sharedName));
+
+    String externalName = "operator-managed/" + service.getId();
+    String externalRef = SecretsManager.SECRET_FIELD_PREFIX + externalName;
+    vault.upsertSecret(externalName, "operator-test-value");
+    String replacement =
+        switch (change) {
+          case "omit" -> null;
+          case "replace" -> externalRef;
+          default -> "";
+        };
+    renamed.setConnection(
+        mcpDirectConnection(
+            mcpServer("beta", refs.get("beta")),
+            mcpServer("gamma", ""),
+            mcpServer("delta", replacement)));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository.executeInTransaction(
+                () -> {
+                  repository.storeEntity(renamed, true);
+                  throw new IllegalStateException("Reject clear before commit");
+                }));
+    RequestEntityCache.clear();
+    assertEquals(sharedRef, mcpBotReferences(service.getId().toString()).get("delta"));
+    assertEquals("second-key", vault.getSecretsMap().get(sharedName));
+
+    repository.storeEntity(renamed, true);
+    RequestEntityCache.clear();
+    Map<String, String> committedRefs = mcpBotReferences(service.getId().toString());
+    assertEquals("replace".equals(change) ? externalRef : null, committedRefs.get("delta"));
+    assertFalse(vault.getSecretsMap().containsKey(sharedName));
+    assertEquals("first-key", vault.getSecretValue(committedRefs.get("beta")));
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(service.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    assertEquals("operator-test-value", vault.getSecretsMap().get(externalName));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void anotherServiceCanResolveTheCredentialAfterItsOwnerChanges(boolean rotate, TestNamespace ns) {
+    McpService owner = createMcpWithFreshReference(ns);
+    Map<String, String> refs = mcpBotReferences(owner.getId().toString());
+    String shared = refs.get("alpha");
+    McpService reader =
+        SdkClients.adminClient()
+            .mcpServices()
+            .create(
+                new CreateMcpService()
+                    .withName(ns.prefix("mcp_reader"))
+                    .withServiceType(McpServiceType.Mcp)
+                    .withConnection(mcpDirectConnection(mcpServer("reader", shared))));
+    ns.trackRoot(Entity.MCP_SERVICE, reader);
+    McpServiceRepository repository =
+        (McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE);
+    owner.setConnection(
+        mcpDirectConnection(
+            mcpServer("beta", refs.get("beta")), mcpServer("alpha", rotate ? "rotated" : "")));
+    repository.storeEntity(owner, true);
+    RequestEntityCache.clear();
+
+    String readerRef = mcpBotReferences(reader.getId().toString()).get("reader");
+    assertEquals(shared, readerRef);
+    assertEquals("second-key", vault.getSecretValue(readerRef));
+    if (rotate) {
+      assertEquals(
+          "rotated", vault.getSecretValue(mcpBotReferences(owner.getId().toString()).get("alpha")));
+    }
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(reader.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    assertFalse(
+        vault
+            .getSecretsMap()
+            .containsKey(shared.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+  }
+
+  @Test
+  void anExistingPipelineReferenceProtectsADeletedServicesCredential(TestNamespace ns) {
+    McpService owner = createMcpWithFreshReference(ns);
+    String shared = mcpBotReferences(owner.getId().toString()).get("alpha");
+    DatabaseService database = DatabaseServiceTestFactory.createPostgres(ns);
+    String pipelineName = ns.prefix("dbt_shared_header");
+    IngestionPipeline pipeline =
+        SdkClients.adminClient()
+            .ingestionPipelines()
+            .create(dbtRequest(database, pipelineName, Map.of()));
+    ns.trackRoot(Entity.INGESTION_PIPELINE, pipeline);
+
+    // The stored alias comes from before the current ownership ledger recorded this reference.
+    var pipelines = Entity.getCollectionDAO().ingestionPipelineDAO();
+    IngestionPipeline legacy = pipelines.findEntityById(pipeline.getId(), Include.ALL);
+    legacy.setSourceConfig(
+        dbtRequest(database, pipelineName, Map.of("Authorization", shared)).getSourceConfig());
+    vault.encryptIngestionPipeline(legacy);
+    pipelines.update(legacy);
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(owner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    IngestionPipeline stored =
+        Entity.getCollectionDAO()
+            .ingestionPipelineDAO()
+            .findEntityById(pipeline.getId(), Include.ALL);
+    String key = shared.substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+    assertTrue(vault.secretInventory(stored).references().contains(key));
+    assertEquals("second-key", vault.getSecretValue(shared));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/services/ingestionPipelines",
+            dbtRequest(database, pipelineName, Map.of()),
+            IngestionPipeline.class);
+    assertFalse(vault.getSecretsMap().containsKey(key));
+  }
+
+  @Test
+  void aStoredTestConnectionWorkflowKeepsItsCredentialUntilHardDeletion(TestNamespace ns) {
+    McpService owner = createMcpWithFreshReference(ns);
+    Map<String, String> refs = mcpBotReferences(owner.getId().toString());
+    String shared = refs.get("alpha");
+    Workflow workflow = createWorkflow(ns.shortPrefix() + "sharedWorkflow", shared);
+    owner.setConnection(
+        mcpDirectConnection(mcpServer("beta", refs.get("beta")), mcpServer("alpha", "rotated")));
+    ((McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE))
+        .storeEntity(owner, true);
+    RequestEntityCache.clear();
+    try {
+      Workflow read = SdkClients.ingestionBotClient().workflows().get(workflow.getId().toString());
+      String password =
+          JsonUtils.valueToTree(read.getRequest())
+              .at("/connection/config/authType/password")
+              .asText();
+      assertEquals(shared, password);
+      assertEquals("second-key", vault.getSecretValue(password));
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE, "/v1/automations/workflows/" + workflow.getId(), null);
+      assertEquals("second-key", vault.getSecretValue(password));
+    } finally {
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE,
+              "/v1/automations/workflows/" + workflow.getId() + "?hardDelete=true",
+              null);
+    }
+    assertFalse(
+        vault
+            .getSecretsMap()
+            .containsKey(shared.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void committedWorkflowReleasesSurviveLostOrFailedCleanup(boolean bulk, TestNamespace ns) {
+    Set<String> failOnce = ConcurrentHashMap.newKeySet();
+    InMemorySecretsManager provider =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig(CLUSTER_NAME, null, List.of(), null)) {
+          @Override
+          protected void deleteSecretInternal(String name) {
+            if (failOnce.remove(name)) {
+              throw new IllegalStateException("Injected vault delete failure");
+            }
+            super.deleteSecretInternal(name);
+          }
+        };
+    SecretsManagerFactory.setSecretsManager(provider);
+    try {
+      McpService owner = createMcpWithFreshReference(ns);
+      String shared = mcpBotReferences(owner.getId().toString()).get("alpha");
+      String key = shared.substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+      Workflow first = createWorkflow(ns.shortPrefix() + "firstHolder", shared);
+      Workflow last = createWorkflow(ns.shortPrefix() + "lastHolder", shared);
+      SdkClients.adminClient()
+          .mcpServices()
+          .delete(owner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      WorkflowRepository workflows =
+          (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
+      workflows.delete("admin", first.getId(), false, true);
+      assertEquals("second-key", provider.getSecretValue(shared));
+
+      Workflow own = createWorkflow(ns.shortPrefix() + "ownCredential", "workflow-owned-example");
+      ns.trackRoot(Entity.WORKFLOW, own);
+      String ownRef =
+          JsonUtils.valueToTree(
+                  SdkClients.ingestionBotClient()
+                      .workflows()
+                      .get(own.getId().toString())
+                      .getRequest())
+              .at("/connection/config/authType/password")
+              .asText();
+      Runnable deleteLast =
+          bulk
+              ? () -> workflows.bulkHardDeleteSubtree(List.of(last.getId(), own.getId()), "admin")
+              : () -> workflows.delete("admin", last.getId(), false, true);
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              workflows.executeInTransaction(
+                  () -> {
+                    deleteLast.run();
+                    throw new IllegalStateException("Roll back the workflow delete");
+                  }));
+      var dao = Entity.getCollectionDAO().workflowDAO();
+      assertTrue(dao.exists(dao.getTableName(), last.getId()));
+      assertTrue(dao.exists(dao.getTableName(), own.getId()));
+      assertEquals("workflow-owned-example", provider.getSecretValue(ownRef));
+      assertEquals("second-key", provider.getSecretValue(shared));
+
+      assertTrue(PostCommitActionQueue.begin());
+      List<Runnable> delayed;
+      try {
+        deleteLast.run();
+        delayed = PostCommitActionQueue.drain();
+      } finally {
+        PostCommitActionQueue.clear();
+      }
+      assertFalse(dao.exists(dao.getTableName(), last.getId()));
+      assertEquals("second-key", provider.getSecretValue(shared));
+      if (bulk) {
+        failOnce.add(key);
+        PostCommitActionQueue.run(delayed);
+        assertTrue(failOnce.isEmpty());
+        assertEquals("second-key", provider.getSecretValue(shared));
+      }
+      // The single-delete case drops the callback as if the process stopped after commit.
+      MessagingService unrelated =
+          SdkClients.adminClient()
+              .messagingServices()
+              .create(kafkaRequest(ns.prefix("resume_workflow_cleanup"), Map.of()));
+      ns.trackRoot(Entity.MESSAGING_SERVICE, unrelated);
+      assertFalse(
+          provider.getSecretsMap().containsKey(key),
+          "A new request must recover the final release without either deleted entity");
+      assertEquals(
+          !bulk,
+          provider
+              .getSecretsMap()
+              .containsKey(ownRef.substring(SecretsManager.SECRET_FIELD_PREFIX.length())));
+
+    } finally {
+      SecretsManagerFactory.setSecretsManager(vault);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void normalWorkflowDeletionKeepsItsReleasePrivateUntilRowCommit(boolean bulk, TestNamespace ns)
+      throws Exception {
+    Workflow workflow = createWorkflow(ns.shortPrefix("atomicDelete"), "workflow-value");
+    ns.trackRoot(Entity.WORKFLOW, workflow);
+    String root = vault.secretInventory(workflow).root();
+    String serviceName = ns.prefix("concurrent_secret_write");
+    MessagingService unrelated =
+        SdkClients.adminClient()
+            .messagingServices()
+            .create(kafkaRequest(serviceName, Map.of("credential", PASSWORD)));
+    ns.trackRoot(Entity.MESSAGING_SERVICE, unrelated);
+    CountDownLatch prepared = new CountDownLatch(1);
+    CountDownLatch continueDelete = new CountDownLatch(1);
+    WorkflowRepository original = (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
+    WorkflowRepository pausing =
+        new WorkflowRepository() {
+          @Override
+          protected Runnable preparePostDeleteCleanup(List<Workflow> deleting) {
+            Runnable cleanup = super.preparePostDeleteCleanup(deleting);
+            prepared.countDown();
+            try {
+              if (!continueDelete.await(20, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting to remove the workflow row");
+              }
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new IllegalStateException(e);
+            }
+            return cleanup;
+          }
+        };
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      var deleting =
+          executor.submit(
+              () -> {
+                if (bulk) {
+                  pausing.bulkHardDeleteSubtree(List.of(workflow.getId()), "admin");
+                } else {
+                  pausing.delete("admin", workflow.getId(), false, true);
+                }
+              });
+      try {
+        assertTrue(prepared.await(20, TimeUnit.SECONDS));
+        var workflows = Entity.getCollectionDAO().workflowDAO();
+        assertTrue(workflows.exists(workflows.getTableName(), workflow.getId()));
+        assertNull(workflowCleanupMarker(root), "A cleanup worker must not see uncommitted work");
+        CountDownLatch writerStarted = new CountDownLatch(1);
+        var writing =
+            executor.submit(
+                () -> {
+                  writerStarted.countDown();
+                  return SdkClients.adminClient()
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.PUT,
+                          MESSAGING_SERVICES_PATH,
+                          kafkaRequest(serviceName, Map.of()),
+                          MessagingService.class);
+                });
+        assertTrue(writerStarted.await(10, TimeUnit.SECONDS));
+        assertThrows(TimeoutException.class, () -> writing.get(300, TimeUnit.MILLISECONDS));
+        continueDelete.countDown();
+        deleting.get(20, TimeUnit.SECONDS);
+        writing.get(20, TimeUnit.SECONDS);
+        assertFalse(workflows.exists(workflows.getTableName(), workflow.getId()));
+        assertNull(workflowCleanupMarker(root));
+      } finally {
+        continueDelete.countDown();
+      }
+    } finally {
+      Entity.registerEntity(Workflow.class, Entity.WORKFLOW, original);
+    }
+  }
+
+  @Test
+  void failedWorkflowRetirementDoesNotStarveOtherPendingRoots(TestNamespace ns) {
+    final String marker = "secrets.pendingWorkflowCleanup";
+    Set<String> unavailable = ConcurrentHashMap.newKeySet();
+    AtomicInteger failedAttempts = new AtomicInteger();
+    InMemorySecretsManager provider =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig(CLUSTER_NAME, null, List.of(), null)) {
+          @Override
+          protected void deleteSecretInternal(String name) {
+            if (unavailable.contains(name)) {
+              failedAttempts.incrementAndGet();
+              throw new IllegalStateException("Injected persistent vault failure");
+            }
+            super.deleteSecretInternal(name);
+          }
+        };
+    SecretsManagerFactory.setSecretsManager(provider);
+    // Sort by the database's marker order so the healthy workflow lies beyond the 100-row page.
+    List<String> names =
+        IntStream.range(0, 102)
+            .mapToObj(i -> ns.shortPrefix("queued" + i))
+            .sorted(
+                Comparator.comparing(n -> ownershipId(entitySecretRoot("workflow", n)).toString()))
+            .toList();
+    var extensions = Entity.getCollectionDAO().entityExtensionDAO();
+    try {
+      String serviceName = ns.prefix("service_with_own_retirement");
+      String currentRoot = entitySecretRoot("messaging", serviceName);
+      String currentKey = currentRoot + "/consumerconfig/additionalproperties/credential";
+      MessagingService current =
+          SdkClients.adminClient()
+              .messagingServices()
+              .create(kafkaRequest(serviceName, Map.of("credential", PASSWORD)));
+      ns.trackRoot(Entity.MESSAGING_SERVICE, current);
+      Workflow failing = createWorkflow(names.getFirst(), "unavailable-workflow-value");
+      Workflow healthy = createWorkflow(names.getLast(), "healthy-workflow-value");
+      String failingRoot = provider.secretInventory(failing).root();
+      String healthyRoot = provider.secretInventory(healthy).root();
+      String failingKey =
+          provider.getSecretsMap().keySet().stream()
+              .filter(k -> k.startsWith(failingRoot + "/"))
+              .findFirst()
+              .orElseThrow();
+      String healthyKey =
+          provider.getSecretsMap().keySet().stream()
+              .filter(k -> k.startsWith(healthyRoot + "/"))
+              .findFirst()
+              .orElseThrow();
+      unavailable.add(failingKey);
+      WorkflowRepository workflows =
+          (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
+      assertTrue(PostCommitActionQueue.begin());
+      try {
+        workflows.bulkHardDeleteSubtree(List.of(failing.getId(), healthy.getId()), "admin");
+      } finally {
+        PostCommitActionQueue.clear(); // Drop the callback as if the worker stopped after commit.
+      }
+      assertEquals(JsonUtils.pojoToJson(failingRoot), workflowCleanupMarker(failingRoot));
+      assertEquals(JsonUtils.pojoToJson(healthyRoot), workflowCleanupMarker(healthyRoot));
+      // Fill the page with committed, empty namespaces. Neither cloud calls nor live rows are
+      // needed.
+      workflows.executeInTransaction(
+          () -> {
+            for (String name : names.subList(1, names.size() - 1)) {
+              String root = entitySecretRoot("workflow", name);
+              extensions.insert(ownershipId(root), marker, marker, JsonUtils.pojoToJson(root));
+            }
+            return null;
+          });
+      for (int attempt = 0; attempt < 3; attempt++) {
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                MESSAGING_SERVICES_PATH,
+                kafkaRequest(serviceName, Map.of()).withDescription("Recovery pass " + attempt),
+                MessagingService.class);
+        assertFalse(provider.getSecretsMap().containsKey(currentKey));
+        String currentState =
+            extensions.getExtension(ownershipId(currentRoot), "secrets.mapOwnership");
+        assertFalse(
+            currentState.contains(currentKey), "The current namespace's cleanup must commit");
+        if (attempt == 0) {
+          UUID lastMarkerOnPage = ownershipId(entitySecretRoot("workflow", names.get(99)));
+          assertEquals(
+              JsonUtils.pojoToJson(lastMarkerOnPage.toString()),
+              extensions.getExtension(ownershipId("lock"), "secrets.workflowCleanupCursor"),
+              "The retry cursor must commit even when the first marker fails");
+          assertTrue(provider.getSecretsMap().containsKey(healthyKey));
+        }
+      }
+      assertTrue(failedAttempts.get() > 0);
+      assertEquals("unavailable-workflow-value", provider.getSecretsMap().get(failingKey));
+      assertEquals(JsonUtils.pojoToJson(failingRoot), workflowCleanupMarker(failingRoot));
+      assertFalse(provider.getSecretsMap().containsKey(healthyKey));
+      assertNull(workflowCleanupMarker(healthyRoot));
+    } finally {
+      for (String name : names) {
+        String root = entitySecretRoot("workflow", name);
+        extensions.delete(ownershipId(root), marker);
+        extensions.delete(ownershipId(root), "secrets.mapOwnership");
+      }
+      SecretsManagerFactory.setSecretsManager(vault);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 4})
+  void cleanupScansPersistedConfigsOnceAcrossReleasedOwners(int releasedOwners, TestNamespace ns) {
+    String sentinel = ns.shortPrefix("scanSentinel");
+    AtomicInteger sentinelVisits = new AtomicInteger();
+    InMemorySecretsManager provider =
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig(CLUSTER_NAME, null, List.of(), null)) {
+          @Override
+          public SecretInventory secretInventory(Workflow workflow) {
+            if (sentinel.equals(workflow.getName())) {
+              sentinelVisits.incrementAndGet();
+            }
+            return super.secretInventory(workflow);
+          }
+        };
+    List<String> roots =
+        IntStream.rangeClosed(0, releasedOwners)
+            .mapToObj(i -> entitySecretRoot("mcp", ns.shortPrefix("cleanupOwner" + i)))
+            .toList();
+    String current = roots.getFirst();
+    String serviceKey = current + "/service-alias";
+    String workflowKey = roots.getLast() + "/workflow-alias";
+    String empty = current + "/empty";
+    var collection = Entity.getCollectionDAO();
+    var extensions = collection.entityExtensionDAO();
+    final String ledger = "secrets.mapOwnership";
+    SecretsManagerFactory.setSecretsManager(provider);
+    try {
+      MessagingService service =
+          SdkClients.adminClient()
+              .messagingServices()
+              .create(
+                  kafkaRequest(
+                      ns.shortPrefix("scanReader"), Map.of("credential", "secret:" + serviceKey)));
+      ns.trackRoot(Entity.MESSAGING_SERVICE, service);
+      Workflow workflow = createWorkflow(sentinel, "secret:" + workflowKey);
+      ns.trackRoot(Entity.WORKFLOW, workflow);
+      var repository = (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
+      // Seed the durable state left by the last holder releasing keys owned by several configs.
+      repository.executeInTransaction(
+          () -> {
+            for (String root : roots) {
+              Set<String> owned = new HashSet<>(Set.of(root + "/unreferenced"));
+              Set<String> released = new HashSet<>();
+              if (root.equals(current)) {
+                owned.add(serviceKey);
+                released.addAll(roots.subList(1, roots.size()));
+                released.add(empty);
+              }
+              if (root.equals(roots.getLast())) {
+                owned.add(workflowKey);
+              }
+              owned.forEach(key -> provider.upsertSecret(key, "test-value"));
+              extensions.insert(
+                  ownershipId(root),
+                  ledger,
+                  ledger,
+                  JsonUtils.pojoToJson(
+                      Map.of("owned", owned, "owners", Map.of(), "cleanupRoots", released)));
+            }
+            return null;
+          });
+      SecretMapOwnership ownership = new SecretMapOwnership(extensions, provider);
+      sentinelVisits.set(0);
+      repository.executeInTransaction(
+          () -> {
+            ownership.lock();
+            ownership.clean(empty);
+            return null;
+          });
+      assertEquals(0, sentinelVisits.get());
+      long start = System.nanoTime();
+      repository.executeInTransaction(
+          () -> {
+            ownership.lock();
+            ownership.clean(current);
+            return null;
+          });
+      int walks = sentinelVisits.get();
+      System.out.printf(
+          "Credential cleanup: %d owner namespaces, %d candidates, %d full scans, %d ms%n",
+          roots.size(),
+          roots.size() + 2,
+          walks,
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+      for (String root : roots) {
+        assertFalse(provider.getSecretsMap().containsKey(root + "/unreferenced"));
+      }
+      assertEquals("test-value", provider.getSecretValue("secret:" + serviceKey));
+      assertEquals("test-value", provider.getSecretValue("secret:" + workflowKey));
+      // Every owner has an unreferenced key, so its scan must reach the distinctive workflow row.
+      assertEquals(1, walks);
+    } finally {
+      roots.forEach(root -> extensions.delete(ownershipId(root), ledger));
+      for (String key : List.of(serviceKey, workflowKey)) {
+        String marker = "secrets.pendingSharedKey";
+        extensions.delete(
+            UUID.nameUUIDFromBytes((marker + ":" + key).getBytes(StandardCharsets.UTF_8)), marker);
+      }
+      SecretsManagerFactory.setSecretsManager(vault);
+    }
+  }
+
+  private static String workflowCleanupMarker(String root) {
+    return Entity.getCollectionDAO()
+        .entityExtensionDAO()
+        .getExtension(ownershipId(root), "secrets.pendingWorkflowCleanup");
+  }
+
+  private static UUID ownershipId(String root) {
+    return UUID.nameUUIDFromBytes(
+        ("secrets.mapOwnership:" + root).getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static Workflow createWorkflow(String name, String credential) {
+    DatabaseConnection connection =
+        new DatabaseConnection()
+            .withConfig(
+                new MysqlConnection()
+                    .withHostPort("localhost:3306")
+                    .withUsername("test")
+                    .withAuthType(new basicAuth().withPassword(credential)));
+    return SdkClients.adminClient()
+        .workflows()
+        .create(
+            new CreateWorkflow()
+                .withName(name)
+                .withWorkflowType(WorkflowType.TEST_CONNECTION)
+                .withRequest(
+                    new TestServiceConnectionRequest()
+                        .withServiceType(ServiceType.DATABASE)
+                        .withConnectionType("Mysql")
+                        .withConnection(connection)));
+  }
+
+  private static McpService createMcpWithFreshReference(TestNamespace ns) {
+    String name = ns.prefix("mcp_fresh_reference");
+    McpService service =
+        SdkClients.adminClient()
+            .mcpServices()
+            .create(
+                new CreateMcpService()
+                    .withName(name)
+                    .withServiceType(McpServiceType.Mcp)
+                    .withConnection(mcpDirectConnection(mcpServer("alpha", "first-key"))));
+    ns.trackRoot(Entity.MCP_SERVICE, service);
+    String alphaRef = mcpBotReferences(service.getId().toString()).get("alpha");
+    McpService stored =
+        Entity.getCollectionDAO().mcpServiceDAO().findEntityById(service.getId(), Include.ALL);
+    stored.setConnection(
+        mcpDirectConnection(mcpServer("beta", alphaRef), mcpServer("alpha", "second-key")));
+    ((McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE))
+        .storeEntity(stored, true);
+    RequestEntityCache.clear();
+    return stored;
+  }
+
+  private static McpConnection mcpDirectConnection(McpServerConfig... servers) {
+    return new McpConnection()
+        .withConfig(
+            new org.openmetadata.schema.services.connections.mcp.McpConnection()
+                .withDiscoveryMethod(DiscoveryMethod.DirectConnection)
+                .withServers(List.of(servers)));
+  }
+
+  private static McpServerConfig mcpServer(String name, String apiKey) {
+    return new McpServerConfig()
+        .withName(name)
+        .withTransport(TransportType.StreamableHTTP)
+        .withUrl("http://localhost:9000/mcp")
+        .withApiKey(apiKey);
+  }
+
+  private static Map<String, String> mcpBotReferences(String serviceId) {
+    McpService botView = SdkClients.ingestionBotClient().mcpServices().get(serviceId);
+    org.openmetadata.schema.services.connections.mcp.McpConnection config =
+        JsonUtils.convertValue(
+            botView.getConnection().getConfig(),
+            org.openmetadata.schema.services.connections.mcp.McpConnection.class);
+    Map<String, String> references = new java.util.HashMap<>();
+    for (McpServerConfig server : config.getServers()) {
+      references.put(server.getName(), server.getApiKey());
+    }
+    return references;
   }
 
   private static CreateDatabaseService request(String serviceName) {

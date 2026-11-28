@@ -13,6 +13,7 @@ import com.google.cloud.secretmanager.v1.SecretPayload;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.protobuf.ByteString;
 import java.io.IOException;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.zip.CRC32C;
 import java.util.zip.Checksum;
@@ -50,6 +51,11 @@ public class GCPSecretsManager extends ExternalSecretsManager {
 
   @Override
   void storeSecret(String secretId, String secretValue) {
+    storeSecret(secretId, secretValue, ignored -> {});
+  }
+
+  @Override
+  void storeSecret(String secretId, String secretValue, Consumer<String> onCreated) {
     try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
       ProjectName projectName = ProjectName.of(this.projectId);
 
@@ -64,6 +70,7 @@ public class GCPSecretsManager extends ExternalSecretsManager {
 
       // Create the secret.
       client.createSecret(projectName, secretId, secret);
+      onCreated.accept(secretId);
     } catch (IOException e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e);
     }
