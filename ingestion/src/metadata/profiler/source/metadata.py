@@ -47,9 +47,6 @@ from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
-TABLE_FIELDS = ["tableProfilerConfig", "columns", "customMetrics"]
-TAGS_FIELD = ["tags"]
-
 
 class OpenMetadataSource(Source):
     """
@@ -101,10 +98,6 @@ class OpenMetadataSource(Source):
             )
 
         logger.info(f"Starting profiler for service {self.config.source.serviceName}:{self.config.source.type.lower()}")
-
-    def _get_fields(self) -> list[str]:
-        """Get the fields required to process the tables"""
-        return TABLE_FIELDS if not self.source_config.processPiiSensitive else TABLE_FIELDS + TAGS_FIELD
 
     def _validate_service_name(self):
         """Validate service name exists in OpenMetadata"""
