@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Query;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -37,6 +39,7 @@ public class CreateResourceContext<T extends EntityInterface<?>>
   private final EntityRepository<T> entityRepository;
   private final T entity; // Entity being created
   private List<EntityInterface<?>> parentEntities;
+  private List<EntityReference> queryTableOwners;
   // Resolved on first use by a service condition; the flag is separate because "no service" is a
   // valid null result.
   private EntityInterface<?> serviceEntity;
@@ -71,7 +74,24 @@ public class CreateResourceContext<T extends EntityInterface<?>>
         owners = mergedInheritedEntityRefs(owners, parent.getOwners());
       }
     }
-    return owners;
+    return entity instanceof Query query
+        ? mergedInheritedEntityRefs(owners, getQueryTableOwners(query))
+        : owners;
+  }
+
+  /** Ownership rules may run repeatedly; resolve persisted table owners once per create context. */
+  private List<EntityReference> getQueryTableOwners(final Query query) {
+    if (queryTableOwners == null) {
+      final List<EntityReference> references =
+          listOrEmpty(query.getQueryUsedIn()).stream()
+              .filter(reference -> Entity.TABLE.equals(reference.getType()))
+              .toList();
+      final List<Table> tables =
+          Entity.getEntitiesForInheritance(references, Entity.FIELD_OWNERS, Include.NON_DELETED);
+      queryTableOwners =
+          tables.stream().flatMap(table -> listOrEmpty(table.getOwners()).stream()).toList();
+    }
+    return queryTableOwners;
   }
 
   @Override
