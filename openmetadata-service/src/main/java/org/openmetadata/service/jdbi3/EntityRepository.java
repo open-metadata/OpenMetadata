@@ -1924,6 +1924,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     boolean relationsFilledFromCache = false;
     boolean tagsFilledFromCache = false;
     boolean certificationFilledFromCache = false;
+    boolean tagsCacheable = bundleCache != null && bundleCache.isTagCachingEnabled();
     final CachedReadBundle.Dto dto = initialDto;
     if (dto != null) {
       if (dto.relations != null && readPlanCoversRelations(readPlan, dto.relations)) {
@@ -1937,7 +1938,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 });
         relationsFilledFromCache = true;
       }
-      if (dto.tagsLoaded && readPlan.shouldLoadTags()) {
+      if (tagsCacheable && dto.tagsLoaded && readPlan.shouldLoadTags()) {
         bundle.putTags(entity.getId(), dto.tags == null ? Collections.emptyList() : dto.tags);
         tagsFilledFromCache = true;
       }
@@ -2016,10 +2017,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
       prefetchEntitySpecificReadData(entity, readPlan, bundle);
     }
 
+    boolean needTagsCacheFill = tagsCacheable && readPlan.shouldLoadTags() && !tagsFilledFromCache;
     if (bundleCache != null
-        && (!relationsFilledFromCache || !tagsFilledFromCache || !certificationFilledFromCache)) {
+        && (!relationsFilledFromCache || needTagsCacheFill || !certificationFilledFromCache)) {
       CachedReadBundle.Dto populated =
-          buildBundleDto(entity, readPlan, bundle, supportsCertification);
+          buildBundleDto(entity, readPlan, bundle, supportsCertification, tagsCacheable);
       if (populated != null) {
         try (var ignored = phase("readBundleCachePut")) {
           bundleCache.put(entityType, entity.getId(), populated);
@@ -2045,7 +2047,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private static CachedReadBundle.Dto buildBundleDto(
-      EntityInterface entity, ReadPlan readPlan, ReadBundle bundle, boolean supportsCertification) {
+      EntityInterface entity,
+      ReadPlan readPlan,
+      ReadBundle bundle,
+      boolean supportsCertification,
+      boolean includeTags) {
     CachedReadBundle.Dto dto = new CachedReadBundle.Dto();
     dto.relations = new HashMap<>();
     readPlan
@@ -2060,7 +2066,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       dto.certificationLoaded = true;
       dto.certification = bundle.getCertificationOrNull(entity.getId());
     }
-    if (readPlan.shouldLoadTags()) {
+    if (includeTags && readPlan.shouldLoadTags()) {
       bundle
           .getTags(entity.getId())
           .ifPresent(
@@ -3916,22 +3922,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    T original;
-    try (var ignored = phase("upsertFindOriginal");
-        var populateGuard = skipPopulateOnUpsert()) {
-      original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
-    }
-    if (original == null) { // If an original entity does not exist then create it, else update
-      // Always set impersonatedBy to clear it when null (regular user operations)
-      updated.setImpersonatedBy(impersonatedBy);
-      T created;
-      try (var ignored = phase("upsertCreate")) {
-        created = withHref(uriInfo, createNewEntity(updated));
+    try (var populateGuard = skipPopulateOnUpsert()) {
+      T original;
+      try (var ignored = phase("upsertFindOriginal")) {
+        original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
       }
-      return new PutResponse<>(Status.CREATED, created, ENTITY_CREATED);
-    }
-    try (var ignored = phase("upsertUpdate")) {
-      return update(uriInfo, original, updated, updatedBy, impersonatedBy);
+      if (original == null) { // If an original entity does not exist then create it, else update
+        // Always set impersonatedBy to clear it when null (regular user operations)
+        updated.setImpersonatedBy(impersonatedBy);
+        T created;
+        try (var ignored = phase("upsertCreate")) {
+          created = withHref(uriInfo, createNewEntity(updated));
+        }
+        return new PutResponse<>(Status.CREATED, created, ENTITY_CREATED);
+      }
+      try (var ignored = phase("upsertUpdate")) {
+        return update(uriInfo, original, updated, updatedBy, impersonatedBy);
+      }
     }
   }
 
@@ -3941,22 +3948,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public PutResponse<T> createOrUpdateForImport(
       UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
-    T original;
-    try (var ignored = phase("upsertFindOriginalImport");
-        var populateGuard = skipPopulateOnUpsert()) {
-      original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
-    }
-    if (original == null) { // If an original entity does not exist then create it, else update
-      // Always set impersonatedBy to clear it when null (regular user operations)
-      updated.setImpersonatedBy(impersonatedBy);
-      T created;
-      try (var ignored = phase("upsertCreateImport")) {
-        created = withHref(uriInfo, createNewEntity(updated));
+    try (var populateGuard = skipPopulateOnUpsert()) {
+      T original;
+      try (var ignored = phase("upsertFindOriginalImport")) {
+        original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
       }
-      return new PutResponse<>(Status.CREATED, created, ENTITY_CREATED);
-    }
-    try (var ignored = phase("upsertUpdateImport")) {
-      return updateForImport(uriInfo, original, updated, updatedBy, impersonatedBy);
+      if (original == null) { // If an original entity does not exist then create it, else update
+        // Always set impersonatedBy to clear it when null (regular user operations)
+        updated.setImpersonatedBy(impersonatedBy);
+        T created;
+        try (var ignored = phase("upsertCreateImport")) {
+          created = withHref(uriInfo, createNewEntity(updated));
+        }
+        return new PutResponse<>(Status.CREATED, created, ENTITY_CREATED);
+      }
+      try (var ignored = phase("upsertUpdateImport")) {
+        return updateForImport(uriInfo, original, updated, updatedBy, impersonatedBy);
+      }
     }
   }
 
@@ -3975,8 +3983,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> originals = new ArrayList<>();
     List<PutResponse<T>> responses = new ArrayList<>();
 
-    // Separate entities into creates vs updates
     try (var populateGuard = skipPopulateOnUpsert()) {
+      // Separate entities into creates vs updates
       for (T entity : entities) {
         T original = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
         if (original == null) {
@@ -3986,21 +3994,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
           originals.add(original);
         }
       }
-    }
 
-    // Batch create new entities
-    if (!toCreate.isEmpty()) {
-      List<T> created = createManyEntitiesForImport(toCreate);
-      for (T entity : created) {
-        responses.add(new PutResponse<>(Status.CREATED, entity, ENTITY_CREATED));
+      // Batch create new entities
+      if (!toCreate.isEmpty()) {
+        List<T> created = createManyEntitiesForImport(toCreate);
+        for (T entity : created) {
+          responses.add(new PutResponse<>(Status.CREATED, entity, ENTITY_CREATED));
+        }
       }
-    }
 
-    // Batch update existing entities
-    if (!toUpdate.isEmpty()) {
-      List<T> updated = updateManyEntitiesForImport(originals, toUpdate, updatedBy);
-      for (T entity : updated) {
-        responses.add(new PutResponse<>(Status.OK, entity, ENTITY_UPDATED));
+      // Batch update existing entities
+      if (!toUpdate.isEmpty()) {
+        List<T> updated = updateManyEntitiesForImport(originals, toUpdate, updatedBy);
+        for (T entity : updated) {
+          responses.add(new PutResponse<>(Status.OK, entity, ENTITY_UPDATED));
+        }
       }
     }
 
@@ -4210,7 +4218,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return cacheConfig == null || !cacheConfig.isEntityTypeExcluded(entityType);
   }
 
-  private static EntityCacheBypass.Handle skipPopulateOnUpsert() {
+  public static EntityCacheBypass.Handle skipPopulateOnUpsert() {
     CacheConfig cacheConfig = CacheBundle.getCacheConfig();
     if (cacheConfig != null && cacheConfig.populateOnUpsert) {
       return () -> {};

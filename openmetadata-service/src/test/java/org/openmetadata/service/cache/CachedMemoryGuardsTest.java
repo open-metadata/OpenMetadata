@@ -21,8 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 
 /**
@@ -63,6 +65,59 @@ class CachedMemoryGuardsTest {
     final UUID oversizedId = UUID.randomUUID();
     bundleCache.put(TYPE, oversizedId, largeDto);
     assertTrue(cache.get(keys.bundle(TYPE, oversizedId)).isEmpty());
+  }
+
+  @Test
+  void readBundleHonorsTagTtlSecondsWhenShorterAndWhenDisabled() {
+    final RecordingTtlCacheProvider cache = new RecordingTtlCacheProvider();
+    final CacheKeys keys = new CacheKeys("om");
+    final CacheConfig config = new CacheConfig();
+    config.entityTtlSeconds = 7200;
+    config.tagTtlSeconds = 120;
+    final CachedReadBundle bundleCache = new CachedReadBundle(cache, keys, config);
+
+    // Shorter tagTtlSeconds caps tag-bearing bundles while leaving relation-only bundles at
+    // entityTtlSeconds.
+    final UUID tagBundleId = UUID.randomUUID();
+    bundleCache.put(TYPE, tagBundleId, largeBundleDto(2));
+    assertEquals(Duration.ofSeconds(120), cache.lastSetTtl);
+
+    final UUID relOnlyId = UUID.randomUUID();
+    final CachedReadBundle.Dto relOnlyDto = new CachedReadBundle.Dto();
+    relOnlyDto.relations =
+        Map.of("owners", List.of(new EntityReference().withId(UUID.randomUUID()).withType("user")));
+    bundleCache.put(TYPE, relOnlyId, relOnlyDto);
+    assertEquals(Duration.ofSeconds(7200), cache.lastSetTtl);
+
+    // Disabling tag caching (tagTtlSeconds <= 0) strips tags from pre-existing bundles on read,
+    // skips writing tag-only bundles, and writes relation+tag bundles without tags.
+    config.tagTtlSeconds = 0;
+    final CachedReadBundle.Dto readExisting = bundleCache.get(TYPE, tagBundleId);
+    assertNotNull(readExisting);
+    assertFalse(readExisting.tagsLoaded);
+    assertNull(readExisting.tags);
+    final CachedReadBundle.Dto batchExisting =
+        bundleCache.getBatch(TYPE, List.of(tagBundleId)).getFirst();
+    assertNotNull(batchExisting);
+    assertFalse(batchExisting.tagsLoaded);
+    assertNull(batchExisting.tags);
+
+    final UUID tagOnlyDisabledId = UUID.randomUUID();
+    bundleCache.put(TYPE, tagOnlyDisabledId, largeBundleDto(2));
+    assertTrue(cache.get(keys.bundle(TYPE, tagOnlyDisabledId)).isEmpty());
+
+    final UUID mixedDisabledId = UUID.randomUUID();
+    final CachedReadBundle.Dto mixedDto = largeBundleDto(2);
+    mixedDto.relations = relOnlyDto.relations;
+    bundleCache.put(TYPE, mixedDisabledId, mixedDto);
+    assertEquals(Duration.ofSeconds(7200), cache.lastSetTtl);
+    // Re-enable tagTtlSeconds to verify tags were not persisted into Redis when disabled.
+    config.tagTtlSeconds = 120;
+    final CachedReadBundle.Dto persistedMixed = bundleCache.get(TYPE, mixedDisabledId);
+    assertNotNull(persistedMixed);
+    assertFalse(persistedMixed.tagsLoaded);
+    assertNull(persistedMixed.tags);
+    assertEquals(1, persistedMixed.relations.get("owners").size());
   }
 
   @Test
