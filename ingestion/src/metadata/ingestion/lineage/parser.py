@@ -25,6 +25,7 @@ import sqlglot
 import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
+from collate_sqllineage.core.holders import SQLLineageHolder
 from collate_sqllineage.core.models import Column, DataFunction, Location, SubQuery, Table
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
 from collate_sqllineage.core.parser.sqlglot.analyzer import (
@@ -36,7 +37,9 @@ from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnal
 from collate_sqllineage.exceptions import SQLLineageException
 from collate_sqllineage.runner import LineageRunner
 from sqlglot import exp
-from sqlglot.dialects.dialect import DialectType
+from sqlglot.dialects.dialect import DialectType, NormalizationStrategy
+from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
+from sqlglot.optimizer.scope import traverse_scope
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
@@ -79,6 +82,59 @@ def _sqlglot_dialect(dialect: Dialect) -> DialectType:
     """The sqlglot dialect the SqlGlot lineage analyzer reads `dialect` as"""
     mapped = DIALECT_MAP.get(dialect.value, dialect.value)
     return DIALECT_OVERRIDES.get(mapped, mapped)
+
+
+def _table_identifier(table: exp.Table) -> tuple[str, ...]:
+    parts = table.parts
+    return tuple(part.name for part in parts) if all(isinstance(part, exp.Identifier) for part in parts) else ()
+
+
+def _has_unambiguous_self_read(statement: exp.Expression, dialect: sqlglot.Dialect) -> bool:
+    if not isinstance(statement, (exp.Create, exp.Insert)) or not isinstance(statement.expression, exp.Query):
+        return False
+    target = statement.this.this if isinstance(statement.this, exp.Schema) else statement.this
+    if not isinstance(target, exp.Table):
+        return False
+
+    # For dialects with case-insensitive defaults, the database's collation can still
+    # distinguish spellings. Normalize for scope resolution, and compare the original table names.
+    original_names = None
+    if dialect.normalization_strategy in {
+        NormalizationStrategy.CASE_INSENSITIVE,
+        NormalizationStrategy.CASE_INSENSITIVE_UPPERCASE,
+    }:
+        original_names = {id(table): _table_identifier(table) for table in statement.find_all(exp.Table)}
+    normalize_identifiers(statement, dialect=dialect)
+
+    def identifier(table: exp.Table) -> tuple[str, ...]:
+        return _table_identifier(table) if original_names is None else original_names.get(id(table), ())
+
+    target_parts = identifier(target)
+    if len(target_parts) < 2:
+        # The current schema and search path are unknown for an unqualified target.
+        return False
+    target_key = ".".join(target_parts).lower()
+    found = False
+    for scope in traverse_scope(statement):
+        for _, source in scope.selected_sources.values():
+            if not isinstance(source, exp.Table):
+                continue
+            source_parts = identifier(source)
+            if not source_parts:
+                return False
+            if source_parts == target_parts:
+                found = True
+            else:
+                source_key = ".".join(source_parts).lower()
+                # The lineage graph folds case and can lose component boundaries.
+                # A shorter qualification also cannot prove which physical table was read.
+                if (
+                    source_key == target_key
+                    or source_key.endswith(f".{target_key}")
+                    or target_key.endswith(f".{source_key}")
+                ):
+                    return False
+    return found
 
 
 @dataclass(frozen=True)
@@ -365,6 +421,38 @@ class LineageParser:
             return self.retrieve_tables(self.parser.target_tables)
         return []
 
+    def _can_separate_readback(self) -> bool:
+        try:
+            dialect = sqlglot.Dialect.get_or_raise(_sqlglot_dialect(self.dialect))
+            statements = timeout(seconds=self.timeout_seconds)(sqlglot.parse)(self._clean_query, dialect=dialect)
+            statements = [statement for statement in statements if statement is not None]
+            return len(statements) == 1 and _has_unambiguous_self_read(statements[0], dialect)
+        except Exception as err:
+            logger.debug("[%s] Cannot confirm the read/write table identity: %s", self.query_hash, type(err).__name__)
+            return False
+
+    def _column_lineage_paths(self, parser: LineageRunner) -> list[tuple[Column, Column]]:
+        targets = parser.target_tables
+        if len(targets) != 1 or targets[0] not in parser.source_tables or len(parser.statements()) != 1:
+            return parser.get_column_lineage()
+
+        # A single statement reads the old table values. Following an edge out of an
+        # overwritten column would use its new value and can invent another dependency.
+        # Across statements a write really can feed a later read, so keep those paths.
+        holder = parser._sql_holder  # pylint: disable=protected-access
+        readback_edges = [
+            (source, target) for source, target in holder.column_lineage_graph.edges if source.parent == targets[0]
+        ]
+        if not readback_edges or not self._can_separate_readback():
+            return parser.get_column_lineage()
+
+        graph = holder.graph.copy()
+        graph.remove_edges_from(readback_edges)
+        return sorted(
+            ((path[0], path[-1]) for path in SQLLineageHolder(graph).get_column_lineage()),
+            key=lambda endpoints: (str(endpoints[1]), str(endpoints[0])),
+        )
+
     # pylint: disable=protected-access
     @cached_property
     def column_lineage(self) -> list[tuple[Column, Column]]:
@@ -375,10 +463,11 @@ class LineageParser:
         if self.parser is None:
             return []
         try:
+            paths = self._column_lineage_paths(self.parser)
             if self.parser._dialect == SQLPARSE_DIALECT:
-                return self.parser.get_column_lineage()
+                return paths
 
-            for col_lineage in self.parser.get_column_lineage():
+            for col_lineage in paths:
                 # In case of column level lineage it is possible that we get
                 # two or more columns as there might be some intermediate columns
                 # but the source columns will be the first value and
