@@ -20,7 +20,6 @@ from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
-from requests.compat import unquote_plus  # pyright: ignore[reportPrivateImportUsage]
 
 from metadata.antlr.split_listener import EntityLinkSplitListener
 from metadata.generated.antlr.EntityLinkLexer import EntityLinkLexer
@@ -60,21 +59,28 @@ def split(str_: str) -> list[str]:
 
 
 def get_decoded_column(entity_link: str) -> str:
-    """From an URL encoded entity link get the decoded column name
+    """Extract and decode the column name from an entity link or bare column name.
+
+    Reverts reserved entity-link separator tokens without URL-decoding, because
+    entity link producers store column names verbatim.
 
     Examples:
-        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first_name>")
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.orders::columns::total+sales>")
+        'total+sales'
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.orders::columns::first name>")
         'first name'
-        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>")
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.orders::columns::随机的>")
         '随机的'
-        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.table_w_space>")
-        ''
 
     Args:
-        entity_link: entity link
+        entity_link: entity link or bare column name
     """
-
-    return CustomColumnName(root=unquote_plus(entity_link.split("::")[-1].replace(">", ""))).root  # noqa: PLC0207
+    raw_column = (
+        entity_link.split("::")[-1].removesuffix(">")  # noqa: PLC0207
+        if entity_link.startswith("<#E::")
+        else entity_link
+    )
+    return CustomColumnName(root=raw_column).root
 
 
 def get_table_fqn(entity_link: str) -> str:

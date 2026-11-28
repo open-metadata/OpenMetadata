@@ -27,8 +27,28 @@ from metadata.utils.entity_link import (
     "entity_link,expected",
     [
         (
-            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first+name>",
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first name>",
             "first name",
+        ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first+name>",
+            "first+name",
+        ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::total+sales>",
+            "total+sales",
+        ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::discount%20rate>",
+            "discount%20rate",
+        ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::tax%2Bfee>",
+            "tax%2Bfee",
+        ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::ratio%FF>",
+            "ratio%FF",
         ),
         (
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::last_name>",
@@ -41,6 +61,26 @@ from metadata.utils.entity_link import (
         (
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::test__reserved__colon____reserved__arrow__test>",
             "test::>test",
+        ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::total+sales__reserved__colon__pct%20>",
+            "total+sales::pct%20",
+        ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::grea:>hdfwsd>",
+            "grea:>hdfwsd",
+        ),
+        (
+            "total+sales",
+            "total+sales",
+        ),
+        (
+            "discount%20rate",
+            "discount%20rate",
+        ),
+        (
+            "score>",
+            "score>",
         ),
     ],
 )
