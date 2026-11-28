@@ -191,6 +191,7 @@ import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
+import org.openmetadata.service.search.vector.client.VertexAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
@@ -5681,7 +5682,9 @@ public class SearchRepository {
           throw new IllegalStateException(
               "Google configuration is required when using google provider");
         }
-        yield new GoogleEmbeddingClient(llmConfig);
+        yield Boolean.TRUE.equals(llmConfig.getGoogle().getUseVertexAI())
+            ? new VertexAIEmbeddingClient(llmConfig)
+            : new GoogleEmbeddingClient(llmConfig);
       }
       case "djl" -> {
         if (embeddings.getDjl() == null) {

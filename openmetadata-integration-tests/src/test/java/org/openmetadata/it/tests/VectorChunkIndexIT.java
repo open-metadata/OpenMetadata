@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -30,8 +31,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMGoogleConfig;
+import org.openmetadata.schema.configuration.LLMGoogleEmbeddingConfig;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.search.vector.AbstractVectorIndexService;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -59,6 +65,7 @@ class VectorChunkIndexIT {
   private static final class CountingProvider extends EmbeddingClient {
     private final AtomicInteger textsEmbedded = new AtomicInteger();
     private volatile boolean failing;
+    private float marker = 0.5f;
 
     @Override
     protected float[] doEmbed(String text) {
@@ -66,7 +73,7 @@ class VectorChunkIndexIT {
         throw new IllegalStateException("provider rate limit");
       }
       textsEmbedded.incrementAndGet();
-      return new float[] {0.5f, 0.25f, 0.125f};
+      return new float[] {marker, 0.25f, 0.125f};
     }
 
     void failing(boolean failing) {
@@ -119,6 +126,11 @@ class VectorChunkIndexIT {
     void stop() throws Exception {
       client._transport().close();
       container.stop();
+    }
+
+    @Test
+    void switchingGoogleEmbeddingBackendsRefreshesBothEntityAndChunkVectors() {
+      assertSwitchingGoogleEmbeddingBackendsRefreshesBoth(service, provider);
     }
 
     @Test
@@ -188,6 +200,11 @@ class VectorChunkIndexIT {
     }
 
     @Test
+    void switchingGoogleEmbeddingBackendsRefreshesBothEntityAndChunkVectors() {
+      assertSwitchingGoogleEmbeddingBackendsRefreshesBoth(service, provider);
+    }
+
+    @Test
     void aFullRecreateServesOnlyTheEntitiesItIndexed() {
       assertAFullRecreateServesOnlyTheEntitiesItIndexed(service, provider);
     }
@@ -216,6 +233,119 @@ class VectorChunkIndexIT {
     void aRetriedEmbeddingMergesIntoTheIndexedEntityDocument() {
       assertARetriedEmbeddingMergesIntoTheIndexedEntityDocument(service);
     }
+  }
+
+  private static void assertSwitchingGoogleEmbeddingBackendsRefreshesBoth(
+      AbstractVectorIndexService service, CountingProvider provider) {
+    Table orders = table("switch_orders", "order ".repeat(400));
+    String entityIndex = "table_search_index_vertex_switch";
+    String doc = "/" + entityIndex + "/_doc/" + id(orders);
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withGoogle(new LLMGoogleConfig())
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.GOOGLE)
+                    .withGoogle(
+                        new LLMGoogleEmbeddingConfig()
+                            .withEmbeddingModelId(provider.getModelId())
+                            .withEmbeddingDimension(provider.getDimension())));
+    try (var holder = mockStatic(LlmConfigHolder.class)) {
+      holder.when(LlmConfigHolder::get).thenReturn(config);
+      service.executeGenericRequest("PUT", doc + "?refresh=true", "{\"name\":\"switch_orders\"}");
+      // Seed real search documents as AI Studio did before this option existed.
+      List<Map<String, Object>> original = VectorDocBuilder.fromEntity(orders, provider);
+      assertEquals(2, original.size());
+      assertTrue(
+          service.writeEntityEmbedding(
+              entityIndex,
+              id(orders),
+              VectorDocBuilder.legacyEmbeddingFields(original.getFirst())));
+      assertTrue(service.writeEntityChunks(id(orders), original, null));
+      refresh(service, entityIndex);
+      refresh(service, service.getChunkIndexName());
+      assertStoredMarker(service, doc, 0.5);
+      assertStoredMarker(service, chunkDocument(service, orders, 1), 0.5);
+      assertTrue(canReuse(service, entityIndex, orders));
+
+      config.getGoogle().setUseVertexAI(true);
+      provider.marker = 0.75f;
+      assertFalse(
+          canReuse(service, entityIndex, orders),
+          "The recreate must not splice the previous backend's entity vector");
+      assertStagedSwitchVectors(service, provider, orders, original.size());
+      int calls = provider.textsEmbedded();
+      service.updateEntityEmbeddings(orders, entityIndex);
+      refresh(service, entityIndex);
+      refresh(service, service.getChunkIndexName());
+      assertEquals(calls + original.size(), provider.textsEmbedded());
+      assertStoredMarker(service, doc, 0.75);
+      for (int chunk = 0; chunk < original.size(); chunk++) {
+        assertStoredMarker(service, chunkDocument(service, orders, chunk), 0.75);
+      }
+      assertTrue(canReuse(service, entityIndex, orders));
+      service.updateEntityEmbeddings(orders, entityIndex);
+      assertEquals(
+          calls + original.size(),
+          provider.textsEmbedded(),
+          "The next unchanged run reuses both types");
+
+      assertStagedSwitchVectors(service, provider, orders, 0);
+      config.getGoogle().setUseVertexAI(false);
+      provider.marker = 0.5f;
+      assertFalse(
+          canReuse(service, entityIndex, orders),
+          "Turning Vertex off also crosses the backend boundary");
+      service.updateEntityEmbeddings(orders, entityIndex);
+      assertStoredMarker(service, doc, 0.5);
+      assertStoredMarker(service, chunkDocument(service, orders, 1), 0.5);
+    } finally {
+      provider.marker = 0.5f;
+      service.deleteEntityChunks(id(orders));
+      service.executeGenericRequest("DELETE", "/" + entityIndex, null);
+    }
+  }
+
+  private static void assertStagedSwitchVectors(
+      AbstractVectorIndexService service,
+      CountingProvider provider,
+      Table table,
+      int expectedNewVectors) {
+    String staged = service.beginStagedChunkRecreate();
+    assertNotNull(staged);
+    try {
+      int calls = provider.textsEmbedded();
+      assertTrue(service.backfillEntityChunks(table, staged));
+      assertEquals(expectedNewVectors, provider.textsEmbedded() - calls);
+      assertStoredMarker(service, "/" + staged + "/_doc/" + id(table) + "_0", provider.marker);
+      assertStoredMarker(service, "/" + staged + "/_doc/" + id(table) + "_1", provider.marker);
+    } finally {
+      service.clearStagedChunkState(staged);
+      service.executeGenericRequest("DELETE", "/" + staged, null);
+    }
+  }
+
+  private static boolean canReuse(
+      AbstractVectorIndexService service, String entityIndex, Table table) {
+    return service
+        .getExistingEmbeddingsBatch(
+            entityIndex,
+            Map.of(id(table), () -> VectorDocBuilder.computeFingerprintForEntity(table)))
+        .containsKey(id(table));
+  }
+
+  private static String chunkDocument(AbstractVectorIndexService service, Table table, int chunk) {
+    return "/" + service.getChunkIndexName() + "/_doc/" + id(table) + "_" + chunk;
+  }
+
+  private static void assertStoredMarker(
+      AbstractVectorIndexService service, String doc, double expected) {
+    JsonNode vector =
+        JsonUtils.readTree(
+                service.executeGenericRequest("GET", doc + "?_source_includes=embedding", null))
+            .at("/_source/embedding");
+    assertEquals(3, vector.size(), doc);
+    assertEquals(expected, vector.get(0).doubleValue(), 0.0001, doc);
   }
 
   /**

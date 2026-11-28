@@ -32,6 +32,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.auth.oauth2.GoogleCredentials;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -73,6 +74,8 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider;
+import org.openmetadata.schema.configuration.LLMGoogleConfig;
+import org.openmetadata.schema.configuration.LLMGoogleEmbeddingConfig;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -130,6 +133,8 @@ import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
+import org.openmetadata.service.search.vector.client.VertexAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 class SearchRepositoryBehaviorTest {
@@ -4036,6 +4041,22 @@ class SearchRepositoryBehaviorTest {
     assertThrows(
         IllegalStateException.class,
         () -> repository.createEmbeddingClient(embeddingConfigWithProvider(Provider.DJL)));
+  }
+
+  @Test
+  void googleEmbeddingsUseVertexOnlyWhenEnabled() throws Exception {
+    LLMConfiguration config = embeddingConfigWithProvider(Provider.GOOGLE);
+    config.getEmbeddings().setGoogle(new LLMGoogleEmbeddingConfig());
+    config.setGoogle(new LLMGoogleConfig().withApiKey("fixture"));
+    try (var adc = mockStatic(GoogleCredentials.class)) {
+      assertInstanceOf(GoogleEmbeddingClient.class, repository.createEmbeddingClient(config));
+      adc.verifyNoInteractions();
+      config.getGoogle().withApiKey(null).withUseVertexAI(true).withVertexProject("test-project");
+      GoogleCredentials credentials = mock(GoogleCredentials.class);
+      adc.when(GoogleCredentials::getApplicationDefault).thenReturn(credentials);
+      assertInstanceOf(VertexAIEmbeddingClient.class, repository.createEmbeddingClient(config));
+      adc.verify(GoogleCredentials::getApplicationDefault);
+    }
   }
 
   private LLMConfiguration embeddingConfigWithProvider(Provider provider) {

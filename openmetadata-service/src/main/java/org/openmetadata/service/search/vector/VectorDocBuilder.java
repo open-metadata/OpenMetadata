@@ -39,10 +39,12 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
+import org.openmetadata.service.search.vector.client.VertexAIEmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -669,7 +671,11 @@ public class VectorDocBuilder {
 
   public static String computeFingerprintForEntity(EntityInterface<?> entity, String body) {
     String metaLight = buildMetaLightText(entity, entity.getEntityReference().getType());
-    return TextChunkManager.computeFingerprint(metaLight + "|" + body + shareConfigPart(entity));
+    // Live writers, staged rebuilds and ontology release checks share the process's embedding
+    // configuration.
+    String prefix = VertexAIEmbeddingClient.fingerprintPrefix(LlmConfigHolder.get());
+    return TextChunkManager.computeFingerprint(
+        prefix + metaLight + "|" + body + shareConfigPart(entity));
   }
 
   /**

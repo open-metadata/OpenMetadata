@@ -82,6 +82,13 @@
       "properties": {
         "apiKey": { "type": "string", "mask": true },
         "modelId": { "type": "string", "default": "gemini-2.5-flash" },
+        "useVertexAI": {
+          "description": "Use Vertex AI with Application Default Credentials for Google embeddings. Chat continues to use the Gemini API.",
+          "type": "boolean",
+          "default": false
+        },
+        "vertexProject": { "description": "Google Cloud project for Vertex AI embedding requests.", "type": "string" },
+        "vertexLocation": { "description": "Google Cloud location for Vertex AI embedding requests.", "type": "string", "default": "us-central1" },
         "endpoint": { "type": "string" },
         "temperature": { "type": "number", "default": 0.0 },
         "maxTokens": { "type": "integer", "default": 4096 },

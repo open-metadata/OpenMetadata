@@ -1578,15 +1578,24 @@ public class SystemRepository implements DeploymentSettingPreparer {
       LLMConfiguration llmConfig, LLMEmbeddingsConfig embeddings) {
     String message = "Google provider selected but google configuration block is missing";
     if (embeddings.getGoogle() != null) {
-      LLMGoogleConfig googleCreds = llmConfig.getGoogle();
-      String googleEndpoint =
-          googleCreds == null || nullOrEmpty(googleCreds.getEndpoint())
-              ? "generativelanguage.googleapis.com"
-              : googleCreds.getEndpoint();
+      LLMGoogleConfig google = llmConfig.getGoogle();
+      String destination;
+      if (google != null && Boolean.TRUE.equals(google.getUseVertexAI())) {
+        destination =
+            String.format(
+                "Vertex AI project: %s, location: %s (Application Default Credentials)",
+                google.getVertexProject(), google.getVertexLocation());
+      } else {
+        String endpoint =
+            google == null || nullOrEmpty(google.getEndpoint())
+                ? "generativelanguage.googleapis.com"
+                : google.getEndpoint();
+        destination = "endpoint: " + endpoint;
+      }
       message =
           String.format(
-              "Google configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s",
-              googleEndpoint,
+              "Google configuration: %s, embeddingModelId: %s, embeddingDimension: %s",
+              destination,
               embeddings.getGoogle().getEmbeddingModelId(),
               embeddings.getGoogle().getEmbeddingDimension());
     }

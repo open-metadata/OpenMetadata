@@ -15,6 +15,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
+import org.openmetadata.schema.configuration.LLMGoogleConfig;
+import org.openmetadata.schema.configuration.LLMGoogleEmbeddingConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIConfig;
 import org.openmetadata.schema.configuration.LLMOpenAIEmbeddingConfig;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -143,6 +145,29 @@ class SystemRepositoryEmbeddingsValidationTest {
     assertFalse(result.getPassed());
     assertTrue(result.getMessage().contains("Bedrock embedding model ID is required"));
     assertTrue(result.getMessage().contains("Embedding client could not be initialized"));
+  }
+
+  @Test
+  void reportsVertexDestinationWhenEmbeddingInitializationFails() {
+    LLMConfiguration config =
+        new LLMConfiguration()
+            .withGoogle(
+                new LLMGoogleConfig()
+                    .withUseVertexAI(true)
+                    .withVertexProject("test-project")
+                    .withVertexLocation("europe-west4"))
+            .withEmbeddings(
+                new LLMEmbeddingsConfig()
+                    .withProvider(LLMEmbeddingsConfig.Provider.GOOGLE)
+                    .withGoogle(new LLMGoogleEmbeddingConfig()));
+    try (MockedStatic<LlmConfigHolder> holder = mockStatic(LlmConfigHolder.class)) {
+      holder.when(LlmConfigHolder::get).thenReturn(config);
+      StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
+      assertFalse(result.getPassed());
+      assertTrue(
+          result.getMessage().contains("Vertex AI project: test-project, location: europe-west4"));
+      assertTrue(result.getMessage().contains("gemini-embedding-001"));
+    }
   }
 
   @Test
