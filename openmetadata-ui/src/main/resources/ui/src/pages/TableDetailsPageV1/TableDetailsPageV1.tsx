@@ -930,6 +930,13 @@ const TableDetailsPageV1: React.FC = () => {
 
   const loadedTableFqn = tableDetails?.fullyQualifiedName;
 
+  // Reset on entity change so the previous table's DQ counts don't paint on the new
+  // table while its DQ fetches are in flight. Without this the alerts-enabled path
+  // keeps the stale badge visible until the new table's three DQ API calls resolve.
+  useEffect(() => {
+    setDqIndicatorCounts(EMPTY_DQ_INDICATOR_COUNTS);
+  }, [loadedTableFqn]);
+
   // P1.2: fetchDqIndicatorCounts drives the global DQ indicator in the page chrome,
   // so it must run as soon as tableDetails resolves — deferring would mean the user could
   // miss a critical "this dataset has failing tests" indicator on first paint.

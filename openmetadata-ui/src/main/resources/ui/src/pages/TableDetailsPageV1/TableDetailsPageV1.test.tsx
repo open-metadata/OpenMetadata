@@ -1175,4 +1175,93 @@ describe('TableDetailsPageV1 data quality indicator', () => {
     expect(screen.queryByTestId('dq-indicator')).not.toBeInTheDocument();
     expect(getListTestCaseBySearch).not.toHaveBeenCalled();
   });
+
+  // Regression: the page component instance persists across table navigation (the
+  // router has no key on TableDetailsPageV1), so dqIndicatorCounts state survives a
+  // route change. Without a reset on entity change the previous table's badge paints
+  // on the new table's header until the new table's three DQ API calls resolve.
+  it('resets the DQ badge on table change so the previous table counts do not bleed into the new table', async () => {
+    // Per-FQN table details so react-query fetches a distinct body for each table,
+    // each carrying its own fullyQualifiedName so loadedTableFqn changes on navigation.
+    (getTableDetailsByFQN as jest.Mock).mockImplementation((fqn: string) =>
+      Promise.resolve({
+        name: fqn,
+        id: fqn === 'table_a' ? 'id-a' : 'id-b',
+        columns: [],
+        fullyQualifiedName: fqn,
+      })
+    );
+
+    // Table A has 3 failing tests — badge paints red/failing.
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'failing-1' }],
+      paging: { total: 3 },
+    });
+
+    (useParams as jest.Mock).mockImplementation(() => ({
+      fqn: 'table_a',
+      tab: 'schema',
+    }));
+
+    try {
+      const { rerender } = renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+
+      // Table A badge is red/failing.
+      expect(await screen.findByTestId('dq-indicator')).toHaveAttribute(
+        'data-level',
+        'failing'
+      );
+
+      // Hold table B's failing-tests response in flight so the badge cannot
+      // repaint with table B's (all-zero) data before we assert.
+      let resolveTableBDq!: (value: {
+        data: unknown[];
+        paging: { total: number };
+      }) => void;
+      (getListTestCaseBySearch as jest.Mock).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveTableBDq = resolve;
+          })
+      );
+
+      // Navigate to table B — same component instance, no remount (matches the
+      // real router which has no key on TableDetailsPageV1).
+      (useParams as jest.Mock).mockImplementation(() => ({
+        fqn: 'table_b',
+        tab: 'schema',
+      }));
+
+      await act(async () => {
+        rerender(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      // Table B's header has rendered (table details resolved), but the DQ badge
+      // must not show table A's stale failing counts while table B's fetch is in
+      // flight.
+      await screen.findByText('testDataAssetsHeader');
+
+      expect(screen.queryByTestId('dq-indicator')).not.toBeInTheDocument();
+
+      // Resolving table B's DQ data (all zero) keeps the badge hidden.
+      await act(async () => {
+        resolveTableBDq({ data: [], paging: { total: 0 } });
+      });
+
+      expect(screen.queryByTestId('dq-indicator')).not.toBeInTheDocument();
+    } finally {
+      (useParams as jest.Mock).mockImplementation(() => ({
+        fqn: 'fqn',
+        tab: 'schema',
+      }));
+    }
+  });
 });
