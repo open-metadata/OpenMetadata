@@ -72,6 +72,7 @@ STATUS_MAP = {
     "success": StatusType.Successful.value,
     "failure": StatusType.Failed.value,
     "queued": StatusType.Pending.value,
+    "skipped": StatusType.Skipped.value,
 }
 
 DAGSTER_TAG_CATEGORY = "DagsterTags"
@@ -166,6 +167,13 @@ class DagsterSource(PipelineServiceSource):
 
     def _get_task_status(self, run: RunStepStats, task_name: str) -> Iterable[Either[OMetaPipelineStatus]]:
         """Prepare the OMetaPipelineStatus"""
+        # A step Dagster skipped never started, so it has no startTime.
+        # PipelineStatus.timestamp is required: fall back to endTime, and
+        # skip a step that has neither rather than failing the record.
+        run_time = run.startTime or run.endTime
+        if not run_time:
+            logger.debug("Skipping status for run %s: it has no start or end time", run.runId)
+            return
         try:
             # Convert Dagster timestamps from seconds to milliseconds
             task_status = TaskStatus(
@@ -177,7 +185,7 @@ class DagsterSource(PipelineServiceSource):
             pipeline_status = PipelineStatus(
                 taskStatus=[task_status],
                 executionStatus=STATUS_MAP.get(run.status.lower(), StatusType.Pending.value),
-                timestamp=Timestamp(int(run.startTime * 1000)) if run.startTime else None,
+                timestamp=Timestamp(int(run_time * 1000)),
             )
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
