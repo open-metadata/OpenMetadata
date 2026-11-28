@@ -39,11 +39,9 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
-    ConstraintType,
     DataType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
-    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -590,13 +588,9 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
 
     @patch.object(UnitycatalogSource, "_process_table")
     @patch.object(UnitycatalogSource, "sql_connection", create=True)
-    @patch("databricks.sdk.service.catalog.TablesAPI.get")
-    # The listing is hand-rolled against the raw endpoint so securable_kind survives,
-    # so TablesAPI.list is never called; without this patch it dials the real host.
+    # Both listing and constraint fetch use raw REST requests with BROWSE.
     @patch("databricks.sdk.core.ApiClient.do")
-    def test_get_tables_with_constraints(
-        self, mock_api_do, mock_dbx_get_table, mock_sql_connection, mock_process_table
-    ):
+    def test_get_tables_with_constraints(self, mock_api_do, mock_sql_connection, mock_process_table):
         mock_tables_with_constraints = [
             SimpleNamespace(
                 table_catalog="demo",
@@ -606,47 +600,58 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
         ]
 
         mock_sql_connection.execute.return_value = mock_tables_with_constraints
-        mock_api_do.return_value = {
+        listing = {
             "tables": [
                 {
                     "catalog_name": "demo",
                     "schema_name": "default",
                     "name": "table_with_constraints",
+                    "full_name": "demo.default.table_with_constraints",
                     "table_type": "MANAGED",
                 },
                 {
                     "catalog_name": "demo",
                     "schema_name": "default",
                     "name": "table_no_constraints",
+                    "full_name": "demo.default.table_no_constraints",
                     "table_type": "MANAGED",
                 },
             ]
         }
-        mock_dbx_get_table.return_value = TableInfo(
-            catalog_name="demo",
-            schema_name="default",
-            name="table_with_constraints",
-            table_type=DatabricksTableType.MANAGED,
-            table_constraints=[TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, referredColumns=["id"])],
-        )
+        mock_api_do.side_effect = [
+            listing,
+            {
+                "catalog_name": "demo",
+                "schema_name": "default",
+                "name": "table_with_constraints",
+                "table_type": "MANAGED",
+                "table_constraints": [],
+            },
+        ]
         mock_process_table.side_effect = [
             [("table_with_constraints", TableType.Regular)],
             [("table_no_constraints", TableType.Regular)],
         ]
 
         list(self.unitycatalog_source.get_tables_name_and_type())
-        # Verify that the get method was called for the table with constraints
-        mock_dbx_get_table.assert_called_once()
+        assert mock_api_do.call_count == 2
+        mock_api_do.assert_called_with(
+            "GET", "/api/2.1/unity-catalog/tables/demo.default.table_with_constraints", query={"include_browse": "true"}
+        )
 
-    @patch("databricks.sdk.service.catalog.CatalogsAPI.list")
-    def test_get_database_names_raw(self, mock_list):
-        mock_list.return_value = MOCK_CATALOG_INFO
+    @patch("databricks.sdk.core.ApiClient.do")
+    def test_get_database_names_raw(self, mock_api_do):
+        mock_api_do.return_value = {"catalogs": [{"name": entry.name} for entry in MOCK_CATALOG_INFO]}
         assert ["demo", "main", "postgres_catalog", "system"] == list(self.unitycatalog_source.get_database_names_raw())  # noqa: SIM300
+        assert mock_api_do.call_args.kwargs["query"]["include_browse"] == "true"
 
-    @patch("databricks.sdk.service.catalog.SchemasAPI.list")
-    def test_database_schema_names(self, mock_schema_list):
-        mock_schema_list.return_value = MOCK_SCHEMA_INFO
+    @patch("databricks.sdk.core.ApiClient.do")
+    def test_database_schema_names(self, mock_api_do):
+        mock_api_do.return_value = {
+            "schemas": [{"catalog_name": entry.catalog_name, "name": entry.name} for entry in MOCK_SCHEMA_INFO]
+        }
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.unitycatalog_source.get_database_schema_names())  # noqa: SIM300
+        assert mock_api_do.call_args.kwargs["query"]["include_browse"] == "true"
 
     def test_yield_table(self):
         table_list = []

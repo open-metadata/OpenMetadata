@@ -165,6 +165,18 @@ def test_list_tables_is_one_call_per_schema():
     assert source.client.api_client.do.call_count == 1
 
 
+def test_list_tables_requests_browse_only_metadata_and_paginates():
+    source = _source_with_pages(
+        {"tables": [{"name": "browsed", "table_type": "MANAGED"}], "next_page_token": "next"},
+        {"tables": [{"name": "browsed_second", "table_type": "MANAGED"}]},
+    )
+    assert [table.name for table, _ in _listed(source)] == ["browsed", "browsed_second"]
+    for request in source.client.api_client.do.call_args_list:
+        assert request.args[:2] == ("GET", "/api/2.1/unity-catalog/tables")
+        assert request.kwargs["query"]["include_browse"] == "true"
+    assert source.client.api_client.do.call_args_list[-1].kwargs["query"]["page_token"] == "next"
+
+
 def test_list_tables_keeps_the_columns_the_sink_needs():
     # yield_table reads table.columns off this listing, so it must not be omitted.
     source = _source_with_pages({"tables": [{"name": "t", "columns": [{"name": "c", "type_text": "int"}]}]})

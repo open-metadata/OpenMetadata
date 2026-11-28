@@ -80,9 +80,29 @@ def _named_mock(name: str, **attributes) -> MagicMock:
 
 def _workspace_client(catalogs=None, schemas=None, tables=None) -> MagicMock:
     client = MagicMock()
-    client.catalogs.list.return_value = iter(catalogs or [])
-    client.schemas.list.return_value = iter(schemas or [])
-    client.tables.list.return_value = iter(tables or [])
+
+    def to_payload(value):
+        obj = {"name": value.name}
+        catalog_type = value.catalog_type
+        if catalog_type is None or not isinstance(catalog_type, MagicMock):
+            obj["catalog_type"] = catalog_type.value if catalog_type is not None else None
+        table_type = value.table_type
+        if table_type is None or not isinstance(table_type, MagicMock):
+            obj["table_type"] = table_type.value if table_type is not None else None
+        return obj
+
+    def browse(method, endpoint, query=None):
+        assert method == "GET"
+        assert query is not None and query["include_browse"] == "true"
+        if endpoint.endswith("/catalogs"):
+            return {"catalogs": [to_payload(item) for item in catalogs or []]}
+        if endpoint.endswith("/schemas"):
+            return {"schemas": [to_payload(item) for item in schemas or []]}
+        if endpoint.endswith("/tables"):
+            return {"tables": [to_payload(item) for item in tables or []]}
+        raise AssertionError(f"Unmocked URL: {endpoint}")
+
+    client.api_client.do.side_effect = browse
     return client
 
 
@@ -122,18 +142,22 @@ class TestGetCatalogs:
 
     def test_validates_configured_catalog(self):
         client = _workspace_client()
-        client.catalogs.get.return_value = _named_mock("configured_catalog")
+        client.api_client.do.side_effect = None
+        client.api_client.do.return_value = {"name": "configured_catalog"}
         table_obj = DatabricksTable()
 
         get_catalogs(client, table_obj, catalog_name="configured_catalog")
 
-        client.catalogs.get.assert_called_once_with("configured_catalog")
-        client.catalogs.list.assert_not_called()
+        client.api_client.do.assert_called_once_with(
+            "GET",
+            "/api/2.1/unity-catalog/catalogs/configured_catalog",
+            query={"include_browse": "true"},
+        )
         assert table_obj.catalog_name == "configured_catalog"
 
     def test_configured_catalog_failure_propagates(self):
         client = _workspace_client()
-        client.catalogs.get.side_effect = Exception("catalog not found")
+        client.api_client.do.side_effect = Exception("catalog not found")
         table_obj = DatabricksTable()
 
         with pytest.raises(Exception, match="catalog not found"):
@@ -149,18 +173,26 @@ class TestGetSchemas:
 
         get_schemas(client, table_obj)
 
-        client.schemas.list.assert_called_once_with(catalog_name="main")
+        client.api_client.do.assert_called_once_with(
+            "GET",
+            "/api/2.1/unity-catalog/schemas",
+            query={"include_browse": "true", "max_results": 0, "catalog_name": "main"},
+        )
         assert table_obj.schema_name == "bronze"
 
     def test_validates_configured_schema(self):
         client = _workspace_client()
-        client.schemas.get.return_value = _named_mock("configured_schema")
+        client.api_client.do.side_effect = None
+        client.api_client.do.return_value = {"name": "configured_schema"}
         table_obj = DatabricksTable(catalog_name="main")
 
         get_schemas(client, table_obj, schema_name="configured_schema")
 
-        client.schemas.get.assert_called_once_with("main.configured_schema")
-        client.schemas.list.assert_not_called()
+        client.api_client.do.assert_called_once_with(
+            "GET",
+            "/api/2.1/unity-catalog/schemas/main.configured_schema",
+            query={"include_browse": "true"},
+        )
         assert table_obj.schema_name == "configured_schema"
 
     def test_raises_when_catalog_unresolved(self):
@@ -178,7 +210,16 @@ class TestGetTables:
 
         get_tables(client, table_obj)
 
-        client.tables.list.assert_called_once_with(catalog_name="main", schema_name="bronze", max_results=1)
+        client.api_client.do.assert_called_once_with(
+            "GET",
+            "/api/2.1/unity-catalog/tables",
+            query={
+                "include_browse": "true",
+                "max_results": 1,
+                "catalog_name": "main",
+                "schema_name": "bronze",
+            },
+        )
         assert table_obj.name == "orders"
 
     def test_raises_when_catalog_unresolved(self):
@@ -188,7 +229,7 @@ class TestGetTables:
         with pytest.raises(SourceConnectionException, match="Could not resolve a catalog"):
             get_tables(client, table_obj)
 
-        client.tables.list.assert_not_called()
+        client.api_client.do.assert_not_called()
 
     def test_raises_when_schema_unresolved(self):
         client = _workspace_client()
@@ -197,7 +238,7 @@ class TestGetTables:
         with pytest.raises(SourceConnectionException, match="USE SCHEMA"):
             get_tables(client, table_obj)
 
-        client.tables.list.assert_not_called()
+        client.api_client.do.assert_not_called()
 
 
 class TestGetViews:
@@ -212,25 +253,31 @@ class TestGetViews:
 
         get_views(client, table_obj)
 
-        client.tables.list.assert_called_once_with(
-            catalog_name="main",
-            schema_name="bronze",
-            max_results=VIEW_LISTING_SCAN_LIMIT,
-            omit_columns=True,
-            omit_properties=True,
+        client.api_client.do.assert_called_once_with(
+            "GET",
+            "/api/2.1/unity-catalog/tables",
+            query={
+                "include_browse": "true",
+                "max_results": VIEW_LISTING_SCAN_LIMIT,
+                "catalog_name": "main",
+                "schema_name": "bronze",
+                "omit_columns": True,
+                "omit_properties": True,
+            },
         )
 
     def test_scan_is_capped_when_schema_has_no_views(self):
-        tables = [_named_mock(f"t{i}", table_type=TableType.MANAGED) for i in range(VIEW_LISTING_SCAN_LIMIT + 50)]
-        scanned = iter(tables)
-        client = _workspace_client()
-        client.tables.list.return_value = scanned
+        full_page = [{"name": f"t{i}", "table_type": "MANAGED"} for i in range(VIEW_LISTING_SCAN_LIMIT)]
+        client = MagicMock()
+        client.api_client.do.side_effect = [
+            {"tables": full_page, "next_page_token": "more"},
+            {"tables": [{"name": "late_view", "table_type": "VIEW"}]},
+        ]
         table_obj = DatabricksTable(catalog_name="main", schema_name="bronze")
 
         get_views(client, table_obj)
 
-        remaining = list(scanned)
-        assert len(remaining) == 50
+        assert client.api_client.do.call_count == 1
 
     def test_raises_when_catalog_and_schema_unresolved(self):
         client = _workspace_client()
@@ -239,7 +286,7 @@ class TestGetViews:
         with pytest.raises(SourceConnectionException, match="Could not resolve a catalog"):
             get_views(client, table_obj)
 
-        client.tables.list.assert_not_called()
+        client.api_client.do.assert_not_called()
 
 
 class TestReadTagTables:

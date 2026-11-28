@@ -118,11 +118,18 @@ def test_checks_borrow_the_clients_their_connections_own():
     assert mock_engine.call_count == 1
 
 
-def test_sql_engine_is_never_built_when_no_warehouse_step_runs():
+@pytest.fixture
+def catalog_client():
+    client = MagicMock()
+    client.api_client.do.return_value = {"catalogs": [{"name": "main"}]}
+    return client
+
+
+def test_sql_engine_is_never_built_when_no_warehouse_step_runs(catalog_client):
     # The lineage and tag steps need a SQL warehouse; a workspace configured
     # without an httpPath must never pay for an engine it does not use.
     with (
-        patch(f"{CONNECTION_MODULE}.get_connection"),
+        patch(f"{CONNECTION_MODULE}.get_connection", return_value=catalog_client),
         patch("metadata.core.connections.test_connection.network.tcp_probe"),
         patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine,
     ):
@@ -184,18 +191,20 @@ class TestHostNormalization:
 
 
 class TestCheckAccess:
-    def test_probes_the_host_before_listing_catalogs(self):
-        client = MagicMock()
+    def test_probes_the_host_before_listing_catalogs(self, catalog_client):
         with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
-            evidence = _checks(client).check_access()
+            evidence = _checks(catalog_client).check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
+        catalog_client.api_client.do.assert_called_once_with(
+            "GET", "/api/2.1/unity-catalog/catalogs", query={"include_browse": "true", "max_results": 0}
+        )
         assert evidence.summary == "connection established"
         assert evidence.command == "catalogs.list()"
 
-    def test_defaults_to_port_443_when_host_port_omits_the_port(self):
+    def test_defaults_to_port_443_when_host_port_omits_the_port(self, catalog_client):
         with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
-            _checks(MagicMock(), hostPort="my-workspace.cloud.databricks.com").check_access()
+            _checks(catalog_client, hostPort="my-workspace.cloud.databricks.com").check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
 
@@ -207,9 +216,9 @@ class TestCheckAccess:
             "my-workspace.cloud.databricks.com",
         ],
     )
-    def test_normalizes_a_pasted_workspace_url_before_probing(self, host_port):
+    def test_normalizes_a_pasted_workspace_url_before_probing(self, host_port, catalog_client):
         with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
-            _checks(MagicMock(), hostPort=host_port).check_access()
+            _checks(catalog_client, hostPort=host_port).check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
 
@@ -225,11 +234,11 @@ class TestCheckAccess:
             _checks(client).check_access()
 
         assert failure.value.evidence.command == "TCP connect my-workspace.cloud.databricks.com:443"
-        client.catalogs.list.assert_not_called()
+        client.api_client.do.assert_not_called()
 
     def test_rejected_credentials_surface_as_a_check_error_with_the_command(self):
         client = MagicMock()
-        client.catalogs.list.side_effect = Unauthenticated("invalid access token")
+        client.api_client.do.side_effect = Unauthenticated("invalid access token")
         with patch("metadata.core.connections.test_connection.network.tcp_probe"), pytest.raises(CheckError) as failure:
             _checks(client).check_access()
 
@@ -240,7 +249,7 @@ class TestCheckAccess:
 class TestMetadataSteps:
     def test_get_databases_resolves_the_first_non_internal_catalog(self):
         client = MagicMock()
-        client.catalogs.list.return_value = iter([_named("__databricks_internal"), _named("main")])
+        client.api_client.do.return_value = {"catalogs": [{"name": "__databricks_internal"}, {"name": "main"}]}
         checks = _checks(client)
 
         evidence = checks.check_databases()
@@ -251,30 +260,37 @@ class TestMetadataSteps:
 
     def test_get_databases_validates_the_configured_catalog(self):
         client = MagicMock()
-        client.catalogs.get.return_value = _named("my_catalog")
+        client.api_client.do.return_value = {"name": "my_catalog"}
         checks = _checks(client, catalog="my_catalog")
 
         evidence = checks.check_databases()
 
-        client.catalogs.get.assert_called_once_with("my_catalog")
-        client.catalogs.list.assert_not_called()
+        client.api_client.do.assert_called_once_with(
+            "GET",
+            "/api/2.1/unity-catalog/catalogs/my_catalog",
+            query={"include_browse": "true"},
+        )
         assert evidence.command == "catalogs.get('my_catalog')"
 
     def test_get_schemas_validates_the_configured_schema(self):
         client = MagicMock()
-        client.schemas.get.return_value = _named("my_schema")
+        client.api_client.do.return_value = {"name": "my_schema"}
         checks = _checks(client, databaseSchema="my_schema")
         checks.table_obj.catalog_name = "my_catalog"
 
         evidence = checks.check_schemas()
 
-        client.schemas.get.assert_called_once_with("my_catalog.my_schema")
+        client.api_client.do.assert_called_once_with(
+            "GET",
+            "/api/2.1/unity-catalog/schemas/my_catalog.my_schema",
+            query={"include_browse": "true"},
+        )
         assert evidence.command == "schemas.get('my_schema')"
         assert evidence.summary == "schema 'my_schema' resolved"
 
     def test_get_tables_reports_the_resolved_scope(self):
         client = MagicMock()
-        client.tables.list.return_value = iter([_named("orders")])
+        client.api_client.do.return_value = {"tables": [{"name": "orders"}]}
         checks = _checks(client)
         checks.table_obj.catalog_name = "my_catalog"
         checks.table_obj.schema_name = "my_schema"
@@ -291,7 +307,7 @@ class TestMetadataSteps:
             _checks(client).check_views()
 
         assert failure.value.evidence.command == "tables.list(omit_columns=True)"
-        client.tables.list.assert_not_called()
+        client.api_client.do.assert_not_called()
 
 
 class TestWarehouseSteps:

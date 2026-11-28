@@ -19,7 +19,7 @@ from functools import partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
 
-from databricks.sdk.service.catalog import ColumnInfo, TableInfo
+from databricks.sdk.service.catalog import CatalogInfo, ColumnInfo, SchemaInfo, TableInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -88,6 +88,10 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
+from metadata.ingestion.source.database.unitycatalog.browse import (
+    get_browse_item,
+    iter_browse_items,
+)
 from metadata.ingestion.source.database.unitycatalog.incremental_table_processor import (
     UnityCatalogIncrementalTableProcessor,
 )
@@ -226,7 +230,10 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             )
 
     def get_database_names_raw(self) -> Iterable[str]:
-        for catalog in self._iterate_listing(self.client.catalogs.list, "catalogs"):
+        def catalog_listing() -> Iterable[CatalogInfo]:
+            return (CatalogInfo.from_dict(row) for row in iter_browse_items(self.client, "catalogs", "catalogs"))
+
+        for catalog in self._iterate_listing(catalog_listing, "catalogs"):
             catalog_name = catalog.name
             if not catalog_name:
                 continue
@@ -316,7 +323,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             configured_catalog = self.service_connection.catalog
             try:
                 logger.debug(f"Fetching configured catalog [{configured_catalog}] details to cache for later use")
-                catalog = self.client.catalogs.get(configured_catalog)
+                catalog = CatalogInfo.from_dict(get_browse_item(self.client, "catalogs", configured_catalog))
                 with self._state_lock:
                     self._catalog_cache[configured_catalog] = catalog
             except Exception as exc:
@@ -388,7 +395,13 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         return schema names
         """
         catalog_name = self.context.get().database
-        schema_listing = partial(self.client.schemas.list, catalog_name=catalog_name)
+
+        def schema_listing() -> Iterable[SchemaInfo]:
+            return (
+                SchemaInfo.from_dict(row)
+                for row in iter_browse_items(self.client, "schemas", "schemas", catalog_name=catalog_name)
+            )
+
         for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]"):
             try:
                 schema_name = schema.name
@@ -490,31 +503,10 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         One listing per schema, exactly as before: the typed and the raw view of a table
         come out of the same response rather than out of two.
         """
-        query: dict[str, Any] = {
-            "catalog_name": catalog_name,
-            "schema_name": schema_name,
-            # max_results=0 makes the server paginate with its configured page size;
-            # leaving it unset returns every table of the schema in one response,
-            # which OOMs the pod on schemas with many wide tables.
-            "max_results": 0,
-        }
-        seen_tokens: set[str] = set()
-        while True:
-            response = self.client.api_client.do("GET", "/api/2.1/unity-catalog/tables", query=query)
-            if not isinstance(response, dict):
-                # do() is typed dict | BinaryIO. A non-dict body carries no
-                # next_page_token we can trust, and reading one off it would
-                # spin this loop forever.
-                raise TypeError(f"expected a JSON object, got {type(response).__name__}")
-            for row in response.get("tables") or []:
-                yield TableInfo.from_dict(row), str(row.get("securable_kind") or "").upper()
-            page_token = response.get("next_page_token")
-            if not page_token:
-                return
-            if page_token in seen_tokens:
-                raise RuntimeError(f"Unity Catalog reissued page token [{page_token}] while listing tables.")
-            seen_tokens.add(page_token)
-            query["page_token"] = page_token
+        for row in iter_browse_items(
+            self.client, "tables", "tables", catalog_name=catalog_name, schema_name=schema_name
+        ):
+            yield TableInfo.from_dict(row), str(row.get("securable_kind") or "").upper()
 
     def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]]:
         """
@@ -542,7 +534,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                 if (table.catalog_name, table.schema_name, table.name) in table_with_constraints:
                     # Only tables with constraints require full fetch; list() doesn't include constraint details
                     try:
-                        detailed_table = self.client.tables.get(table.full_name)
+                        detailed_table = TableInfo.from_dict(get_browse_item(self.client, "tables", table.full_name))
                     except Exception as exc:
                         msg = (
                             f"Unexpected exception in fetching constraints "
@@ -580,12 +572,11 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             try:
                 # client.tables.get() by hand: TableInfo.from_dict drops securable_kind,
                 # and that is the only field that tells managed Iceberg from Delta.
-                row = self.client.api_client.do(
-                    "GET", f"/api/2.1/unity-catalog/tables/{catalog_name}.{schema_name}.{table_name}"
+                row = get_browse_item(
+                    self.client,
+                    "tables",
+                    f"{catalog_name}.{schema_name}.{table_name}",
                 )
-                if not isinstance(row, dict):
-                    # do() is typed dict | BinaryIO; a non-dict body carries no table.
-                    raise TypeError(f"expected a JSON object, got {type(row).__name__}")  # noqa: TRY301
                 table = TableInfo.from_dict(row)
                 securable_kind = str(row.get("securable_kind") or "").upper()
             except Exception as exc:
