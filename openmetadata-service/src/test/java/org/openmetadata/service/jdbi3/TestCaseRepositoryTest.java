@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -18,6 +19,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonObject;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,8 +39,10 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
@@ -53,6 +57,75 @@ class TestCaseRepositoryTest {
 
   private static final String TEST_CASE_FQN = "service.database.schema.table.row_count";
   private static final String ASYNC_DELETE_THREAD_NAME = "om-test-case-async";
+
+  @Test
+  void embeddedTestSuitesCarryNoChangeHistory() throws Exception {
+    TestSuite suite =
+        new TestSuite()
+            .withId(UUID.randomUUID())
+            .withName("logical")
+            .withChangeDescription(new ChangeDescription().withPreviousVersion(0.1))
+            .withIncrementalChangeDescription(new ChangeDescription().withPreviousVersion(0.1));
+    TestCase testCase = testCase(UUID.randomUUID(), "description", null);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+    when(relationshipDAO.findFrom(
+            testCase.getId(), Entity.TEST_CASE, Relationship.CONTAINS.ordinal(), Entity.TEST_SUITE))
+        .thenReturn(
+            List.of(CollectionDAO.EntityRelationshipRecord.builder().id(suite.getId()).build()));
+    when(relationshipDAO.findFromBatch(
+            List.of(testCase.getId().toString()),
+            Relationship.CONTAINS.ordinal(),
+            Entity.TEST_SUITE,
+            Entity.TEST_CASE))
+        .thenReturn(
+            List.of(
+                CollectionDAO.EntityRelationshipObject.builder()
+                    .fromId(suite.getId().toString())
+                    .toId(testCase.getId().toString())
+                    .build()));
+    TestSuiteRepository testSuiteRepository = mock(TestSuiteRepository.class, RETURNS_DEEP_STUBS);
+    when(testSuiteRepository.getDao().findEntitiesByIds(List.of(suite.getId()), Include.ALL))
+        .thenReturn(List.of(suite));
+
+    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entity.when(() -> Entity.getEntityFields(TestCase.class)).thenCallRealMethod();
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.TEST_SUITE))
+          .thenReturn(testSuiteRepository);
+      entity
+          .when(
+              () ->
+                  Entity.getEntity(
+                      Entity.TEST_SUITE,
+                      suite.getId(),
+                      "owners,domains,reviewers",
+                      Include.ALL,
+                      false))
+          .thenReturn(JsonUtils.deepCopy(suite, TestSuite.class));
+      TestCaseRepository repository = new TestCaseRepository();
+
+      Method getTestSuites =
+          TestCaseRepository.class.getDeclaredMethod("getTestSuites", TestCase.class);
+      getTestSuites.setAccessible(true);
+      List<?> single = (List<?>) getTestSuites.invoke(repository, testCase);
+
+      Method fetchAndSetTestSuitesData =
+          TestCaseRepository.class.getDeclaredMethod(
+              "fetchAndSetTestSuitesData", List.class, boolean.class, boolean.class);
+      fetchAndSetTestSuitesData.setAccessible(true);
+      fetchAndSetTestSuitesData.invoke(repository, List.of(testCase), false, true);
+
+      for (TestSuite embedded :
+          List.of((TestSuite) single.get(0), testCase.getTestSuites().get(0))) {
+        assertNull(embedded.getChangeDescription());
+        assertNull(embedded.getIncrementalChangeDescription());
+      }
+    }
+  }
 
   @Test
   void readsPersistedTestSuiteRelationshipRevisions() {
