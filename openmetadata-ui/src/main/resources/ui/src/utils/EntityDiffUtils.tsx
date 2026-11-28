@@ -32,6 +32,7 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
 } from './EntityDiffPureUtils';
+import { getReadableText } from './BlockEditorPureUtils';
 import { t } from './i18next/LocalUtil';
 import { getJSONFromString } from './StringUtils';
 
@@ -84,7 +85,6 @@ export const getNormalDiffElement = (text: string) => {
   );
 };
 
-const BLOCK_END_PATTERN = /<\/(p|li|h[1-6]|div|pre|blockquote)>|<br\s*\/?>/gi;
 // The rich-text editor always wraps content in a block element. Anything else (column types like
 // `array<string>`, markdown such as `Map<K, V>`) is plain text and must keep its angle brackets.
 const EDITOR_HTML_PATTERN = /^\s*<(p|h[1-6]|ul|ol|pre|blockquote|div|table)\b/i;
@@ -92,18 +92,14 @@ const EDITOR_HTML_PATTERN = /^\s*<(p|h[1-6]|ul|ol|pre|blockquote|div|table)\b/i;
 /**
  * Rich-text descriptions are stored as HTML. Diffing that markup word by word splits tags, and each
  * fragment is rendered as escaped text, so the version view showed literal `<p>` and `&#61;`.
- * Diff what the reader sees instead: the text content, one line per block.
+ * Diff what the reader sees instead: the text content, one line per block. When only one side is
+ * editor HTML (a Markdown import re-saved in the editor), the other side is Markdown and is reduced
+ * the same way, so the storage format alone never shows up as a change.
  */
-const toDiffableText = (text: string) => {
-  if (!EDITOR_HTML_PATTERN.test(text)) {
-    return text;
-  }
-  const html = text.replace(BLOCK_END_PATTERN, (tag) => `${tag}\n`);
-
-  return (
-    new DOMParser().parseFromString(html, 'text/html').body.textContent ?? ''
-  ).trim();
-};
+const toDiffableTexts = (oldText: string, newText: string) =>
+  EDITOR_HTML_PATTERN.test(oldText) || EDITOR_HTML_PATTERN.test(newText)
+    ? [getReadableText(oldText), getReadableText(newText)]
+    : [oldText, newText];
 
 export const getTextDiff = (
   oldText: string,
@@ -127,7 +123,8 @@ export const getTextDiff = (
     return newValue;
   }
 
-  const diffArr = diffWords(toDiffableText(oldValue), toDiffableText(newValue));
+  const [oldDiffable, newDiffable] = toDiffableTexts(oldValue, newValue);
+  const diffArr = diffWords(oldDiffable, newDiffable);
 
   const result = diffArr.map((diff) => {
     if (diff.added) {

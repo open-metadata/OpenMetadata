@@ -100,6 +100,8 @@ import {
   formatDate,
   formatIsoDuration,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getReadableText } from '../../../../utils/BlockEditorPureUtils';
+import { getTextDiffElements } from '../../../../utils/EntityDiffUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import ontologyExplorerClassBase from '../../../../utils/OntologyExplorerClassBase';
@@ -183,6 +185,7 @@ import {
   computeTaskOwnershipFlags,
   computeWorkflowTaskAccess,
   getTaskCreatorLink,
+  isMostlyRewritten,
 } from './TaskTab.utils';
 
 const FeedbackApprovalTask = withSuspenseFallback(
@@ -203,12 +206,17 @@ const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
   domains: (fqn) => getDomainDetailsPath(fqn),
 };
 
-const stripHtmlTags = (value: string): string =>
-  value
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+// Field names can be nested (`columns.customer_id.description`), so match on the last segment.
+const fieldLeaf = (field: string) => field.split('.').pop() ?? field;
+
+// Free-text fields: a replaced value arrives whole on both sides, so it is shown as a word diff.
+// Every other field (owners, reviewers, synonyms) is a set of identifiers and stays as chips.
+const TEXT_DIFF_FIELDS = new Set(['description', 'displayName']);
+
+// Only descriptions are rich text (Markdown from imports, HTML from the editor). Plain values
+// such as "# of Orders" must not go through the Markdown parser.
+const toProposedChangeText = (field: string, value: string) =>
+  fieldLeaf(field) === 'description' ? getReadableText(value) : value;
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -1845,7 +1853,9 @@ export const TaskTabNew = ({
 
   const taskTitleDisplayName = task.displayName ?? taskDisplayMessage;
 
-  const renderProposedChangesSection = () => {
+  // Memoised: each description is parsed and word-diffed, and the comment editor re-renders this
+  // component on every keystroke.
+  const proposedChangesSection = useMemo(() => {
     if (changeRequestId) {
       return (
         <div>
@@ -1875,46 +1885,67 @@ export const TaskTabNew = ({
             {Object.entries(proposedChanges).map(
               ([field, { added, removed }]) => {
                 const getUrl = FIELD_ROUTE_MAP[field];
+                const isTextEdit =
+                  TEXT_DIFF_FIELDS.has(fieldLeaf(field)) &&
+                  removed.length === 1 &&
+                  added.length === 1 &&
+                  !isMostlyRewritten(
+                    toProposedChangeText(field, removed[0]),
+                    toProposedChangeText(field, added[0])
+                  );
 
                 return (
                   <div className="task-proposed-changes-field-row" key={field}>
                     <Typography className="task-proposed-changes-field-name">
                       {startCase(field)}
                     </Typography>
-                    <div className="task-proposed-changes-chips">
-                      {removed.map((val) =>
-                        getUrl ? (
-                          <Link
-                            className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                            key={`${field}-removed-${val}`}
-                            to={getUrl(val)}>
-                            {val}
-                          </Link>
-                        ) : (
-                          <span
-                            className="task-proposed-changes-chip task-proposed-changes-chip--removed"
-                            key={`${field}-removed-${val}`}>
-                            {stripHtmlTags(val)}
-                          </span>
-                        )
-                      )}
-                      {added.map((val) =>
-                        getUrl ? (
-                          <Link
-                            className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                            key={`${field}-added-${val}`}
-                            to={getUrl(val)}>
-                            {val}
-                          </Link>
-                        ) : (
-                          <span
-                            className="task-proposed-changes-chip task-proposed-changes-chip--added"
-                            key={`${field}-added-${val}`}>
-                            {stripHtmlTags(val)}
-                          </span>
-                        )
-                      )}
-                    </div>
+                    {isTextEdit ? (
+                      <Typography
+                        as="div"
+                        className="tw:whitespace-pre-wrap tw:break-words"
+                        data-testid={`proposed-changes-${field}-diff`}
+                        size="text-sm">
+                        {getTextDiffElements(
+                          toProposedChangeText(field, removed[0]),
+                          toProposedChangeText(field, added[0])
+                        )}
+                      </Typography>
+                    ) : (
+                      <div className="task-proposed-changes-chips">
+                        {removed.map((val) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--removed"
+                              key={`${field}-removed-${val}`}>
+                              {toProposedChangeText(field, val)}
+                            </span>
+                          )
+                        )}
+                        {added.map((val) =>
+                          getUrl ? (
+                            <Link
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}`}
+                              to={getUrl(val)}>
+                              {val}
+                            </Link>
+                          ) : (
+                            <span
+                              className="task-proposed-changes-chip task-proposed-changes-chip--added"
+                              key={`${field}-added-${val}`}>
+                              {toProposedChangeText(field, val)}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               }
@@ -1923,7 +1954,7 @@ export const TaskTabNew = ({
         </div>
       </div>
     );
-  };
+  }, [changeRequestId, proposedChanges, task, t]);
 
   const renderFeedbackOrTaskPayload = () => {
     if (isOntologyReviewTask(task) && ReviewPanel) {
@@ -2200,7 +2231,7 @@ export const TaskTabNew = ({
       {lifecycleMove ? (
         <LifecycleApprovalCard move={lifecycleMove} />
       ) : (
-        renderProposedChangesSection()
+        proposedChangesSection
       )}
       <TaskReviewVotes currentUserId={currentUser?.id} task={task} />
       <div>

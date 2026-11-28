@@ -172,6 +172,17 @@ describe('getTextDiff', () => {
     expect(result).toContain('Customer id');
   });
 
+  it('does not report a markdown description re-saved as editor HTML as changed', () => {
+    const result = getTextDiff(
+      "The **agreement** is the deal's `start`.",
+      '<p>The <strong>agreement</strong> is the deal&#39;s <code>start</code>. Test change</p>'
+    );
+
+    expect(result).not.toContain('data-testid="diff-removed"');
+    expect(result).not.toContain('**');
+    expect(result).toMatch(/data-testid="diff-added"[^>]*>[^<]*Test change/);
+  });
+
   it('keeps plain-text diffs unchanged', () => {
     const result = getTextDiff('net sales', 'gross sales');
 

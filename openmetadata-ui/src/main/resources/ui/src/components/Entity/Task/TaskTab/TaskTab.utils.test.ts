@@ -15,6 +15,7 @@ import {
   computeTaskEditAccessFlags,
   computeTaskOwnershipFlags,
   computeWorkflowTaskAccess,
+  isMostlyRewritten,
 } from './TaskTab.utils';
 
 const task = {
@@ -97,5 +98,29 @@ describe('computeWorkflowTaskAccess', () => {
       hasWorkflowAccess: true,
       showsWorkflowActions: true,
     });
+  });
+});
+
+describe('isMostlyRewritten', () => {
+  it('keeps an appended sentence as an edit', () => {
+    expect(
+      isMostlyRewritten(
+        'The agreement is the top of the hierarchy.',
+        'The agreement is the top of the hierarchy. Test change'
+      )
+    ).toBe(false);
+  });
+
+  it('treats a replaced description as a rewrite', () => {
+    expect(
+      isMostlyRewritten(
+        'The interest rate a lender charges on a loan, expressed as an annual percentage.',
+        "The annual cost of borrowing on a loan's outstanding principal, quoted as a fixed or floating percentage."
+      )
+    ).toBe(true);
+  });
+
+  it('does not treat two empty values as a rewrite', () => {
+    expect(isMostlyRewritten('', '')).toBe(false);
   });
 });

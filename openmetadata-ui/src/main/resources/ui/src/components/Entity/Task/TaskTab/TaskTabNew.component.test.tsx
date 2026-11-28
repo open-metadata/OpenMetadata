@@ -1066,6 +1066,196 @@ describe('TaskTabNew Component', () => {
     ).toBeInTheDocument();
   });
 
+  it('diffs a markdown description against its editor HTML re-save word by word', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                description: {
+                  removed: [
+                    'Ordered **deal → segment** for the "Acquisition" deal\'s team.',
+                  ],
+                  added: [
+                    '<p>Ordered <strong>deal → segment</strong> for the &#34;Acquisition&#34; deal&#39;s team. Test change</p>',
+                  ],
+                },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    const diff = screen.getByTestId('proposed-changes-description-diff');
+
+    expect(diff).toHaveTextContent(
+      'Ordered deal → segment for the "Acquisition" deal\'s team. Test change'
+    );
+    expect(diff).not.toHaveTextContent('&#34;');
+    expect(diff).not.toHaveTextContent('**');
+    expect(screen.queryByTestId('diff-removed')).not.toBeInTheDocument();
+    expect(
+      screen
+        .getAllByTestId('diff-added')
+        .map((node) => node.textContent)
+        .join('')
+    ).toBe('Test change');
+  });
+
+  it('keeps a single owner swap as removed and added chips, not a word diff', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                owners: { removed: ['Data Team'], added: ['Data Platform'] },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.queryByTestId('proposed-changes-owners-diff')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Data Team')).toHaveClass(
+      'task-proposed-changes-chip--removed'
+    );
+    expect(screen.getByText('Data Platform')).toHaveClass(
+      'task-proposed-changes-chip--added'
+    );
+  });
+
+  it('diffs a display name as plain text without reading it as markdown', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                displayName: { removed: ['Orders'], added: ['# of Orders'] },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByTestId('proposed-changes-displayName-diff')
+    ).toHaveTextContent('# of Orders');
+  });
+
+  it('reads a nested column description as rich text', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                'columns.customer_id.description': {
+                  removed: ['Customer **id** of the buyer account'],
+                  added: [
+                    '<p>Customer <strong>id</strong> of the buyer&#39;s main account</p>',
+                  ],
+                },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    const diff = screen.getByTestId(
+      'proposed-changes-columns.customer_id.description-diff'
+    );
+
+    expect(diff).toHaveTextContent("Customer id of the buyer's main account");
+    expect(diff).not.toHaveTextContent('<strong>');
+    expect(screen.queryByTestId('diff-removed')).not.toBeInTheDocument();
+  });
+
+  it('shows a rewritten description as whole removed and added blocks of readable text', async () => {
+    const {
+      isDescriptionTaskType,
+    } = require('../../../../utils/TaskActionUtils');
+    isDescriptionTaskType.mockReturnValue(false);
+
+    await act(async () => {
+      render(
+        <TaskTabNew
+          {...mockProps}
+          task={{
+            ...MOCK_APPROVAL_TASK,
+            payload: {
+              proposedChanges: {
+                description: {
+                  removed: [
+                    'The **interest rate** a lender charges on a loan, as an annual percentage.',
+                  ],
+                  added: [
+                    '<p>The annual cost of borrowing on a loan&#39;s outstanding principal.</p>',
+                  ],
+                },
+              },
+            },
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.queryByTestId('proposed-changes-description-diff')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The interest rate a lender charges on a loan, as an annual percentage.'
+      )
+    ).toHaveClass('task-proposed-changes-chip--removed');
+    expect(
+      screen.getByText(
+        "The annual cost of borrowing on a loan's outstanding principal."
+      )
+    ).toHaveClass('task-proposed-changes-chip--added');
+  });
+
   it('renders schema-driven payload details for custom tasks', async () => {
     const {
       getResolvedTaskFormSchema,

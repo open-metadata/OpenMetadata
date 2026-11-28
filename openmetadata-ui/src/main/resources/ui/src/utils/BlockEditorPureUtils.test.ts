@@ -13,6 +13,7 @@
 import {
   formatClientContent,
   getHtmlStringFromMarkdownString,
+  getReadableText,
   getTrimmedHtmlContent,
   isHTMLString,
 } from './BlockEditorPureUtils';
@@ -941,5 +942,25 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     expect(html).toContain('😄');
     expect(html).toContain('target="_blank"');
     expect(html).toContain('rel="noopener noreferrer"');
+  });
+});
+
+describe('getReadableText', () => {
+  it('reads an imported markdown description and its editor re-save as the same text', () => {
+    const markdown =
+      'Hierarchy: **deal → segment → portfolio → batch**\n\nThe "Acquisition" stage is the deal\'s `start`.';
+    const editorHtml =
+      '<p>Hierarchy: <strong>deal → segment → portfolio → batch</strong></p>' +
+      '<p>The &#34;Acquisition&#34; stage is the deal&#39;s <code>start</code>.</p>';
+
+    expect(getReadableText(markdown)).toBe(
+      'Hierarchy: deal → segment → portfolio → batch\nThe "Acquisition" stage is the deal\'s start.'
+    );
+    expect(getReadableText(editorHtml)).toBe(getReadableText(markdown));
+  });
+
+  it('returns plain values unchanged and empty input as an empty string', () => {
+    expect(getReadableText('Deal')).toBe('Deal');
+    expect(getReadableText(undefined)).toBe('');
   });
 });

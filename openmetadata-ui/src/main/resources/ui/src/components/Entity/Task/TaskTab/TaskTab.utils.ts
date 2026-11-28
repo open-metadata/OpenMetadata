@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { diffWords } from 'diff';
 import { isEqual } from 'lodash';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../generated/entity/type';
@@ -124,3 +125,16 @@ export const computeWorkflowTaskAccess = ({
 /** Link to the task creator's profile; build it per render (it reads the mode). */
 export const getTaskCreatorLink = (task: Task): string =>
   getSettingsLink(getUserPath(task.createdBy?.name ?? ''));
+
+/**
+ * A word diff only helps while most of the text survives; a rewrite interleaves old and new
+ * words into something nobody can read, so it is shown as the whole old and new text instead.
+ */
+export const isMostlyRewritten = (oldText: string, newText: string) => {
+  const longest = Math.max(oldText.length, newText.length);
+  const kept = diffWords(oldText, newText)
+    .filter((part) => !part.added && !part.removed)
+    .reduce((total, part) => total + part.value.length, 0);
+
+  return longest > 0 && kept / longest < 0.5;
+};
