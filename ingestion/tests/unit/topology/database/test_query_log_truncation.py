@@ -139,6 +139,11 @@ def _failing_engine(error=None):
 
 
 @pytest.mark.parametrize(
+    "source_class",
+    [LineageSource, TrinoLineageSource],
+    ids=["base", "trino"],
+)
+@pytest.mark.parametrize(
     "error",
     [
         OperationalError("SELECT 1", {}, Exception("VIEW SERVER STATE denied")),
@@ -148,10 +153,14 @@ def _failing_engine(error=None):
     ],
     ids=["sqlalchemy_error", "os_error", "timeout"],
 )
-def test_yield_table_query_skips_engine_that_fails_to_connect(error):
+def test_yield_table_query_skips_engine_that_fails_to_connect(source_class, error):
     """One engine's connection/query failure (e.g. a permission error) must not stop
-    lineage extraction for the other engines in an ingest-all-databases run."""
-    bound = _source(LineageSource, "yield_table_query", row_count=2, result_limit=5)
+    lineage extraction for the other engines in an ingest-all-databases run.
+
+    The Trino lineage source reimplements the paginated fetch loop and must honor the
+    same per-engine fault tolerance as the base class it overrides.
+    """
+    bound = _source(source_class, "yield_table_query", row_count=2, result_limit=5)
     bound.__self__.get_engine.return_value = [_failing_engine(error), _engine_yielding(2)]
 
     queries = list(bound())
@@ -180,10 +189,15 @@ def test_yield_table_queries_skips_engine_it_cannot_read(failing_engine):
     assert [len(batch.queries) for batch in batches] == [2]
 
 
-def test_yield_table_query_does_not_swallow_a_statement_builder_bug():
+@pytest.mark.parametrize(
+    "source_class",
+    [LineageSource, TrinoLineageSource],
+    ids=["base", "trino"],
+)
+def test_yield_table_query_does_not_swallow_a_statement_builder_bug(source_class):
     """A bug in a source's get_sql_statement is a code bug, not an unreachable engine:
     it must surface instead of being reported as one more skipped connection."""
-    bound = _source(LineageSource, "yield_table_query", row_count=2, result_limit=5)
+    bound = _source(source_class, "yield_table_query", row_count=2, result_limit=5)
     bound.__self__.get_sql_statement.side_effect = KeyError("start_time")
 
     with pytest.raises(KeyError):
