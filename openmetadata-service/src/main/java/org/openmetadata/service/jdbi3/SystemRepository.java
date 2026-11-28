@@ -185,6 +185,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private static final Set<String> SYSTEM_BOT_TYPES = Set.of(Entity.BOT, Entity.USER);
   private static final String UNUSABLE_TOKEN_LINE = "Token not usable: bot %s (%s)";
   private static final String LDAP_VALIDATION_KEY = "LDAP";
+  private static final String ENCRYPTION_KEY_VALIDATION_KEY = "Encryption Key";
+  private static final String OWN_ENCRYPTION_KEY_MESSAGE =
+      "Stored secrets are encrypted with a Fernet key of this deployment's own.";
   private static final String PUBLIC_KEY_URLS_PATH = "/publicKeyUrls";
   private static final String PATCH_OPERATION = "op";
   private static final String PATCH_PATH = "path";
@@ -214,6 +217,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
     JWT_TOKEN("Validate that the ingestion-bot JWT token can be properly decoded."),
     MIGRATION("Validate that all the necessary migrations have been properly executed."),
     LDAP("Validate that the login LDAP directory is reachable and accepts the lookup account."),
+    ENCRYPTION_KEY(
+        "Validate that stored secrets are encrypted with a key of this deployment's own, not the"
+            + " default shipped with OpenMetadata."),
     SEARCH_REINDEX(
         "Validate that every deployed search index was built from the current index mapping "
             + "(i.e. no reindex is pending)."),
@@ -1166,6 +1172,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
 
     validation.setAdditionalProperty(
         "Object Storage", getObjectStorageValidation(applicationConfig));
+    addEncryptionKeyValidation(validation);
     validation.setAdditionalProperty(REINDEX_STATUS_VALIDATION_KEY, getReindexStatusValidation());
     validation.setAdditionalProperty(
         SYSTEM_BOTS_VALIDATION_KEY, getSystemBotsValidation(applicationConfig, jwtFilter));
@@ -1336,6 +1343,18 @@ public class SystemRepository implements DeploymentSettingPreparer {
 
   public void addExtraValidations(
       OpenMetadataApplicationConfig applicationConfig, ValidationResponse validation) {}
+
+  @VisibleForTesting
+  static void addEncryptionKeyValidation(ValidationResponse validation) {
+    StepValidation step =
+        new StepValidation().withDescription(ValidationStepDescription.ENCRYPTION_KEY.key);
+    validation.setAdditionalProperty(
+        ENCRYPTION_KEY_VALIDATION_KEY,
+        Fernet.getInstance()
+            .getKeyWarning()
+            .map(warning -> step.withPassed(false).withMessage(warning))
+            .orElseGet(() -> step.withPassed(true).withMessage(OWN_ENCRYPTION_KEY_MESSAGE)));
+  }
 
   /** Only an LDAP login depends on the directory, so only then does the status report on it. */
   @VisibleForTesting

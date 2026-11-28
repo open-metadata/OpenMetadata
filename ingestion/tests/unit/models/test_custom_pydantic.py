@@ -1,9 +1,13 @@
 import json
+import os
 import uuid
 from unittest import TestCase
+from unittest.mock import patch
 from urllib.parse import quote_plus
 
 import pytest
+from botocore.stub import Stubber
+from kubernetes.client.exceptions import ApiException
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import SecretStr
 
@@ -46,7 +50,11 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.connections.builders import get_password_secret
-from metadata.ingestion.models.custom_pydantic import BaseModel, CustomSecretStr
+from metadata.ingestion.models.custom_pydantic import (
+    BaseModel,
+    CustomSecretStr,
+    SecretReferenceError,
+)
 from metadata.utils.secrets.secrets_manager import SecretsManager
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.singleton import Singleton
@@ -974,6 +982,147 @@ class TestNullSecretResolution:
         resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
 
         assert quote_plus(resolved) == ""
+
+
+class _UnreadableSecretsManager(SecretsManager):
+    """Test double for a secrets manager that cannot return the referenced secret."""
+
+    def get_string_value(self, secret_id: str) -> str:
+        raise KeyError(f"no secret named {secret_id}")
+
+
+class TestUnresolvableSecretReference:
+    """A ``secret:`` reference the secrets manager cannot return must stop the caller with an
+    error naming the reference and the provider, never come back as the credential itself."""
+
+    EXTERNAL_SECRET_REFERENCE = "secret:/external/path/to/db/password"
+    SECRET_ID = "/external/path/to/db/password"
+
+    @pytest.fixture(autouse=True)
+    def clean_singletons(self):
+        Singleton.clear_all()
+        yield
+        Singleton.clear_all()
+
+    @pytest.fixture
+    def aws_secrets_manager(self, monkeypatch):
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+        monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+        monkeypatch.delenv("AWS_SESSION_TOKEN", raising=False)
+        return SecretsManagerFactory(SecretsManagerProvider.aws, SecretsManagerClientLoader.env).get_secrets_manager()
+
+    def test_failed_read_names_the_reference_and_the_provider(self, aws_secrets_manager):
+        with Stubber(aws_secrets_manager.client) as aws:
+            aws.add_client_error(
+                "get_secret_value",
+                service_error_code="ResourceNotFoundException",
+                expected_params={"SecretId": self.SECRET_ID},
+            )
+            with pytest.raises(SecretReferenceError) as error:
+                CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert self.EXTERNAL_SECRET_REFERENCE in str(error.value)
+        assert f"[{SecretsManagerProvider.aws.value}]" in str(error.value)
+
+    def test_readable_reference_still_resolves(self, aws_secrets_manager):
+        with Stubber(aws_secrets_manager.client) as aws:
+            aws.add_response(
+                "get_secret_value",
+                {"SecretString": RESOLVED_EXTERNAL_SECRET},
+                {"SecretId": self.SECRET_ID},
+            )
+            resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert resolved == RESOLVED_EXTERNAL_SECRET
+
+    def test_aws_secret_stored_as_null_still_resolves_to_empty_string(self, aws_secrets_manager):
+        with Stubber(aws_secrets_manager.client) as aws:
+            aws.add_response("get_secret_value", {"SecretString": "null"}, {"SecretId": self.SECRET_ID})
+            resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert resolved == ""
+
+    def test_missing_kubernetes_secret_names_the_reference_and_the_provider(self):
+        reference = "secret:db-password"
+        with (
+            patch("metadata.utils.secrets.kubernetes_secrets_manager.config"),
+            patch("metadata.utils.secrets.kubernetes_secrets_manager.client") as kubernetes_client,
+            patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}),
+        ):
+            kubernetes_client.CoreV1Api.return_value.read_namespaced_secret.side_effect = ApiException(status=404)
+            SecretsManagerFactory(SecretsManagerProvider.kubernetes, SecretsManagerClientLoader.env)
+            with pytest.raises(SecretReferenceError) as error:
+                CustomSecretStr(reference).get_secret_value()
+
+        assert reference in str(error.value)
+        assert f"[{SecretsManagerProvider.kubernetes.value}]" in str(error.value)
+
+    def test_connection_password_is_not_the_reference_when_the_read_fails(self):
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _UnreadableSecretsManager()
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.EXTERNAL_SECRET_REFERENCE),
+            hostPort="localhost:3306",
+        )
+
+        with pytest.raises(SecretReferenceError, match="no secret named"):
+            get_password_secret(connection).get_secret_value()
+
+    def test_only_the_leading_prefix_is_removed_from_the_secret_id(self):
+        """The server strips exactly the leading `secret:`; an id that contains it again is kept whole."""
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _UnreadableSecretsManager()
+
+        with pytest.raises(SecretReferenceError, match=r"no secret named /team/secret:key"):
+            CustomSecretStr("secret:/team/secret:key").get_secret_value()
+
+    def test_skipping_the_secrets_manager_keeps_the_reference(self):
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _UnreadableSecretsManager()
+
+        raw = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value(skip_secret_manager=True)
+
+        assert raw == self.EXTERNAL_SECRET_REFERENCE
+
+
+class TestSecretPrefixUnderDbProvider:
+    """The DB provider stores secrets itself and never hands out references, so a value that
+    starts with ``secret:`` is the literal password and must reach the source unchanged."""
+
+    LITERAL_PASSWORD = "secret:abc"
+
+    @pytest.fixture(autouse=True)
+    def clean_singletons(self):
+        Singleton.clear_all()
+        yield
+        Singleton.clear_all()
+
+    def test_db_provider_returns_the_literal_value(self):
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+
+        with patch.object(factory.get_secrets_manager(), "get_string_value") as get_string_value:
+            resolved = CustomSecretStr(self.LITERAL_PASSWORD).get_secret_value()
+
+        assert resolved == self.LITERAL_PASSWORD
+        get_string_value.assert_not_called()
+
+    def test_db_provider_connection_password_is_the_literal_value(self):
+        SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.LITERAL_PASSWORD),
+            hostPort="localhost:3306",
+        )
+
+        assert get_password_secret(connection).get_secret_value() == self.LITERAL_PASSWORD
+
+    def test_external_provider_still_resolves_the_reference(self):
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _FakeExternalSecretsManager()
+
+        assert CustomSecretStr(self.LITERAL_PASSWORD).get_secret_value() == RESOLVED_EXTERNAL_SECRET
 
 
 class DashboardDataModelTransformationTest(TestCase):

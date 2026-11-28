@@ -314,9 +314,7 @@
       "c88a435827670041d4f16e55b3795fa0bad51416183672539e2b0b1e5d5f1f56": 1
     },
     "ingestion/src/metadata/ingestion/models/custom_pydantic.py": {
-      "62914a31ec6df30ab3a23a44463f1a8e79cc2ed11234a7ef61727619a2c3bd1c": 1,
-      "7955a37e6cc312be3fb395b4d7971823d7eb70acbd86fdf4176830632a43fabc": 1,
-      "983b2ab94dea08268e9fec135461b8d5811aed114324ce0f4d04a64fb45671a2": 1
+      "7955a37e6cc312be3fb395b4d7971823d7eb70acbd86fdf4176830632a43fabc": 1
     },
     "ingestion/src/metadata/ingestion/models/patch_request.py": {
       "241a67caa4173d5ef6da638fb322e5bf1bde1fb1d43ed6411827d0b2a4ff422f": 1
@@ -2854,9 +2852,6 @@
       "317ab75d5a2f313ff2b0b878d8a964fe2ad71f51d16783b873f9863acc2f58c7": 1
     },
     "ingestion/src/metadata/utils/secrets/kubernetes_secrets_manager.py": {
-      "0716eb3d783245207bfa7a65abbe7ea6dd06ec7c3384561c0dca05c322a2f28e": 1,
-      "0c64307a01ab769fdc2083c13aab6ae6174067234ac624875da75157a67307ae": 1,
-      "625951b4a62a6134cf38a13cc895bafbf649804d14e8f4111a15f00e65c87aef": 1,
       "6f5300a33087efdbc2b216d525d9cd8b433b8c533f3cf70c8a7645699d51f6bd": 1,
       "cd1106f9b724caa9b9be248d4626f480c6cb6b5d7bc306690a616a2daa0701c7": 2,
       "f76bea071d3cb96174b2712761b159d247af02cbc3ca4e4fb15de0c4c9549831": 1

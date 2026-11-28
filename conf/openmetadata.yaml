@@ -824,8 +824,11 @@ pipelineServiceClientConfiguration:
     useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
 
 
-# no_encryption_at_rest is the default value, and it does what it says. Please read the manual on how
-# to secure your instance of OpenMetadata with TLS and encryption at rest.
+# Fernet key that encrypts the secrets stored in the database. Set FERNET_KEY to a key of your own,
+# for example the output of `openssl rand -base64 32`. While the first key is the default below, the
+# server logs an error on every start and the Health Check page reports it. To change the key of a
+# deployment that already stores secrets, put the new key first and keep the current one after it:
+# FERNET_KEY=<new key>,<current key>. no_encryption_at_rest turns encryption off.
 fernetConfiguration:
   fernetKey: ${FERNET_KEY:-jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=}
 

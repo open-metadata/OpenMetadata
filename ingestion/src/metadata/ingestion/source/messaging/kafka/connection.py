@@ -32,12 +32,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.models.custom_pydantic import SECRET
+from metadata.ingestion.models.custom_pydantic import SECRET, resolve_secret_reference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
 
 
 class InvalidKafkaCreds(Exception):  # noqa: N818
@@ -59,36 +56,6 @@ TIMEOUT_SECONDS = 10
 CONSUMER_ONLY_CONFIG_KEYS = ("group.id", "enable.auto.commit", "auto.offset.reset")
 
 
-def _resolve_secret_value(value: str) -> str:
-    """Resolve a `secret:` reference against the configured secrets manager.
-
-    Imported lazily, as in custom_pydantic, to avoid a circular import.
-    """
-    from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
-        DBSecretsManager,
-    )
-    from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
-        SecretsManagerFactory,
-    )
-
-    secrets_manager = SecretsManagerFactory().get_secrets_manager()
-    # The server only hands out references with an external store; under the default DB
-    # provider a value starting with `secret:` is the literal setting and must reach the client.
-    if not secrets_manager or isinstance(secrets_manager, DBSecretsManager):
-        return value
-    secret_id = value.replace(SECRET, "", 1)
-    try:
-        resolved = secrets_manager.get_string_value(secret_id)
-    except Exception as exc:  # pylint: disable=broad-except
-        logger.error(
-            "Secret value [%s] not present in the configured secrets manager: %s",
-            secret_id,
-            exc,
-        )
-        return value
-    return resolved if resolved is not None else value
-
-
 def client_config(config: BaseModel | None) -> dict:
     """consumerConfig/schemaRegistryConfig as the flat dict librdkafka takes: declared keys
     (`sasl.password`) under their dotted names next to the free-form entries, with secrets left
@@ -100,13 +67,17 @@ def client_config(config: BaseModel | None) -> dict:
 
 def _resolve_secret_values(config: dict) -> dict:
     """consumerConfig/schemaRegistryConfig entries are encrypted per entry on the server.
-    With an external secrets manager the API hands the client `secret:` references, which
-    typed password fields resolve through CustomSecretStr but a free-form map cannot, so
-    resolve them here before the dict reaches librdkafka."""
-    return {
-        key: _resolve_secret_value(value) if isinstance(value, str) and value.startswith(SECRET) else value
-        for key, value in config.items()
-    }
+    With an external secrets manager the API hands the client `secret:` references, for the
+    declared keys and the free-form entries alike, so resolve them here before the dict reaches
+    librdkafka. An entry whose secret holds a cleared credential is left out, as the server
+    leaves out a cleared entry."""
+    resolved = {}
+    for key, value in config.items():
+        is_reference = isinstance(value, str) and value.startswith(SECRET)
+        resolved_value = resolve_secret_reference(value) if is_reference else value
+        if resolved_value is not None:
+            resolved[key] = resolved_value
+    return resolved
 
 
 class KafkaClient:
