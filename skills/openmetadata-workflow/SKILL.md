@@ -36,7 +36,7 @@ Load only applicable instructions, batch independent reads, and return compact c
 | E2E test creation | `/playwright` |
 | Finishing implementation | `/test-enforcement` then `/java-affected-tests` (Java side) then `/verification` |
 
-> **Note:** Connector skills (`/connector-standards`, `/connector-building`, `/connector-review`) and `/playwright` are part of the OpenMetadata Skills plugin and ship together with this workflow skill. They are defined in the `skills/` directory alongside this file.
+Use the short commands in the checkout. With the installed Claude Code plugin, prefix each name with `openmetadata-skills:`, for example `/openmetadata-skills:connector-building` or `/openmetadata-skills:playwright`.
 
 > **Why the UI row names skills explicitly:** a skill only loads when it is invoked, and the model
 > decides that from the skill's own `description`. `/composition-patterns` describes itself as being

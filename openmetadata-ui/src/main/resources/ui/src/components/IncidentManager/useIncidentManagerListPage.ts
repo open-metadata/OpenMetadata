@@ -13,6 +13,7 @@
 import { isString, isUndefined, omit, parseInt } from 'lodash';
 import QueryString from 'qs';
 import { useMemo } from 'react';
+import { PAGING_URL_PARAMS } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Table } from '../../generated/entity/data/table';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -42,7 +43,9 @@ export const useIncidentManagerListPage = ({
     return isUndefined(searchData) ? {} : searchData;
   }, [location.search]);
 
-  const filterSearch = QueryString.stringify(omit(allParams, ['key', 'title']));
+  const filterSearch = QueryString.stringify(
+    omit(allParams, ['key', 'title', ...PAGING_URL_PARAMS])
+  );
 
   const filters = useMemo(() => {
     const urlParams = QueryString.parse(filterSearch);

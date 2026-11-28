@@ -18,7 +18,6 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v211.DataProductLineageSelfLoopRepair;
 import org.openmetadata.service.migration.utils.v211.IncidentOpenIntervalMigration;
 import org.openmetadata.service.migration.utils.v211.SuggestionTaskOwnerFallbackMigration;
 
@@ -42,11 +41,5 @@ public class Migration extends MigrationProcessImpl {
         () ->
             SuggestionTaskOwnerFallbackMigration.routeUnownedSuggestionsToOwnersThenAdmins(
                 handle, POSTGRES));
-    // Released versions wrote data product lineage edges from a product to itself.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        DataProductLineageSelfLoopRepair.STEP_NAME,
-        () -> DataProductLineageSelfLoopRepair.deleteAll(handle));
   }
 }

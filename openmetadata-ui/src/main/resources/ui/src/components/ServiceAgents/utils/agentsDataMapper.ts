@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DEFAULT_PIPELINE_TIMEZONE } from '../../../constants/Schedular.constants';
 import { AgentStatus } from '../../../enums/ServiceInsights.enum';
 import {
   IngestionPipeline,
@@ -327,6 +328,8 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     errors,
     warnings,
     schedule: pipeline.airflowConfig?.scheduleInterval,
+    scheduleTimezone:
+      pipeline.airflowConfig?.pipelineTimezone ?? DEFAULT_PIPELINE_TIMEZONE,
     recentRuns: buildRecentRuns(pipeline.pipelineStatuses ?? []),
     currentRunId: pipeline.pipelineStatuses?.[0]?.runId,
     lastRunAt: latestStatus?.timestamp,

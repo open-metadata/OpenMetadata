@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.getHttpSession;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
@@ -36,6 +37,7 @@ import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestReposito
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
+import org.openmetadata.mcp.server.auth.util.McpResourceUri;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
@@ -47,6 +49,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.McpClientPolicy;
 import org.openmetadata.service.security.auth.SamlAuthServletHandler;
@@ -162,13 +165,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     this.issuer = issuer;
   }
 
-  /**
-   * Gets the SSO handler from SecurityConfigurationManager. This is resolved dynamically from
-   * database configuration, allowing configuration changes without server restart.
-   */
-  private AuthenticationCodeFlowHandler getSsoHandler() {
+  /** Both ends of the OIDC round trip resolve the handler installed for this server. */
+  public AuthenticationCodeFlowHandler getSsoHandler(ServletContext context) {
     try {
-      return AuthenticationCodeFlowHandler.getInstance();
+      return AuthServeletHandlerRegistry.getOidcHandlerForMcp(context, getBaseUrl());
     } catch (Exception e) {
       LOG.warn("SSO handler not available: {}", e.getMessage());
       return null;
@@ -336,7 +336,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
   private CompletableFuture<String> handleSSOAuthorization(
       OAuthClientInformation client, AuthorizationParams params) throws AuthorizeException {
-    AuthenticationCodeFlowHandler ssoHandler = getSsoHandler();
+    AuthenticationCodeFlowHandler ssoHandler =
+        getSsoHandler(currentRequest.get().getServletContext());
     if (ssoHandler == null) {
       throw new AuthorizeException(
           "server_error", "SSO authentication is not available. SSO handler not initialized.");
@@ -351,13 +352,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
       LOG.debug("Created pending auth request: {}", authRequestId);
 
-      // Use serverUrl + "/mcp/callback" as the redirectUri parameter for MCP flow detection.
-      // AuthenticationCodeFlowHandler.handleLogin() matches this against expectedMcpCallback
-      // to detect MCP flow, then uses the SSO-registered callback URL for the actual redirect_uri
-      // sent to the SSO provider. After auth, AuthCallbackServlet forwards to /mcp/callback.
-      String serverUrl =
-          SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration().getServerUrl();
-      String mcpCallbackUrl = serverUrl + "/mcp/callback";
+      // Public OIDC returns directly to the MCP callback. Confidential OIDC can share the
+      // registered web callback, which forwards the pending MCP state to this same servlet.
+      String mcpCallbackUrl = ssoHandler.getMcpCallbackUrl();
       LOG.info("Starting SSO redirect for MCP OAuth (MCP callback: {})", mcpCallbackUrl);
 
       HttpServletRequest wrappedRequest =
@@ -943,6 +940,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
                 + " seconds ago. Please restart the authorization flow.");
       }
 
+      final String audience = requireResourceAudience();
+
       // Atomically mark as used — prevents replay attacks.
       // NOTE: Consuming BEFORE PKCE verification is intentional per RFC 6749 §4.1.2 (single-use).
       // If PKCE verification fails after consumption, the client must restart the flow. This is
@@ -1016,7 +1015,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       }
 
       JWTAuthMechanism jwtAuth =
-          issueAccessToken(user, userName, client.getClientId(), usedRecord.scopes());
+          issueAccessToken(user, userName, client.getClientId(), usedRecord.scopes(), audience);
 
       // Generate cryptographically secure refresh token (32 bytes = 256 bits) for long-lived
       // sessions (OAuth 2.0 RFC 6749)
@@ -1055,13 +1054,21 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     }
   }
 
+  private String requireResourceAudience() throws TokenException {
+    return McpResourceUri.canonicalize(getIssuer())
+        .orElseThrow(
+            () ->
+                new TokenException("server_error", "MCP resource URI is not configured correctly"));
+  }
+
   /**
-   * Mints an access token naming the client it was issued to, and stores it. JwtFilter refuses one
-   * that is no longer stored, which is how a revoke reaches every server.
+   * Mints an access token naming the client it was issued to and bound to this MCP server's
+   * canonical resource URI via {@code aud}, then stores its hash. JwtFilter refuses one that is no
+   * longer stored, which is how a revoke reaches every server.
    * ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
    */
   private JWTAuthMechanism issueAccessToken(
-      User user, String userName, String clientId, List<String> scopes) {
+      User user, String userName, String clientId, List<String> scopes, String audience) {
     JWTAuthMechanism jwtAuth =
         jwtGenerator.generateJWTToken(
             userName,
@@ -1072,7 +1079,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             false,
             ServiceTokenType.OM_USER,
             scopes,
-            clientId);
+            clientId,
+            audience);
     tokenRepository.storeAccessToken(
         new AccessToken(jwtAuth.getJWTToken(), clientId, scopes, jwtAuth.getJWTTokenExpiresAt()),
         clientId,
@@ -1172,6 +1180,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
             "Requested scopes exceed originally granted scopes. Scope expansion is not allowed.");
       }
 
+      final String audience = requireResourceAudience();
       String userName = tokenRecord.getUserName();
       LOG.debug("Refresh token validated successfully (rotating token)");
 
@@ -1202,7 +1211,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       // rather than costing the client its grant. If the rotation then fails, the stored token was
       // never handed out and expires on its own.
       JWTAuthMechanism jwtAuth =
-          issueAccessToken(user, userName, client.getClientId(), requestedScopes);
+          issueAccessToken(user, userName, client.getClientId(), requestedScopes, audience);
 
       // Atomic CAS rotation: atomically revoke the old token, then store the new one.
       // If a concurrent request already consumed this token, CAS fails and we reject.

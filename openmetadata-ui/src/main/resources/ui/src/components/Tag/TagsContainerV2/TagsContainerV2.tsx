@@ -19,7 +19,7 @@ import {
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { isEmpty, isEqual } from 'lodash';
+import { difference, isEmpty, isEqual } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -133,6 +133,14 @@ const TagsContainerV2 = ({
     [tagType, permission, tags?.[tagType], tags, layoutType]
   );
 
+  // Callers replace the whole tag list with what we emit, so every tag this picker does not edit
+  // must go back out: the other source's tags and the Tier/Certification tags getFilterTags hides.
+  // Removed by reference, not FQN: a classification tag and a glossary term may share an FQN.
+  const untouchedTags = useMemo(
+    () => difference(selectedTags, tags[tagType] ?? []),
+    [selectedTags, tags, tagType]
+  );
+
   const showNoDataPlaceholder = useMemo(
     () => !showAddTagButton && isEmpty(tags?.[tagType]),
     [showAddTagButton, tags?.[tagType]]
@@ -158,10 +166,7 @@ const TagsContainerV2 = ({
           updatedTags.map(({ tagFQN }) => tagFQN)
         )
       ) {
-        await onSelectionChange([
-          ...updatedTags,
-          ...(tags?.[TagSource.Classification] ?? []),
-        ]);
+        await onSelectionChange([...updatedTags, ...untouchedTags]);
       }
 
       handleExternalControl(false);
@@ -169,7 +174,7 @@ const TagsContainerV2 = ({
     [
       onSelectionChange,
       selectedTagsInternal,
-      tags,
+      untouchedTags,
       defaultLabelType,
       defaultState,
       handleExternalControl,
@@ -192,10 +197,7 @@ const TagsContainerV2 = ({
           updatedTags.map(({ tagFQN }) => tagFQN)
         )
       ) {
-        await onSelectionChange([
-          ...updatedTags,
-          ...(tags?.[TagSource.Glossary] ?? []),
-        ]);
+        await onSelectionChange([...updatedTags, ...untouchedTags]);
       }
 
       handleExternalControl(false);
@@ -203,7 +205,7 @@ const TagsContainerV2 = ({
     [
       onSelectionChange,
       selectedTagsInternal,
-      tags,
+      untouchedTags,
       defaultLabelType,
       defaultState,
       handleExternalControl,

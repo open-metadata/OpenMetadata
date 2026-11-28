@@ -24,7 +24,7 @@ logger = profiler_logger()
 
 class CustomImage(TypeDecorator):
     """
-    Convert RowVersion
+    Map VARBINARY image columns
     """
 
     impl = VARBINARY

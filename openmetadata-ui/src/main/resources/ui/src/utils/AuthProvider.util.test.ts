@@ -141,6 +141,8 @@ describe('isRefreshableAuthError — 401 allow-list semantics (auth-coordinator-
     expect(isRefreshableAuthError(401, 'auth/refresh', {})).toBe(false);
     expect(isRefreshableAuthError(401, '/auth/refresh', {})).toBe(false);
     expect(isRefreshableAuthError(401, '/users/login', {})).toBe(false);
+    // The login servlet: a rejected sign-in must not run the session-expired flow.
+    expect(isRefreshableAuthError(401, '/auth/login', {})).toBe(false);
   });
 
   it('returns false for a /users/loggedInUser 401 whose message is not refreshable', () => {

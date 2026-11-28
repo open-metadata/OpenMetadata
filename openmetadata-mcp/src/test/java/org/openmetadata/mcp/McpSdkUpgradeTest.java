@@ -257,9 +257,10 @@ public class McpSdkUpgradeTest {
   @Test
   void looseArgumentsStillReachTheTool() {
     McpStatelessServerTransport transport = mock(McpStatelessServerTransport.class);
+    final McpServer mcpServer = new McpServer();
     McpStatelessSyncServer server =
-        McpServer.buildServer(
-            transport, new McpServer().buildServerCapabilities(), MCPConfiguration::new);
+        mcpServer.buildServer(
+            transport, mcpServer.buildServerCapabilities(), MCPConfiguration::new);
     McpSchema.Tool searchMetadata =
         McpUtils.getToolProperties("json/data/mcp/tools.json").stream()
             .filter(tool -> "search_metadata".equals(tool.name()))
@@ -307,7 +308,8 @@ public class McpSdkUpgradeTest {
     when(transport.protocolVersions()).thenReturn(List.of("2025-11-25"));
     MCPConfiguration configured =
         new MCPConfiguration().withMcpServerName("acme-mcp").withMcpServerVersion("9.9.9");
-    McpServer.buildServer(transport, new McpServer().buildServerCapabilities(), () -> configured);
+    final McpServer mcpServer = new McpServer();
+    mcpServer.buildServer(transport, mcpServer.buildServerCapabilities(), () -> configured);
     McpSchema.InitializeResult initialized = initialize(transport);
 
     assertThat(initialized.instructions()).isNull();
@@ -334,11 +336,8 @@ public class McpSdkUpgradeTest {
     McpStatelessServerTransport transport = mock(McpStatelessServerTransport.class);
     when(transport.protocolVersions()).thenReturn(List.of("2025-11-25"));
 
-    McpServer.buildServer(
-        transport,
-        distribution.buildServerCapabilities(),
-        MCPConfiguration::new,
-        distribution.serverInstructions());
+    distribution.buildServer(
+        transport, distribution.buildServerCapabilities(), MCPConfiguration::new);
 
     assertThat(initialize(transport).instructions()).isEqualTo(instructions);
   }

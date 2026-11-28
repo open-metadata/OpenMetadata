@@ -22,10 +22,10 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.migration.utils.v211.DataProductLineageSelfLoopRepair;
+import org.openmetadata.service.migration.utils.v212.DataProductLineageSelfLoopRepair;
 
 /**
- * Released versions wrote data product lineage edges from a product to itself. The 2.1.1 step
+ * Released versions wrote data product lineage edges from a product to itself. The 2.1.2 step
  * deletes those rollup rows and keeps every other data product edge.
  */
 @ExtendWith(TestNamespaceExtension.class)
