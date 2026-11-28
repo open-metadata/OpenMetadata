@@ -247,8 +247,8 @@ def test_none_row_count_does_not_crash(operator, threshold, expected_status):
     [
         # 3 rows match, 3 total → < 10: Success, passed=0, failed=3
         ("<", 10, ALL_ROWS, TestCaseStatus.Success, 0, 3),
-        # 3 rows match, 3 total → == 3: Success, passed=3, failed=0
-        ("==", 3, ALL_ROWS, TestCaseStatus.Success, 3, 0),
+        # 3 rows match, 3 total → == 3: Success, passed=0, failed=3
+        ("==", 3, ALL_ROWS, TestCaseStatus.Success, 0, 3),
         # 3 rows match, 3 total → > 0: Success, passed=3, failed=0
         (">", 0, ALL_ROWS, TestCaseStatus.Success, 3, 0),
         # 3 rows match, 3 total → >= 3: Success, passed=3, failed=0
