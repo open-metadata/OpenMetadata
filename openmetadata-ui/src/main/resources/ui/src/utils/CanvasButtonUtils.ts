@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { Edge } from 'reactflow';
 import { CANVAS_BUTTON_COLORS } from '../constants/Color.constants';
+import { EntityType } from '../enums/entity.enum';
 import { StatusType } from '../generated/entity/data/pipeline';
 import { resolveCssColor } from './common/cssColor.utils';
 
@@ -29,6 +31,54 @@ export interface CanvasButton {
   executionStatus?: StatusType;
   isPipelineRootNode?: boolean;
 }
+
+export interface CanvasButtonHitData {
+  button: CanvasButton;
+  edge: Edge;
+}
+
+export interface CanvasPipelinePreview {
+  key: string;
+  button: CanvasButton;
+  entityFQN: string;
+  entityType: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
+  executionStatus?: StatusType;
+}
+
+export const getCanvasPipelinePreview = ({
+  button,
+  edge,
+}: CanvasButtonHitData): CanvasPipelinePreview | undefined => {
+  if (button.type !== ECanvasButtonType.Pipeline) {
+    return;
+  }
+
+  const details = edge.data?.edge;
+  const pipeline = details?.pipeline;
+  const entityFQN = pipeline?.fullyQualifiedName;
+  const entityType =
+    details?.pipelineEntityType ?? pipeline?.type ?? EntityType.PIPELINE;
+
+  if (
+    typeof entityFQN !== 'string' ||
+    !entityFQN.trim() ||
+    (entityType !== EntityType.PIPELINE &&
+      entityType !== EntityType.STORED_PROCEDURE)
+  ) {
+    return;
+  }
+
+  return {
+    key: JSON.stringify([edge.id, entityType, pipeline.id, entityFQN]),
+    button,
+    entityFQN,
+    entityType,
+    executionStatus: button.executionStatus,
+  };
+};
+
+export const isSameCanvasButtonPosition = (a: CanvasButton, b: CanvasButton) =>
+  a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
 
 const BUTTON_SIZE = 36;
 const ICON_SIZE = 14;

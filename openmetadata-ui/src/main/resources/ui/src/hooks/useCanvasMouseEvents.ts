@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MutableRefObject, RefObject, useCallback } from 'react';
+import { RefObject, useCallback } from 'react';
 import { Edge } from 'reactflow';
-import { CanvasButton } from '../utils/CanvasButtonUtils';
+import { CanvasButtonHitData } from '../utils/CanvasButtonUtils';
 
 interface UseCanvasMouseEventsProps {
   containerRef: RefObject<HTMLDivElement>;
@@ -20,40 +20,25 @@ interface UseCanvasMouseEventsProps {
     ((x: number, y: number, rect: DOMRect) => Edge | null) | null
   >;
   getButtonAtPointRef: RefObject<
-    | ((
-        x: number,
-        y: number,
-        rect: DOMRect
-      ) => {
-        button: CanvasButton;
-        edge: Edge;
-      } | null)
-    | null
+    ((x: number, y: number, rect: DOMRect) => CanvasButtonHitData | null) | null
   >;
-  setHoveredButtonRef: RefObject<
-    ((button: CanvasButton | null) => void) | null
-  >;
+  onButtonHover: (hit: CanvasButtonHitData | null) => void;
   onEdgeClickRef: RefObject<
     ((edge: Edge, event: MouseEvent) => void) | undefined
   >;
   onEdgeHoverRef: RefObject<((edge: Edge | null) => void) | undefined>;
-  hoverTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
-  isOverPopoverRef: MutableRefObject<boolean>;
 }
 
 export function useCanvasMouseEvents({
   containerRef,
   getEdgeAtPointRef,
   getButtonAtPointRef,
-  setHoveredButtonRef,
+  onButtonHover,
   onEdgeClickRef,
   onEdgeHoverRef,
-  hoverTimeoutRef,
-  isOverPopoverRef,
 }: UseCanvasMouseEventsProps) {
   const handleClick = useCallback(
-    (event: Event) => {
-      const mouseEvent = event as MouseEvent;
+    (mouseEvent: MouseEvent) => {
       const container = containerRef.current;
       if (!container) {
         return;
@@ -90,73 +75,48 @@ export function useCanvasMouseEvents({
     [containerRef, getButtonAtPointRef, getEdgeAtPointRef, onEdgeClickRef]
   );
 
-  const handleMouseMove = useCallback(
-    (event: Event) => {
-      const mouseEvent = event as MouseEvent;
+  const handlePointerLeave = useCallback(() => {
+    onButtonHover(null);
+    onEdgeHoverRef.current?.(null);
+  }, [onButtonHover, onEdgeHoverRef]);
+
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      if (event.pointerType === 'touch' || event.buttons) {
+        handlePointerLeave();
+
+        return;
+      }
+
       const container = containerRef.current;
       if (!container) {
         return;
       }
 
       const rect = container.getBoundingClientRect();
+      const hit =
+        getButtonAtPointRef.current?.(event.clientX, event.clientY, rect) ??
+        null;
+      onButtonHover(hit);
 
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = null;
-      }
-
-      const buttonData = getButtonAtPointRef.current?.(
-        mouseEvent.clientX,
-        mouseEvent.clientY,
-        rect
-      );
-
-      if (buttonData) {
-        setHoveredButtonRef.current?.(buttonData.button);
-        onEdgeHoverRef.current?.(null);
-
-        return;
-      }
-
-      if (!isOverPopoverRef.current) {
-        hoverTimeoutRef.current = setTimeout(() => {
-          setHoveredButtonRef.current?.(null);
-        }, 100);
-      }
-
-      const edge = getEdgeAtPointRef.current?.(
-        mouseEvent.clientX,
-        mouseEvent.clientY,
-        rect
-      );
-      onEdgeHoverRef.current?.(edge as Edge);
+      const edge = hit
+        ? null
+        : getEdgeAtPointRef.current?.(event.clientX, event.clientY, rect);
+      onEdgeHoverRef.current?.(edge ?? null);
     },
     [
       containerRef,
       getButtonAtPointRef,
-      setHoveredButtonRef,
-      onEdgeHoverRef,
       getEdgeAtPointRef,
-      hoverTimeoutRef,
-      isOverPopoverRef,
+      handlePointerLeave,
+      onButtonHover,
+      onEdgeHoverRef,
     ]
   );
 
-  const handleMouseLeave = useCallback(() => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-
-    if (!isOverPopoverRef.current) {
-      onEdgeHoverRef.current?.(null);
-      setHoveredButtonRef.current?.(null);
-    }
-  }, [hoverTimeoutRef, isOverPopoverRef, onEdgeHoverRef, setHoveredButtonRef]);
-
   return {
     handleClick,
-    handleMouseMove,
-    handleMouseLeave,
+    handlePointerMove,
+    handlePointerLeave,
   };
 }

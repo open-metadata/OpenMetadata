@@ -213,7 +213,7 @@ describe('CanvasEdgeRenderer', () => {
     });
   });
 
-  it('handles mouse move events', async () => {
+  it('handles pointer move events', async () => {
     const onEdgeHover = jest.fn();
     mockGetEdgeAtPoint.mockReturnValue(mockEdges[0]);
 
@@ -238,7 +238,7 @@ describe('CanvasEdgeRenderer', () => {
         toJSON: () => ({}),
       });
 
-    const moveEvent = new MouseEvent('mousemove', {
+    const moveEvent = new MouseEvent('pointermove', {
       bubbles: true,
       clientX: 100,
       clientY: 100,
@@ -254,14 +254,14 @@ describe('CanvasEdgeRenderer', () => {
     });
   });
 
-  it('handles mouse leave events', async () => {
+  it('handles pointer leave events', async () => {
     const onEdgeHover = jest.fn();
 
     renderInReactFlow(
       <CanvasEdgeRenderer {...defaultProps} onEdgeHover={onEdgeHover} />
     );
 
-    const leaveEvent = new MouseEvent('mouseleave', { bubbles: true });
+    const leaveEvent = new MouseEvent('pointerleave', { bubbles: true });
 
     fireEvent(
       document.querySelector('.react-flow__pane') as HTMLElement,
@@ -368,11 +368,11 @@ describe('CanvasEdgeRenderer', () => {
       expect.any(Function)
     );
     expect(removeEventListenerSpy).toHaveBeenCalledWith(
-      'mousemove',
+      'pointermove',
       expect.any(Function)
     );
     expect(removeEventListenerSpy).toHaveBeenCalledWith(
-      'mouseleave',
+      'pointerleave',
       expect.any(Function)
     );
   });
