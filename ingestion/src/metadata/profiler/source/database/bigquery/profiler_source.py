@@ -33,9 +33,10 @@ class BigQueryProfilerSource(ProfilerSource):
         database in workflow.py `def execute`.
 
         Args:
+            config (OpenMetadataWorkflowConfig): workflow config
             database (Database): a database entity
 
         Returns:
-            DatabaseConnection
+            BigQueryConnection
         """
         return copy_service_config(config, database.name.root)
