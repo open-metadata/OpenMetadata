@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
@@ -122,6 +123,25 @@ public class ViewPermissionFilter {
         requestCheck(securityContext, operations.toArray(MetadataOperation[]::new)),
         new EntityReference().withType(resource),
         context);
+  }
+
+  /**
+   * Whether the caller passes {@code requests} as an item endpoint authorized with {@link
+   * AuthorizationLogic#ANY} decides them, for a row whose endpoint accepts any of several grants,
+   * as a test case result or incident is read through its test case or the entity it tests. The
+   * requests are built inside the check, so a row whose authorization context cannot be resolved
+   * is denied too. Never throws; anything but a clear allow denies.
+   */
+  public boolean isPermittedAny(
+      SecurityContext securityContext, Supplier<List<AuthRequest>> requests) {
+    boolean permitted = false;
+    try {
+      authorizer.authorizeRequests(securityContext, requests.get(), AuthorizationLogic.ANY);
+      permitted = true;
+    } catch (RuntimeException e) {
+      LOG.debug("Hiding row: {}", e.getMessage());
+    }
+    return permitted;
   }
 
   private Set<UUID> viewableIds(AccessCheck check, List<EntityReference> references) {

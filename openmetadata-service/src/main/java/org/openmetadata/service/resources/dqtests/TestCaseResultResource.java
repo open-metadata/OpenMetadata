@@ -79,8 +79,16 @@ public class TestCaseResultResource
   private final TestCaseResultMapper mapper = new TestCaseResultMapper();
   static final String FIELDS = "testCase,testDefinition";
 
+  private final TestCaseRowAuthorization resultRows;
+
   public TestCaseResultResource(Authorizer authorizer) {
     super(Entity.TEST_CASE_RESULT, authorizer);
+    ResourceContextInterface noResource = TestCaseResourceContext.builder().build();
+    this.resultRows =
+        new TestCaseRowAuthorization(
+            authorizer,
+            resultViewRequests(noResource, noResource),
+            TestCaseResultResource::resultViewRequests);
   }
 
   public static class TestCaseResultList extends ResultList<TestCaseResult> {
@@ -170,25 +178,24 @@ public class TestCaseResultResource
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs) {
-    TestCase testCase = getTestCase(fqn);
-    ResourceContextInterface testCaseResourceContext =
-        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
-    OperationContext testCaseOperationContext =
-        new OperationContext(TEST_CASE, MetadataOperation.VIEW_ALL);
-    ResourceContextInterface entityResourceContext =
-        TestCaseResourceContext.builder()
-            .entityLink(MessageParser.EntityLink.parse(testCase.getEntityLink()))
-            .build();
-    OperationContext entityOperationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-
-    List<AuthRequest> authRequests =
-        List.of(
-            new AuthRequest(testCaseOperationContext, testCaseResourceContext),
-            new AuthRequest(entityOperationContext, entityResourceContext));
-    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    authorizer.authorizeRequests(securityContext, resultViewRequests(fqn), AuthorizationLogic.ANY);
     return PIIMasker.getTestCaseResults(
         repository.getTestCaseResults(fqn, startTs, endTs), authorizer, securityContext);
+  }
+
+  /** The requests a test case's results are read with: on the test case or the tested entity. */
+  private static List<AuthRequest> resultViewRequests(String testCaseFQN) {
+    TestCaseRowAuthorization.TestCaseContexts contexts =
+        TestCaseRowAuthorization.TestCaseContexts.of(testCaseFQN);
+    return resultViewRequests(contexts.testCase(), contexts.testedEntity());
+  }
+
+  private static List<AuthRequest> resultViewRequests(
+      ResourceContextInterface testCase, ResourceContextInterface testedEntity) {
+    return List.of(
+        new AuthRequest(new OperationContext(TEST_CASE, MetadataOperation.VIEW_ALL), testCase),
+        new AuthRequest(
+            new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS), testedEntity));
   }
 
   @GET
@@ -364,6 +371,8 @@ public class TestCaseResultResource
               authRequests,
               AuthorizationLogic.ANY);
     }
+    results.setData(
+        resultRows.readable(securityContext, results.getData(), TestCaseResult::getTestCaseFQN));
     return PIIMasker.getTestCaseResults(results, authorizer, securityContext);
   }
 
@@ -426,9 +435,11 @@ public class TestCaseResultResource
 
     List<AuthRequest> authRequests = getAuthRequestsForListOps(testCaseFQN, testSuiteId);
 
-    return PIIMasker.getTestCaseResult(
+    TestCaseResult latest =
         super.latestInternalFromSearch(
-            securityContext, fields, searchListFilter, q, authRequests, AuthorizationLogic.ANY),
+            securityContext, fields, searchListFilter, q, authRequests, AuthorizationLogic.ANY);
+    return PIIMasker.getTestCaseResult(
+        resultRows.readableOrNull(securityContext, latest, TestCaseResult::getTestCaseFQN),
         authorizer,
         securityContext);
   }

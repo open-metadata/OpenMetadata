@@ -100,9 +100,16 @@ public class TestCaseResolutionStatusResource
   private static final int MAX_BULK_CREATE_SIZE = 100;
   private static final String MAX_BULK_CREATE_SIZE_TEXT = "100";
   private final TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
+  private final TestCaseRowAuthorization incidentRows;
 
   public TestCaseResolutionStatusResource(Authorizer authorizer) {
     super(Entity.TEST_CASE_RESOLUTION_STATUS, authorizer);
+    ResourceContextInterface noResource = TestCaseResourceContext.builder().build();
+    this.incidentRows =
+        new TestCaseRowAuthorization(
+            authorizer,
+            buildViewAuthRequests(noResource, noResource),
+            TestCaseResolutionStatusResource::incidentViewRequests);
   }
 
   public static class TestCaseResolutionStatusResultList
@@ -267,12 +274,24 @@ public class TestCaseResolutionStatusResource
       filter.addQueryParam("testDefinitionId", testDefinitionId.toString());
     }
     repository.addTestCaseOwnerFilter(filter, owner, unowned);
-    return repository.listIncidentRecords(
-        cursorForPage(page, limitParam, offset),
-        limitParam,
-        filter,
-        latest,
-        new IncidentListRange(dateField, startTs, endTs));
+    ResultList<TestCaseResolutionStatus> incidents =
+        repository.listIncidentRecords(
+            cursorForPage(page, limitParam, offset),
+            limitParam,
+            filter,
+            latest,
+            new IncidentListRange(dateField, startTs, endTs));
+    return withReadableIncidents(securityContext, incidents);
+  }
+
+  private ResultList<TestCaseResolutionStatus> withReadableIncidents(
+      SecurityContext securityContext, ResultList<TestCaseResolutionStatus> incidents) {
+    incidents.setData(
+        incidentRows.readable(
+            securityContext,
+            incidents.getData(),
+            incident -> incident.getTestCaseReference().getFullyQualifiedName()));
+    return incidents;
   }
 
   @GET
@@ -472,7 +491,9 @@ public class TestCaseResolutionStatusResource
         buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
-    return repository.listTestCaseResolutionStatusesForStateId(stateId, limit, after);
+    return withReadableIncidents(
+        securityContext,
+        repository.listTestCaseResolutionStatusesForStateId(stateId, limit, after));
   }
 
   @GET
@@ -500,24 +521,19 @@ public class TestCaseResolutionStatusResource
           UUID testCaseResolutionStatusId) {
     TestCaseResolutionStatus testCaseResolutionStatus =
         repository.getByIdOrNotFound(testCaseResolutionStatusId);
-    TestCase testCase =
-        Entity.getEntityByName(
-            Entity.TEST_CASE,
-            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
-            "",
-            Include.ALL);
-
-    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
-
-    ResourceContextInterface testCaseResourceContext =
-        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
-    ResourceContextInterface entityResourceContext =
-        TestCaseResourceContext.builder().entityLink(entityLink).build();
-    List<AuthRequest> requests =
-        buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
-
+    authorizer.authorizeRequests(
+        securityContext,
+        incidentViewRequests(
+            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName()),
+        AuthorizationLogic.ANY);
     return testCaseResolutionStatus;
+  }
+
+  /** The requests an incident is read with: a view grant on its test case or the tested entity. */
+  private static List<AuthRequest> incidentViewRequests(String testCaseFQN) {
+    TestCaseRowAuthorization.TestCaseContexts contexts =
+        TestCaseRowAuthorization.TestCaseContexts.of(testCaseFQN);
+    return buildViewAuthRequests(contexts.testCase(), contexts.testedEntity());
   }
 
   @POST
