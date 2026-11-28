@@ -326,7 +326,8 @@ public class CreateIngestionPipelineImpl {
         repository.listAllByParentFqn(service.getFullyQualifiedName())) {
       IngestionPipeline ingestionPipeline =
           JsonUtils.readOrConvertValue(ingestionPipelineStr, IngestionPipeline.class);
-      if (ingestionPipeline.getPipelineType().equals(pipelineType)
+      if (!Boolean.TRUE.equals(ingestionPipeline.getDeleted())
+          && ingestionPipeline.getPipelineType().equals(pipelineType)
           && ingestionPipeline.getDisplayName().equals(displayName)) {
         return ingestionPipeline.withService(service.getEntityReference());
       }

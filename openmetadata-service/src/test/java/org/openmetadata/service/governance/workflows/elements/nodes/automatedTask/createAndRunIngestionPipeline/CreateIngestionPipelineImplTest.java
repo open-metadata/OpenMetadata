@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -159,6 +160,76 @@ class CreateIngestionPipelineImplTest {
             .isSuccessful());
 
     assertEquals(tokenOf(AUTO_CLASSIFICATION_BOT), deployedToken());
+  }
+
+  @Test
+  void rerunningAutoPilotCreatesAFreshAgentWhenTheExistingOneIsSoftDeleted() {
+    final IngestionPipeline deleted =
+        new IngestionPipeline()
+            .withId(UUID.randomUUID())
+            .withName("deleted-agent")
+            .withDisplayName("Metadata Agent")
+            .withPipelineType(PipelineType.METADATA)
+            .withDeleted(true)
+            .withSourceConfig(new SourceConfig().withConfig(Map.of("type", "Metadata")))
+            .withOpenMetadataServerConnection(connectionFor(Entity.INGESTION_BOT_NAME));
+    when(pipelineRepository.listAllByParentFqn(anyString()))
+        .thenReturn(List.of(JsonUtils.pojoToJson(deleted)));
+
+    assertTrue(
+        createIngestionPipeline.execute(service, PipelineType.METADATA, true).isSuccessful());
+
+    final ArgumentCaptor<IngestionPipeline> createdCaptor =
+        ArgumentCaptor.forClass(IngestionPipeline.class);
+    verify(pipelineRepository).create(isNull(), createdCaptor.capture());
+    final IngestionPipeline created = createdCaptor.getValue();
+    assertNotEquals(deleted.getId(), created.getId());
+    assertNotEquals(Boolean.TRUE, created.getDeleted());
+
+    final IngestionPipeline deployed = deployedPipeline(service);
+    assertNotEquals(deleted.getId(), deployed.getId());
+    assertEquals(created.getId(), deployed.getId());
+
+    final ArgumentCaptor<IngestionPipeline> updatedCaptor =
+        ArgumentCaptor.forClass(IngestionPipeline.class);
+    verify(pipelineRepository)
+        .createOrUpdate(isNull(), updatedCaptor.capture(), nullable(String.class));
+    assertNotEquals(deleted.getId(), updatedCaptor.getValue().getId());
+    assertNotEquals(Boolean.TRUE, updatedCaptor.getValue().getDeleted());
+  }
+
+  @Test
+  void rerunningAutoPilotReusesALiveAgentWhenADeletedSiblingExists() {
+    final IngestionPipeline deleted =
+        new IngestionPipeline()
+            .withId(UUID.randomUUID())
+            .withName("deleted-agent")
+            .withDisplayName("AutoClassification Agent")
+            .withPipelineType(PipelineType.AUTO_CLASSIFICATION)
+            .withDeleted(true)
+            .withSourceConfig(new SourceConfig().withConfig(Map.of("type", "AutoClassification")))
+            .withOpenMetadataServerConnection(connectionFor(Entity.INGESTION_BOT_NAME));
+    final IngestionPipeline live =
+        new IngestionPipeline()
+            .withId(UUID.randomUUID())
+            .withName("live-agent")
+            .withDisplayName("AutoClassification Agent")
+            .withPipelineType(PipelineType.AUTO_CLASSIFICATION)
+            .withSourceConfig(new SourceConfig().withConfig(Map.of("type", "AutoClassification")))
+            .withOpenMetadataServerConnection(connectionFor(Entity.INGESTION_BOT_NAME));
+    when(pipelineRepository.listAllByParentFqn(anyString()))
+        .thenReturn(List.of(JsonUtils.pojoToJson(deleted), JsonUtils.pojoToJson(live)));
+
+    assertTrue(
+        createIngestionPipeline
+            .execute(service, PipelineType.AUTO_CLASSIFICATION, true)
+            .isSuccessful());
+
+    verify(pipelineRepository, never()).create(isNull(), any(IngestionPipeline.class));
+    final IngestionPipeline deployed = deployedPipeline(service);
+    assertEquals(live.getId(), deployed.getId());
+    assertNotEquals(deleted.getId(), deployed.getId());
+    assertEquals(tokenOf(AUTO_CLASSIFICATION_BOT), connectionToken(deployed));
   }
 
   @Test
