@@ -533,7 +533,8 @@ These go red on the PR. Update them in the same change:
 | A SQL migration, collation or index change | Testcontainers on MySQL **and** Postgres, with legacy rows, version snapshots and a no-op second run |
 | A search field, mapping or refresh change | An IT on a real engine, including documents written in the old shape |
 | A switch or mapping that gains a value | A case in the existing table-driven test |
-| A UI flow, or a fix to the classic page and its AI-mode twin | A Playwright spec for each surface, asserting the result rather than the request |
+| A page's behaviour, or a fix to the classic page and its AI-mode twin | A browser test (`*.browser.test.tsx`) for each surface, asserting what the user sees and the request the page sent |
+| A journey across features against a real server | A Playwright spec, asserting the result rather than the request |
 | A component branch, hook or payload builder | Jest asserting the payload or the rendered outcome, not a mock call. A new component file with a branch gets its own `X.test.tsx` |
 | A connector or DQ boundary | pytest at the boundary, plus a value just past it |
 | A bug fix | A test that fails on `main`. Say so in the PR |
@@ -598,7 +599,8 @@ Ask which assertion goes red if the fix is reverted. The shapes seen in this win
 
 ### A green check must have run the change
 
-PR CI runs Java unit tests only. The ITs and Playwright run in the merge queue, so run them with
+PR CI runs Java unit tests, Jest and the browser tests it selects by impact. The ITs and Playwright
+run in the merge queue, so run them with
 `make java_affected_run` and `make playwright_affected_run`. Also check:
 
 - that `skip-pr-checks` did not skip the job, nor a fork or Dependabot origin (those PRs skip the jobs that

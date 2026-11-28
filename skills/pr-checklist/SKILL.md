@@ -313,7 +313,7 @@ the gate explicitly allows a draft with its remaining work stated:
 - Schema change without `make generate` → models out of sync
 - Backend API change without integration test in `openmetadata-integration-tests/`
 - Integration tests "covered by CI": PR CI no longer runs them; the merge queue is their first run
-- New UI feature without Playwright spec
+- New UI page behaviour without a browser test, or a changed cross-feature journey without a Playwright spec
 - Bug fix without a regression test that fails before the fix
 - Large refactor with `N/A` in the design section — push back and ask for the design
 - Coverage % copied from unrelated evidence — reuse applicable evidence or run the affected check
