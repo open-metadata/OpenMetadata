@@ -32,27 +32,37 @@ jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
 }));
 
 jest.mock('../../common/QueryBuilder/QueryBuilder', () => {
+  const { useState } = jest.requireActual('react');
+
   return function MockQueryBuilder({
     onChange,
     onActionsReady,
     value,
     readonly,
+    tree,
   }: {
     onChange?: (value: string, tree: JsonTree) => void;
     onActionsReady?: (actions: Actions) => void;
     value?: string;
     readonly?: boolean;
+    tree?: JsonTree;
   }) {
+    // The real builder loads its tree once on mount, so a stale tree on the
+    // mounting render is what the user sees.
+    const [mountedTree] = useState(() => JSON.stringify(tree));
+
     return (
       <div data-testid="query-builder-widget">
         <span>Query Builder Widget</span>
         <span>Value: {value}</span>
         <span>Readonly: {readonly ? 'true' : 'false'}</span>
+        <span>Mounted tree: {mountedTree}</span>
         <button
           data-testid="mock-query-change"
           onClick={() => {
             onChange?.('{"and":[{"==":[{"var":"name"},"10"]}]}', {
               type: 'group',
+              id: 'edited-tree',
             } as JsonTree);
             onActionsReady?.({ addRule: jest.fn() } as unknown as Actions);
           }}>
@@ -283,6 +293,151 @@ describe('ContractSemanticFormTab', () => {
       expect(
         screen.queryByDisplayValue('Test Semantic')
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Cancel discards unsaved edits', () => {
+    const twoSemantics: Partial<DataContract> = {
+      semantics: [
+        ...(mockInitialValues.semantics ?? []),
+        {
+          name: 'Second Semantic',
+          description: 'Second Description',
+          rule: 'second rule',
+          enabled: true,
+          jsonTree: '{"type": "group"}',
+        },
+      ] as unknown as DataContract['semantics'],
+    };
+
+    const lastEmittedSemantics = () =>
+      mockOnChange.mock.calls[mockOnChange.mock.calls.length - 1][0].semantics;
+
+    it('restores the name and re-emits the original values on Cancel', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={mockInitialValues}
+          {...commonProps}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.change(screen.getByDisplayValue('Test Semantic'), {
+          target: { value: 'Edited Semantic' },
+        });
+      });
+
+      await waitFor(() =>
+        expect(lastEmittedSemantics()[0].name).toBe('Edited Semantic')
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      });
+
+      expect(lastEmittedSemantics()).toEqual(mockInitialValues.semantics);
+      expect(screen.getByText('Test Semantic')).toBeInTheDocument();
+      expect(screen.queryByText('Edited Semantic')).not.toBeInTheDocument();
+    });
+
+    it('restores the rule changed in the query builder on Cancel', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={mockInitialValues}
+          {...commonProps}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('mock-query-change'));
+      });
+
+      await waitFor(() =>
+        expect(lastEmittedSemantics()[0].rule).not.toBe('test rule')
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      });
+
+      expect(lastEmittedSemantics()[0]).toEqual(
+        expect.objectContaining({
+          rule: 'test rule',
+          jsonTree: '{"type": "group"}',
+        })
+      );
+      expect(screen.getByText('Value: test rule')).toBeInTheDocument();
+      // The collapsed card's read-only builder must mount with the restored
+      // tree, not the cancelled one.
+      expect(
+        screen.getByText('Mounted tree: {"type":"group"}')
+      ).toBeInTheDocument();
+    });
+
+    it('does not emit on Cancel when nothing was edited', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={mockInitialValues}
+          {...commonProps}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      });
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('discards the open card edits when another card is opened', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={twoSemantics}
+          {...commonProps}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.change(screen.getByDisplayValue('Test Semantic'), {
+          target: { value: 'Edited Semantic' },
+        });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('edit-semantic-1'));
+      });
+
+      expect(lastEmittedSemantics()).toEqual(twoSemantics.semantics);
+      expect(screen.getByText('Test Semantic')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Second Semantic')).toBeInTheDocument();
+    });
+
+    it('keeps editing the same card when an earlier card is deleted', async () => {
+      render(
+        <ContractSemanticFormTab
+          initialValues={twoSemantics}
+          {...commonProps}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('edit-semantic-1'));
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('delete-semantic-0'));
+      });
+
+      expect(screen.getByDisplayValue('Second Semantic')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      });
+
+      expect(screen.getByText('Second Semantic')).toBeInTheDocument();
+      expect(lastEmittedSemantics()).toEqual([twoSemantics.semantics?.[1]]);
     });
   });
 
