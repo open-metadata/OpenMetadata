@@ -1874,11 +1874,8 @@ version: "1.0.0"`;
       // Navigate to SLA tab
       await page.getByRole('tab', { name: 'SLA' }).click();
 
-      // Update refresh frequency from 12 to 48 hours
-      await page
-        .getByTestId('refresh-frequency-interval-input')
-        .locator('input')
-        .clear();
+      // Update refresh frequency from 12 to 48 hours. fill() replaces the value in one
+      // edit; clearing first empties the interval, which also resets the unit.
       await page
         .getByTestId('refresh-frequency-interval-input')
         .locator('input')
