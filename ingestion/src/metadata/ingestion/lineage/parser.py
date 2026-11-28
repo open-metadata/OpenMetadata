@@ -25,6 +25,7 @@ import sqlglot
 import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
+from collate_sqllineage.core.holders import SQLLineageHolder
 from collate_sqllineage.core.models import Column, DataFunction, Location, SubQuery, Table
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
 from collate_sqllineage.core.parser.sqlglot.analyzer import (
@@ -365,6 +366,31 @@ class LineageParser:
             return self.retrieve_tables(self.parser.target_tables)
         return []
 
+    @staticmethod
+    def _column_lineage_paths(parser: LineageRunner) -> list[tuple[Column, Column]]:
+        read_write_tables = set(parser.source_tables).intersection(parser.target_tables)
+        if not read_write_tables or len(parser.statements()) != 1:
+            return parser.get_column_lineage()
+
+        # A single statement reads the old table values. Following an edge out of an
+        # overwritten column would use its new value and can invent another dependency.
+        # Across statements a write really can feed a later read, so keep those paths.
+        holder = parser._sql_holder  # pylint: disable=protected-access
+        readback_edges = [
+            (source, target)
+            for source, target in holder.column_lineage_graph.edges
+            if source.parent in read_write_tables
+        ]
+        if not readback_edges:
+            return parser.get_column_lineage()
+
+        graph = holder.graph.copy()
+        graph.remove_edges_from(readback_edges)
+        return sorted(
+            ((path[0], path[-1]) for path in SQLLineageHolder(graph).get_column_lineage()),
+            key=lambda endpoints: (str(endpoints[1]), str(endpoints[0])),
+        )
+
     # pylint: disable=protected-access
     @cached_property
     def column_lineage(self) -> list[tuple[Column, Column]]:
@@ -375,10 +401,11 @@ class LineageParser:
         if self.parser is None:
             return []
         try:
+            paths = self._column_lineage_paths(self.parser)
             if self.parser._dialect == SQLPARSE_DIALECT:
-                return self.parser.get_column_lineage()
+                return paths
 
-            for col_lineage in self.parser.get_column_lineage():
+            for col_lineage in paths:
                 # In case of column level lineage it is possible that we get
                 # two or more columns as there might be some intermediate columns
                 # but the source columns will be the first value and

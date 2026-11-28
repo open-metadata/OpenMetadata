@@ -5869,6 +5869,42 @@ class TestCatalogMapping:
         assert self._source()._map_catalogs_in_sql(sql) == sql
 
 
+def test_incremental_dbt_query_lineage_keeps_upstream_columns():
+    from_fqn, model_fqn = "trino_svc.db.s.src", "trino_svc.db.s.target"
+    source = TestCatalogMapping._source(from_fqn, model_fqn)
+    source.metadata.get_by_name.return_value = None
+    source.config = SimpleNamespace(
+        serviceName="trino_svc",
+        serviceConnection=SimpleNamespace(
+            root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="Snowflake")))
+        ),
+    )
+    for table_fqn in (from_fqn, model_fqn):
+        table = source.metadata.es_search_from_fqn(fqn_search_string=table_fqn)[0]
+        table.columns = [
+            Column(name=name, dataType=DataType.INT, fullyQualifiedName=f"{table_fqn}.{name}") for name in ("a", "b")
+        ]
+    link = SimpleNamespace(
+        table_entity=source.metadata.es_search_from_fqn(fqn_search_string=model_fqn)[0],
+        parse_query_lineage=True,
+        datamodel=SimpleNamespace(
+            sql=SimpleNamespace(
+                root="""WITH previous AS (SELECT a FROM db.s.target)
+                    SELECT n.a, COALESCE(n.b, o.a) AS b
+                    FROM db.s.src n LEFT JOIN previous o ON o.a = n.a"""
+            )
+        ),
+    )
+
+    results = list(source.create_dbt_query_lineage(link))
+    assert all(result.left is None for result in results)
+    assert {
+        (model_str(column.fromColumns[0]), model_str(column.toColumn))
+        for result in results
+        for column in result.right.lineage_request.lineage_details.columnsLineage or []
+    } == {(f"{from_fqn}.a", f"{model_fqn}.a"), (f"{from_fqn}.b", f"{model_fqn}.b")}
+
+
 class TestDbtSourceIdentifiers:
     """Source lookup uses warehouse names while dbt references keep logical names."""
 

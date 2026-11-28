@@ -46,6 +46,67 @@ EXPECTED_LINEAGE_MAP = [
 ]
 
 
+@pytest.mark.parametrize(
+    ("previous_table", "expected"),
+    [
+        (
+            "db.s.target",
+            {("db.s.src.a", "db.s.target.a"), ("db.s.src.b", "db.s.target.b"), ("db.s.src.c", "db.s.target.c")},
+        ),
+        (
+            "db.other.target",
+            {
+                ("db.s.src.a", "db.s.target.a"),
+                ("db.s.src.b", "db.s.target.b"),
+                ("db.s.src.c", "db.s.target.c"),
+                ("db.other.target.a", "db.s.target.b"),
+            },
+        ),
+    ],
+)
+def test_column_lineage_of_statement_that_reads_its_target(previous_table, expected):
+    query = f"""
+        CREATE TABLE db.s.target AS
+        WITH previous AS (SELECT a FROM {previous_table})
+        SELECT n.a, COALESCE(n.b, o.a) AS b, n.c
+        FROM db.s.src n LEFT JOIN previous o ON o.a = n.a
+    """
+    parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+    assert {(str(source), str(target)) for source, target in parser.column_lineage} == expected
+
+
+def test_column_lineage_keeps_wildcard_paths_when_a_statement_reads_its_target():
+    query = """
+        CREATE TABLE db.s.target AS
+        WITH previous AS (SELECT a FROM db.s.target)
+        SELECT n.*, n.a AS new_a, COALESCE(n.b, o.a) AS calculated_b
+        FROM db.s.src n LEFT JOIN previous o ON o.a = n.a
+    """
+    parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+    assert {(str(source), str(target)) for source, target in parser.column_lineage} == {
+        ("db.s.src.*", "db.s.target.*"),
+        ("db.s.src.a", "db.s.target.a"),
+        ("db.s.src.a", "db.s.target.new_a"),
+        ("db.s.src.b", "db.s.target.b"),
+        ("db.s.src.b", "db.s.target.calculated_b"),
+    }
+
+
+def test_column_lineage_connects_a_write_to_a_later_statement():
+    query = """
+        CREATE TABLE db.s.target AS
+        SELECT COALESCE(n.a, o.a) AS a FROM db.s.src n JOIN db.s.target o ON n.id = o.id;
+        CREATE TABLE db.s.final_table AS SELECT a FROM db.s.target;
+    """
+    parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+
+    assert {(str(source), str(target)) for source, target in parser.column_lineage} == {
+        ("db.s.src.a", "db.s.final_table.a"),
+    }
+
+
 class SqlLineageTest(TestCase):
     """
     SQL Lineage Utility Tests
