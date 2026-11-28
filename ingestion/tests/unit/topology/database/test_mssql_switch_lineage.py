@@ -245,13 +245,15 @@ class TestMssqlSwitchQueryHistory:
         def execute(statement):
             sql = str(statement)
             executed.append(sql)
-            result = MagicMock()
             if "dm_exec_procedure_stats" in sql and "SWITCH" in sql:
                 if isinstance(procedure_runs, BaseException):
                     raise procedure_runs
-                result.all.return_value = procedure_runs
+                rows = procedure_runs
             else:
-                result.all.return_value = list(history)
+                rows = list(history)
+            result = MagicMock()
+            result.all.return_value = rows
+            result.yield_per.return_value = rows
             return result
 
         connection.execute.side_effect = execute

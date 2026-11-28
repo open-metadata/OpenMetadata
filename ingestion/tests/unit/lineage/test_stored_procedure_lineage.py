@@ -21,7 +21,10 @@ from collections.abc import Iterator
 from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
+from pytds.tz import FixedOffsetTimezone
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.pool import StaticPool
 
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
@@ -37,6 +40,7 @@ from metadata.ingestion.source.database.lineage_processors import (
     QueryByProcedure,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
+    STORED_PROCEDURE_FETCH_SIZE,
     StoredProcedureLineageMixin,
 )
 
@@ -46,7 +50,7 @@ def _create_engine_mock(return_value=None):
     mock_engine = MagicMock()
     mock_conn = MagicMock()
     if return_value is not None:
-        mock_conn.execute.return_value.all.return_value = return_value
+        mock_conn.execute.return_value.yield_per.return_value = return_value
     mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
     mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
     mock_engine._mock_conn = mock_conn
@@ -102,7 +106,7 @@ class TestStoredProcedureStreaming(unittest.TestCase):
         mock_row1.keys.return_value = list(row1_data.keys())
         mock_row1.__getitem__ = lambda self, key: row1_data.get(key)
 
-        self.mixin.engine._mock_conn.execute.return_value.all.return_value = [mock_row1]
+        self.mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [mock_row1]
 
         # Get the generator
         queries = self.mixin.yield_stored_procedure_queries()
@@ -202,7 +206,7 @@ class TestStoredProcedureStreaming(unittest.TestCase):
             mock_row.keys.return_value = list(row_data.keys())
             query_results.append(mock_row)
 
-        self.mixin.engine._mock_conn.execute.return_value.all.return_value = query_results
+        self.mixin.engine._mock_conn.execute.return_value.yield_per.return_value = query_results
 
         # Get the producer
         results = list(self.mixin.procedure_lineage_producer())
@@ -212,41 +216,6 @@ class TestStoredProcedureStreaming(unittest.TestCase):
         self.assertIsInstance(results[0], ProcedureAndQuery)
         self.assertEqual(results[0].procedure.name.root, "Proc1")
         self.assertEqual(results[1].procedure.name.root, "Proc2")
-
-    def test_no_memory_accumulation(self):
-        """Test that queries are not accumulated in memory"""
-        # Create a large number of mock queries
-        large_query_results = []
-        for i in range(1000):
-            row_data = {
-                "PROCEDURE_NAME": f"Proc{i % 10}",
-                "QUERY_TEXT": f"SELECT * FROM table{i}",
-                "QUERY_TYPE": "SELECT",
-                "PROCEDURE_TEXT": f"CALL Proc{i % 10}()",
-                "PROCEDURE_START_TIME": datetime.now(),
-                "PROCEDURE_END_TIME": datetime.now(),
-            }
-            mock_row = Mock()
-            mock_row._asdict.return_value = row_data
-            mock_row.keys.return_value = list(row_data.keys())
-            large_query_results.append(mock_row)
-
-        self.mixin.engine._mock_conn.execute.return_value.all.return_value = large_query_results
-
-        # The generator should not load all into memory at once
-        queries_gen = self.mixin.yield_stored_procedure_queries()
-
-        # Process one at a time
-        count = 0
-        for query in queries_gen:
-            count += 1
-            # Each query should be processed individually
-            self.assertIsInstance(query, QueryByProcedure)
-            if count > 5:  # Just test a few
-                break
-
-        # Should have processed queries without loading all into memory
-        self.assertGreater(count, 0)
 
     def test_filtered_procedures(self):
         """Test that filtered procedures are not processed"""
@@ -300,7 +269,7 @@ class TestStoredProcedureStreaming(unittest.TestCase):
             mock_row._asdict.return_value = row_data
             mock_row.keys.return_value = list(row_data.keys())
 
-            self.mixin.engine._mock_conn.execute.return_value.all.return_value = [mock_row]
+            self.mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [mock_row]
 
             # Get results
             results = list(self.mixin.procedure_lineage_producer())
@@ -406,7 +375,7 @@ class TestIntegration(unittest.TestCase):
             mock_row.keys.return_value = list(row_data.keys())
             mock_rows.append(mock_row)
 
-        mixin.engine._mock_conn.execute.return_value.all.return_value = mock_rows
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = mock_rows
 
         # Execute the flow
         results = list(mixin.procedure_lineage_producer())
@@ -427,7 +396,7 @@ class TestIntegration(unittest.TestCase):
         mixin.metadata.paginate_es = Mock(return_value=iter([]))
 
         # Mock query results to return empty list
-        mixin.engine._mock_conn.execute.return_value.all.return_value = []
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = []
 
         # Call procedure_lineage_producer
         list(mixin.procedure_lineage_producer())
@@ -796,7 +765,7 @@ class TestMatchProcedureDisambiguation:
         mixin.metadata.paginate_es.return_value = iter(
             [self._procedure("usp_load", database, "dbo") for database in ("db_a", "db_b", "db_c")]
         )
-        mixin.engine._mock_conn.execute.return_value.all.return_value = [
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [
             self._row("usp_load", "db_c"),
             self._row("usp_load", "db_a"),
         ]
@@ -837,7 +806,7 @@ class TestProcedureBodyUnavailable:
 
     def test_null_body_is_yielded_instead_of_failing_the_workflow(self):
         mixin = TestableStoredProcedureMixin()
-        mixin.engine._mock_conn.execute.return_value.all.return_value = [self._row("usp_load_fct_sales", None)]
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [self._row("usp_load_fct_sales", None)]
 
         yielded = list(mixin.yield_stored_procedure_queries())
 
@@ -849,7 +818,7 @@ class TestProcedureBodyUnavailable:
         """Nothing identifies the procedure, so the producer will skip the row, but
         falling back to parsing a NULL body must not raise."""
         mixin = TestableStoredProcedureMixin()
-        mixin.engine._mock_conn.execute.return_value.all.return_value = [self._row(None, None)]
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [self._row(None, None)]
 
         yielded = list(mixin.yield_stored_procedure_queries())
 
@@ -858,7 +827,7 @@ class TestProcedureBodyUnavailable:
 
     def test_name_is_still_derived_from_the_body_when_present(self):
         mixin = TestableStoredProcedureMixin()
-        mixin.engine._mock_conn.execute.return_value.all.return_value = [
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [
             self._row(None, "CALL db_a.dbo.usp_load_fct_sales()")
         ]
 
@@ -871,7 +840,7 @@ class TestProcedureBodyUnavailable:
         mixin = TestableStoredProcedureMixin()
         procedure = TestMatchProcedureDisambiguation._procedure("usp_load_fct_sales", "db_a", "dbo")
         mixin.metadata.paginate_es.return_value = iter([procedure])
-        mixin.engine._mock_conn.execute.return_value.all.return_value = [self._row("usp_load_fct_sales", None)]
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [self._row("usp_load_fct_sales", None)]
 
         results = list(mixin.procedure_lineage_producer())
 
@@ -883,7 +852,7 @@ class TestProcedureBodyUnavailable:
         mixin = TestableStoredProcedureMixin()
         unreadable = Mock()
         unreadable._asdict.side_effect = RuntimeError("row adapter blew up")
-        mixin.engine._mock_conn.execute.return_value.all.return_value = [
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [
             unreadable,
             self._row("usp_after_the_unreadable_row", None),
         ]
@@ -899,7 +868,7 @@ class TestProcedureBodyUnavailable:
         mixin = TestableStoredProcedureMixin()
         row = self._row("usp_broken", None)
         row._asdict.return_value["QUERY_TEXT"] = None
-        mixin.engine._mock_conn.execute.return_value.all.return_value = [row]
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [row]
 
         yielded = list(mixin.yield_stored_procedure_queries())
 
@@ -942,7 +911,7 @@ class _WindowedSource(TestableStoredProcedureMixin):
                     None,
                 )
             result = MagicMock()
-            result.all.return_value = self._rows_by_statement[key]
+            result.yield_per.return_value = self._rows_by_statement[key]
             return result
 
         conn = MagicMock()
@@ -1075,3 +1044,94 @@ class TestStoredProcedureStatementIsolation:
 
         assert list(source.yield_stored_procedure_queries()) == []
         assert source.status.failed.call_count == 2
+
+
+def _history_row(procedure_name):
+    row = Mock()
+    row._asdict.return_value = {
+        "PROCEDURE_NAME": procedure_name,
+        "QUERY_TEXT": "INSERT INTO t1 SELECT * FROM t2",
+        "QUERY_TYPE": "INSERT",
+        "PROCEDURE_TEXT": f"CALL {procedure_name}()",
+        "PROCEDURE_START_TIME": datetime.now(),
+        "PROCEDURE_END_TIME": datetime.now(),
+    }
+    return row
+
+
+class TestStoredProcedureHistoryIsSpooled:
+    def test_history_is_fetched_completely_before_the_first_row_is_processed(self):
+        """Snowflake result chunk URLs expire after 6 hours, so parsing must not pace the fetch."""
+        pulled = []
+
+        def cursor():
+            for index in range(10_000):
+                pulled.append(index)
+                yield _history_row(f"proc{index}")
+
+        mixin = TestableStoredProcedureMixin()
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = cursor()
+
+        queries = mixin.yield_stored_procedure_queries()
+        first = next(queries)
+
+        assert first.procedure_name == "proc0"
+        assert len(pulled) == 10_000
+        assert [query.procedure_name for query in queries] == [f"proc{index}" for index in range(1, 10_000)]
+        mixin.engine._mock_conn.execute.return_value.yield_per.assert_called_once_with(STORED_PROCEDURE_FETCH_SIZE)
+
+    def test_fetch_failing_partway_is_recorded_once_and_yields_nothing(self):
+        def cursor():
+            yield _history_row("proc_a")
+            raise OperationalError("fetch", {}, Exception("connection reset"))
+
+        mixin = TestableStoredProcedureMixin()
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = cursor()
+
+        queries = list(mixin.yield_stored_procedure_queries())
+
+        assert queries == []
+        assert mixin.status.failed.call_count == 1
+        assert "Error reading stored procedure query history" in mixin.status.failed.call_args.args[0].error
+
+    def test_driver_timezone_that_cannot_be_pickled_survives_the_spool(self):
+        """MSSQL Query Store times are datetimeoffset, which pytds tags with FixedOffsetTimezone."""
+        start = datetime(2026, 11, 27, 10, 0, tzinfo=FixedOffsetTimezone(330))
+        row = _history_row("usp_load")
+        row._asdict.return_value |= {"PROCEDURE_START_TIME": start, "QUERY_START_TIME": start}
+        mixin = TestableStoredProcedureMixin()
+        mixin.engine._mock_conn.execute.return_value.yield_per.return_value = [row]
+
+        queries = list(mixin.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in queries] == ["usp_load"]
+        assert queries[0].procedure_start_time == start
+        assert queries[0].query_start_time == start
+        mixin.status.failed.assert_not_called()
+
+    def test_reads_every_row_through_a_real_cursor(self):
+        engine = create_engine("sqlite://", poolclass=StaticPool)
+        row_count = 2 * STORED_PROCEDURE_FETCH_SIZE + 7
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE procedure_log (PROCEDURE_NAME TEXT, QUERY_TEXT TEXT, QUERY_TYPE TEXT, "
+                    "PROCEDURE_TEXT TEXT, PROCEDURE_START_TIME TEXT, PROCEDURE_END_TIME TEXT)"
+                )
+            )
+            conn.execute(
+                text("INSERT INTO procedure_log VALUES (:name, 'INSERT INTO t1 SELECT 1', 'INSERT', :call, :ts, :ts)"),
+                [
+                    {"name": f"proc{index}", "call": f"CALL proc{index}()", "ts": "2026-11-27T10:00:00"}
+                    for index in range(row_count)
+                ],
+            )
+        mixin = TestableStoredProcedureMixin()
+        mixin.engine = engine
+
+        queries = list(mixin.yield_stored_procedure_queries())
+
+        assert [query.procedure_name for query in queries] == [f"proc{index}" for index in range(row_count)]
+        assert queries[0].procedure_start_time == datetime(2026, 11, 27, 10, 0)
+        assert queries[0].procedure_text is None
+        mixin.status.failed.assert_not_called()
