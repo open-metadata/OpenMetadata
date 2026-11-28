@@ -12,11 +12,13 @@
  */
 
 import { FeaturedIcon, Typography } from '@openmetadata/ui-core-components';
+import { isString } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { CuratedAsset } from '../../../../hooks/useCuratedAssets';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import type { SearchSourceAlias } from '../../../../interface/search.interface';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 
 export interface CuratedAssetRowsProps {
@@ -36,14 +38,25 @@ const CuratedAssetRows: React.FC<CuratedAssetRowsProps> = ({ assets }) => {
       <ul
         className="tw:grid tw:grid-cols-1 tw:gap-2 tw:@md:grid-cols-2"
         data-testid="curated-assets-rows">
-        {assets.map((asset) => (
-          <li data-testid={`curated-asset-${asset.name}`} key={asset.id}>
-            <Link
-              className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:rounded-lg tw:bg-secondary tw:px-3 tw:py-2.5 tw:no-underline!"
-              to={entityUtilClassBase.getEntityLink(
-                asset.entityType,
-                asset.fullyQualifiedName
-              )}>
+        {assets.map((asset) => {
+          // `searchClassBase.getEntityLink` is the codebase-standard resolver
+          // for search hits: it returns `''` for entity types with no
+          // dedicated route (e.g. `query`, `folder`, `auditReport`) rather than
+          // inventing a `/table/<fqn>` link. The `all` index the widget queries
+          // when the config has `resources: ['all']` carries those un-linkable
+          // types, so a row that can't be routed is rendered as a
+          // non-interactive tile instead of a link to a table page that 404s.
+          const link = searchClassBase.getEntityLink({
+            entityType: asset.entityType,
+            fullyQualifiedName: asset.fullyQualifiedName,
+            id: asset.id,
+            name: asset.name,
+            serviceType: asset.serviceType,
+          } as SearchSourceAlias);
+          const href = isString(link) ? link : link.pathname;
+
+          const rowContent = (
+            <>
               {/* A white tile, so the logo reads against the tinted row. */}
               {asset.serviceType && (
                 <FeaturedIcon
@@ -100,9 +113,27 @@ const CuratedAssetRows: React.FC<CuratedAssetRowsProps> = ({ assets }) => {
                   role="img"
                 />
               )}
-            </Link>
-          </li>
-        ))}
+            </>
+          );
+
+          return (
+            <li data-testid={`curated-asset-${asset.name}`} key={asset.id}>
+              {href ? (
+                <Link
+                  className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:rounded-lg tw:bg-secondary tw:px-3 tw:py-2.5 tw:no-underline!"
+                  to={href}>
+                  {rowContent}
+                </Link>
+              ) : (
+                <div
+                  className="tw:flex tw:min-w-0 tw:items-center tw:gap-2.5 tw:rounded-lg tw:bg-secondary tw:px-3 tw:py-2.5"
+                  data-testid={`curated-asset-no-link-${asset.id}`}>
+                  {rowContent}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
