@@ -177,10 +177,7 @@ class TestSuiteSource(Source):
             pinot_config: The PinotDB connection config to modify in place.
         """
         conn_args = pinot_config.connectionArguments
-        if isinstance(conn_args, ConnectionArguments):
-            args_dict = conn_args.root or {}
-        else:
-            args_dict = conn_args or {}
+        args_dict = conn_args.root or {} if conn_args else {}
 
         args_dict["use_multistage_engine"] = True
         pinot_config.connectionArguments = ConnectionArguments(root=args_dict)

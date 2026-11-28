@@ -30,10 +30,7 @@ class PinotProfilerSource(ProfilerSource):
         """
         service_config: pinotDBConnection.PinotDBConnection = super()._copy_service_config(config, database)
         conn_args = service_config.connectionArguments
-        if isinstance(conn_args, ConnectionArguments):
-            args_dict = conn_args.root or {}
-        else:
-            args_dict = conn_args or {}
+        args_dict = conn_args.root or {} if conn_args else {}
         args_dict["use_multistage_engine"] = True
         service_config.connectionArguments = ConnectionArguments(root=args_dict)
         return service_config
