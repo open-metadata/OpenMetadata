@@ -275,7 +275,7 @@ their configured vocabulary; they are not a finite part of the shipped core onto
 `GET /v1/glossaries/{id}/exportOntology`, `GET /v1/rdf/glossary/{id}/export`, and the
 glossary-scoped `POST /v1/glossaries/{id}/sparql` build one glossary's vocabulary from the
 database on each request; they do not read the knowledge graph. That projection is OWL 2
-DL: OWL API, configured as the reasoner worker configures it, parses it without
+DL: OWL API 5.5.1, failing on a missing import and never fetching one, parses it without
 placeholders or unconsumed triples, and its OWL 2 DL profile check reports nothing for
 valid input (`GlossaryOntologyModelBuilderTest`).
 

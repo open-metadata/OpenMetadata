@@ -25,8 +25,7 @@ spec:
       # Development default only. Production sizing: >= 2 datasets x live size x 2.5.
       # Two datasets because blue/green rebuilds keep an a/b alternate alongside the
       # serving one; x2.5 because TDB2 compaction builds a full replacement copy
-      # before deleting the old generation. Reasoning, when enabled, adds its own quota
-      # under /fuseki/reasoning (see the image README).
+      # before deleting the old generation.
       storage: 10Gi
   # Development default only. TDB2 commits are fsync/IOPS-bound (journal write per
   # transaction) — production must use an SSD-backed class with provisioned IOPS
@@ -59,7 +58,7 @@ spec:
       containers:
         - name: fuseki
           # The published image of record, pinned to its immutable <version>-<commit> tag.
-          image: openmetadata/fuseki:6.2.0-91a23ac
+          image: openmetadata/fuseki:6.3.0-9e53975
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3030
@@ -84,11 +83,9 @@ spec:
               value: "50000"
             - name: OPENMETADATA_EXTENSION_ENABLED
               value: "true"
-            # Equal min/max heap keeps the page-cache budget predictable. JVM_ARGS replaces the
-            # image's FUSEKI_HEAP flags and caps direct buffers until the pinned image applies
-            # that cap itself (open-metadata/jena#6).
-            - name: JVM_ARGS
-              value: "-Xms4g -Xmx4g -XX:MaxDirectMemorySize=256m"
+            # Sets -Xms and -Xmx alike, which keeps the page-cache budget predictable.
+            - name: FUSEKI_HEAP
+              value: "4g"
           volumeMounts:
             - name: fuseki-data
               mountPath: /fuseki
@@ -102,7 +99,7 @@ spec:
             # scheduler over-packs the node and CFS throttling stretches request
             # latency during bulk indexing — and every millisecond of a write
             # request happens inside TDB2's single writer lock. Memory request
-            # equals the limit (Guaranteed QoS), which reasoning requires.
+            # equals the limit (Guaranteed QoS), so the node evicts this pod last.
             requests:
               memory: "8Gi"
               cpu: "2000m"

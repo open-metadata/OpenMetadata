@@ -15,6 +15,10 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.AfterAll;
@@ -30,11 +34,12 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
 
 /**
- * Pins the RDF readiness contract against real servers. The OpenMetadata Graph Store extension is
- * optional: indexing must proceed on Apache Jena Fuseki without it and on datasets that lack its
- * recommended timeouts. Readiness fails, naming the real cause and leaving the dataset as it found
- * it, only when the dataset cannot be used: it is missing, refuses the credentials or writes, or
- * its default graph hides the named graphs indexing writes into.
+ * Pins the RDF readiness contract against real servers. OpenMetadata requires the OpenMetadata
+ * Graph Store extension, loaded by the published image or put on an operator's own classpath; a
+ * dataset without its recommended timeouts is still ready. Readiness fails, naming the real cause
+ * and leaving the dataset as it found it, when the dataset cannot be used: it is missing, refuses
+ * the credentials or writes, does not run the extension, or its default graph hides the named
+ * graphs indexing writes into.
  */
 class RdfStorageReadinessIT {
   private static final String BASE = "https://open-metadata.org/";
@@ -58,6 +63,7 @@ class RdfStorageReadinessIT {
       "fuseki:serviceQuery \"sparql\" ; fuseki:serviceReadWriteGraphStore \"data\"";
   private static final String UNION_DISABLED = "does not enable tdb2:unionDefaultGraph";
   private static final int FUSEKI_PORT = FusekiTestImage.PORT;
+  private static final int LONG_LITERAL_LENGTH = 150_000;
   // An operator-managed shiro.ini (FUSEKI_MANAGE_SHIRO=false) with a writer limited to one dataset,
   // since the image's own rendering creates only the admin account.
   private static final String SCOPED_SHIRO =
@@ -81,7 +87,8 @@ class RdfStorageReadinessIT {
 
   private static GenericContainer<?> shipped;
   private static GenericContainer<?> scoped;
-  private static GenericContainer<?> stock;
+  private static GenericContainer<?> assembled;
+  private static GenericContainer<?> withoutExtension;
 
   @BeforeAll
   static void start() throws Exception {
@@ -92,28 +99,36 @@ class RdfStorageReadinessIT {
             .withEnv("FUSEKI_DATASETS", SCOPED_DATASET + "," + OUTSIDE_SCOPE_DATASET)
             .withCopyToContainer(
                 Transferable.of(SCOPED_SHIRO), FusekiTestImage.FUSEKI_BASE + "/shiro.ini");
-    // The same Fuseki distribution launched directly, so the extension is never on the classpath.
-    stock =
+    // Fuseki launched directly from an operator's own assembler, with only the extension added.
+    // FusekiServerPlainCmd loads Fuseki modules from the classpath; FusekiMainCmd does not.
+    assembled =
         FusekiTestImage.bare()
             .withCopyToContainer(Transferable.of(stockConfig()), STOCK_CONFIG_PATH)
             .withCreateContainerCmdModifier(command -> command.withEntrypoint("java"))
             .withCommand(
                 "-Xmx512m",
                 "-cp",
-                FusekiTestImage.FUSEKI_SERVER_JAR,
-                "org.apache.jena.fuseki.main.cmds.FusekiMainCmd",
+                FusekiTestImage.FUSEKI_SERVER_JAR + ":" + FusekiTestImage.EXTENSION_JAR,
+                "org.apache.jena.fuseki.main.cmds.FusekiServerPlainCmd",
                 "--config=" + STOCK_CONFIG_PATH)
             .waitingFor(Wait.forHttp("/$/ping").withStartupTimeout(Duration.ofMinutes(2)));
+    // The image's stock launch: the extension's classes are never loaded.
+    withoutExtension =
+        FusekiTestImage.forOpenMetadata("-Xms256m -Xmx256m")
+            .withEnv("OPENMETADATA_EXTENSION_ENABLED", "false");
     shipped.start();
     scoped.start();
-    stock.start();
+    assembled.start();
+    withoutExtension.start();
     createDatasetThroughAdminApi(ADMIN_CREATED_DATASET);
   }
 
   @AfterAll
   static void stop() {
-    if (stock != null) {
-      stock.close();
+    for (GenericContainer<?> fuseki : new GenericContainer<?>[] {assembled, withoutExtension}) {
+      if (fuseki != null) {
+        fuseki.close();
+      }
     }
     if (shipped != null) {
       shipped.close();
@@ -133,10 +148,76 @@ class RdfStorageReadinessIT {
   }
 
   @Test
-  void fusekiWithoutTheExtensionIsReadyAndAcceptsBulkAppends() {
-    try (JenaFusekiStorage storage = storage(stock, STOCK_DATASET, null, null)) {
+  void operatorAssemblerWithTheExtensionIsReadyAndAcceptsBulkAppends() {
+    try (JenaFusekiStorage storage = storage(assembled, STOCK_DATASET, null, null)) {
       assertReadyLeavingNoTrace(storage);
       assertBulkAppendIsReadable(storage);
+    }
+  }
+
+  @Test
+  void fusekiWithoutTheExtensionFailsNamingIt() {
+    try (JenaFusekiStorage storage =
+        storage(withoutExtension, SCOPED_DATASET, "admin", ADMIN_PASSWORD)) {
+      final String failure = assertNotReadyLeavingNoTrace(storage);
+      assertTrue(failure.contains("does not run the OpenMetadata Graph Store extension"), failure);
+      assertTrue(failure.contains("OPENMETADATA_EXTENSION_ENABLED=true"), failure);
+    }
+  }
+
+  @Test
+  void ontologyActivationWithoutTheExtensionFailsNamingItAndWritesNothing() {
+    final Model release = ModelFactory.createDefaultModel();
+    // openmetadata_b: each storage loads the bundled ontology, whose blank nodes make a concurrent
+    // second load add triples, so a dataset shared with another method breaks the count below.
+    try (JenaFusekiStorage storage =
+        storage(withoutExtension, "openmetadata_b", "admin", ADMIN_PASSWORD)) {
+      release
+          .createResource(BASE + "concept/" + UUID.randomUUID())
+          .addProperty(release.createProperty(NAME), "activation");
+      final long before = storage.getTripleCount();
+      final IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  storage.replaceGraph(
+                      BASE + "graph/ontology/" + UUID.randomUUID(), UUID.randomUUID(), release));
+      assertTrue(
+          failure.getMessage().contains("does not run the OpenMetadata Graph Store extension"),
+          failure.getMessage());
+      assertEquals(before, storage.getTripleCount(), "a refused activation must write nothing");
+    } finally {
+      release.close();
+    }
+  }
+
+  /** Activation uploads with Graph Store PUT, a different extension path from the bulk append. */
+  @Test
+  void ontologyActivationKeepsALiteralOverOneHundredKilobytes() {
+    final String graph = BASE + "graph/ontology/" + UUID.randomUUID();
+    final Model release = ModelFactory.createDefaultModel();
+    // openmetadata_a: no other test writes there, and these methods run concurrently.
+    try (JenaFusekiStorage storage = storage(shipped, "openmetadata_a", "admin", ADMIN_PASSWORD)) {
+      release
+          .createResource(BASE + "concept/" + UUID.randomUUID())
+          .addProperty(release.createProperty(NAME), "x".repeat(LONG_LITERAL_LENGTH));
+      storage.replaceGraph(graph, UUID.randomUUID(), release);
+      final AtomicLong longest = new AtomicLong(-1);
+      storage.readQuery(
+          QueryFactory.create(
+              "SELECT (MAX(STRLEN(STR(?o))) AS ?length) WHERE { GRAPH <"
+                  + graph
+                  + "> { ?s ?p ?o FILTER(isLiteral(?o)) } }"),
+          30_000,
+          execution -> {
+            final ResultSet rows = execution.execSelect();
+            if (rows.hasNext() && rows.next().getLiteral("length") instanceof Literal length) {
+              longest.set(length.getLong());
+            }
+          });
+      assertEquals(LONG_LITERAL_LENGTH, longest.get(), "-1 means the graph holds no literal");
+    } finally {
+      release.close();
     }
   }
 
@@ -152,7 +233,7 @@ class RdfStorageReadinessIT {
 
   @Test
   void fusekiWithoutUnionDefaultGraphFailsNamingIt() {
-    try (JenaFusekiStorage storage = storage(stock, STOCK_WITHOUT_UNION, null, null)) {
+    try (JenaFusekiStorage storage = storage(assembled, STOCK_WITHOUT_UNION, null, null)) {
       final String failure = assertNotReadyLeavingNoTrace(storage);
       assertTrue(failure.contains(UNION_DISABLED), failure);
       assertTrue(failure.contains("'" + STOCK_WITHOUT_UNION + "'"), failure);
@@ -161,7 +242,7 @@ class RdfStorageReadinessIT {
 
   @Test
   void readOnlyDatasetFailsNamingTheMethodsItAllows() {
-    try (JenaFusekiStorage storage = storage(stock, STOCK_READ_ONLY, null, null)) {
+    try (JenaFusekiStorage storage = storage(assembled, STOCK_READ_ONLY, null, null)) {
       final String failure = assertNotReadyLeavingNoTrace(storage);
       assertTrue(
           failure.contains("is read-only (its Graph Store allows GET,HEAD,OPTIONS)"), failure);
@@ -170,7 +251,7 @@ class RdfStorageReadinessIT {
 
   @Test
   void datasetWithoutSparqlUpdateFailsNamingTheRejection() {
-    try (JenaFusekiStorage storage = storage(stock, STOCK_WITHOUT_UPDATE, null, null)) {
+    try (JenaFusekiStorage storage = storage(assembled, STOCK_WITHOUT_UPDATE, null, null)) {
       final String failure = assertNotReadyLeavingNoTrace(storage);
       assertTrue(failure.contains("did not accept a SPARQL update (HTTP 400)"), failure);
     }
@@ -187,8 +268,9 @@ class RdfStorageReadinessIT {
   }
 
   @Test
-  void unknownDatasetOnStockFusekiFailsNamingTheDataset() {
-    try (JenaFusekiStorage storage = storage(stock, "no_such_dataset", null, null)) {
+  void unknownDatasetWithoutTheExtensionFailsNamingTheDatasetNotTheExtension() {
+    try (JenaFusekiStorage storage =
+        storage(withoutExtension, "no_such_dataset", "admin", ADMIN_PASSWORD)) {
       final IllegalStateException failure =
           assertThrows(IllegalStateException.class, storage::ensureStorageReady);
       assertTrue(

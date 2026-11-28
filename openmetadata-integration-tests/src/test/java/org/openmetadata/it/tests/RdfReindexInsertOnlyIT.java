@@ -34,6 +34,7 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -63,6 +64,7 @@ public class RdfReindexInsertOnlyIT {
   private static final String APP_NAME = "RdfIndexApp";
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String BASE_URI = "https://open-metadata.org/";
+  private static final int LONG_TERM_LENGTH = 150_000;
   private static final String SQL_QUERY = "SELECT * FROM insert_only_source";
 
   @BeforeAll
@@ -138,6 +140,60 @@ public class RdfReindexInsertOnlyIT {
                           + target.getId()
                           + "> ?predicate ?value"));
             });
+  }
+
+  /**
+   * The recreate run uploads entity graphs as RDF Thrift. Jena 6.3.0 caps a Thrift row at 100 KB,
+   * and the image's Graph Store extension lifts that cap (open-metadata/jena#24). Live writes use
+   * SPARQL text, which has no such cap, so the test waits for the live write to land before the
+   * rebuild clears the graph; otherwise a late live write could restore the description the
+   * rebuild failed to upload.
+   */
+  @Test
+  void recreateRunKeepsATermOverOneHundredKilobytes(TestNamespace namespace) throws Exception {
+    assumeTrue(
+        RdfTestUtils.isRdfEnabled(),
+        "RDF is disabled. Run this test with an RDF integration-test profile.");
+    assumeFalse(
+        TestSuiteBootstrap.isK8sEnabled(), "App trigger is not compatible with K8s pipelines");
+
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(namespace);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(namespace, service);
+    Table table =
+        TableTestFactory.createWithDescription(
+            namespace, schema.getFullyQualifiedName(), "x".repeat(LONG_TERM_LENGTH));
+    Awaitility.await("live projection of the long description")
+        .atMost(Duration.ofMinutes(2))
+        .untilAsserted(() -> assertEquals(LONG_TERM_LENGTH, longestLiteralLength(table)));
+    HttpClient httpClient = SdkClients.adminClient().getHttpClient();
+    waitForCurrentRunCompletion(httpClient);
+
+    triggerAndWait(httpClient, readLatestRunStartTime(httpClient));
+
+    assertEquals(
+        LONG_TERM_LENGTH,
+        longestLiteralLength(table),
+        "The rebuilt graph must hold the table's full description; -1 means the table is missing");
+  }
+
+  private static long longestLiteralLength(Table table) throws Exception {
+    String query =
+        "SELECT (MAX(STRLEN(STR(?value))) AS ?length) WHERE { GRAPH <"
+            + KNOWLEDGE_GRAPH
+            + "> { <"
+            + entityUri(table)
+            + "> ?predicate ?value . FILTER(isLiteral(?value)) } }";
+    JsonNode response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/rdf/sparql",
+                Map.of("query", query, "format", "json", "inference", "none"),
+                JsonNode.class);
+    JsonNode bindings = response.path("results").path("bindings");
+    assertTrue(bindings.isArray() && !bindings.isEmpty(), "SPARQL length result is missing");
+    return bindings.get(0).path("length").path("value").asLong(-1);
   }
 
   private static Table createTable(

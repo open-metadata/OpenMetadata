@@ -1,7 +1,7 @@
 # Fuseki holds only the active ontology release
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-17 (rebuild excludes live drain) · v3 2026-11-06 (whole-graph journal cap bound to the Fuseki upload limit) · v4 2026-11-07 (the serving graph leaves out statement sources) · v5 2026-11-07 (staged chunked replacement, journal by release)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-17 (rebuild excludes live drain) · v3 2026-11-06 (whole-graph journal cap bound to the Fuseki upload limit) · v4 2026-11-07 (the serving graph leaves out statement sources) · v5 2026-11-07 (staged chunked replacement, journal by release) · v6 2026-11-27 (a store without the Graph Store extension is not retried)
 - **Deciders:** Harsha
 - **Guard:** `IndependentOntologyActivationIT`, `OntologyReleaseProjectionTest`, `ChunkedGraphReplaceTest`, `RdfMutationReplayTest`, `RdfOntologyChunkedActivationIT`, `OntologyReleaseActivationTest`, `OntologyActiveGraphStorageTest#rebuildCannotOverwriteAnActivationDeliveredWhileItsModelWasBeingBuilt`, `RdfOntologyActivationIT`, `RdfBlueGreenRebuildIT`, `RdfLiveWriteRecoveryIT`, reviewer
 - **Related:** [Organizational ontology design](../plans/2026-10-14-organizational-ontology-design.md), ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
@@ -201,3 +201,11 @@ that rate, and the 2.5 million triple copy above took 23.9 s. A slower persisten
 writer lowers the margin. The server holds the whole projection and its chunks in memory during a
 replacement, and Fuseki holds every copied triple during the update, so heap on both sides limits
 a graph near the cap.
+
+## Amendment v6 — 2026-11-27: a store without the Graph Store extension is not retried
+
+The queue's retry above holds for an unavailable Fuseki, not for one that answers without the
+Graph Store extension (ADR:2026-10-14-fuseki-image-of-record, v3). Such a store refuses every
+ontology graph write before it uploads, and the live-write queue dead-letters that refusal on its
+first attempt and marks the projection degraded. Dead letters are not replayed: an `RdfIndexApp`
+run after the extension is on rebuilds the active graphs from SQL.
