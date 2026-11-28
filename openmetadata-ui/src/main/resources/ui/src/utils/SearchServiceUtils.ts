@@ -28,6 +28,8 @@ const searchSchemaLoaders: Partial<Record<SearchServiceType, SchemaLoader>> = {
     loadConnectionSchema('connections/search/openSearchConnection.json'),
   [SearchServiceType.CustomSearch]: () =>
     loadConnectionSchema('connections/search/customSearchConnection.json'),
+  [SearchServiceType.Solr]: () =>
+    loadConnectionSchema('connections/search/solrConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

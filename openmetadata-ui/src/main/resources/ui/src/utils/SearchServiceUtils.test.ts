@@ -14,6 +14,7 @@
 import customSearchConnection from '../../public/jsons/connectionSchemas/connections/search/customSearchConnection.json';
 import elasticSearchConnection from '../../public/jsons/connectionSchemas/connections/search/elasticSearchConnection.json';
 import openSearchConnection from '../../public/jsons/connectionSchemas/connections/search/openSearchConnection.json';
+import solrConnection from '../../public/jsons/connectionSchemas/connections/search/solrConnection.json';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { getSearchServiceConfig } from './SearchServiceUtils';
@@ -25,6 +26,7 @@ jest.mock('./loadConnectionSchema', () => {
     'connections/search/customSearchConnection.json': require('../../public/jsons/connectionSchemas/connections/search/customSearchConnection.json'),
     'connections/search/elasticSearchConnection.json': require('../../public/jsons/connectionSchemas/connections/search/elasticSearchConnection.json'),
     'connections/search/openSearchConnection.json': require('../../public/jsons/connectionSchemas/connections/search/openSearchConnection.json'),
+    'connections/search/solrConnection.json': require('../../public/jsons/connectionSchemas/connections/search/solrConnection.json'),
   };
 
   return {
@@ -70,6 +72,15 @@ describe('SearchServiceUtils tests', () => {
     expect(elasticSearchConfig).toEqual({
       ...mockGetSearchServiceConfigReturnValue,
       schema: { ...customSearchConnection },
+    });
+  });
+
+  it('getSearchServiceConfig should return correct config for Solr connector', async () => {
+    const solrConfig = await getSearchServiceConfig(SearchServiceType.Solr);
+
+    expect(solrConfig).toEqual({
+      ...mockGetSearchServiceConfigReturnValue,
+      schema: { ...solrConnection },
     });
   });
 

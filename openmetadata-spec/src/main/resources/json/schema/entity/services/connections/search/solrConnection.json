@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/search/solrConnection.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Solr Connection",
+  "description": "Apache Solr Connection.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.search.SolrConnection",
+  "definitions": {
+    "solrType": {
+      "description": "Solr service type",
+      "type": "string",
+      "enum": ["Solr"],
+      "default": "Solr"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Solr Type",
+      "description": "Solr Type",
+      "$ref": "#/definitions/solrType",
+      "default": "Solr"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Base URL of the Solr instance, e.g. `http://localhost:8983/solr`. For SolrCloud, point at any node of the cluster.",
+      "type": "string",
+      "format": "uri"
+    },
+    "username": {
+      "title": "Username",
+      "description": "Username to connect to Solr. This user should have privileges to read all the metadata in Solr.",
+      "type": "string"
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password to connect to Solr.",
+      "type": "string",
+      "format": "password"
+    },
+    "verifySSL": {
+      "title": "Verify SSL",
+      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "connectionTimeoutSecs": {
+      "title": "Connection Timeout in Seconds",
+      "description": "Connection timeout in seconds when talking to the Solr instance.",
+      "type": "integer",
+      "default": 30
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort"]
+}

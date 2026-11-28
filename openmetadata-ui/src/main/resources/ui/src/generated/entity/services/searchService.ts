@@ -189,7 +189,7 @@ export interface FieldChange {
  * search Connection.
  */
 export interface SearchConnection {
-    config?: ConfigObject;
+    config?: Connection;
 }
 
 /**
@@ -199,8 +199,10 @@ export interface SearchConnection {
  *
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
+ *
+ * Apache Solr Connection.
  */
-export interface ConfigObject {
+export interface Connection {
     /**
      * Choose Auth Config Type.
      */
@@ -208,19 +210,24 @@ export interface ConfigObject {
     connectionArguments?: { [key: string]: any };
     /**
      * Connection Timeout in Seconds
+     *
+     * Connection timeout in seconds when talking to the Solr instance.
      */
     connectionTimeoutSecs?: number;
     /**
      * Host and port of the ElasticSearch service.
      *
      * Host and port of the OpenSearch service.
+     *
+     * Base URL of the Solr instance, e.g. `http://localhost:8983/solr`. For SolrCloud, point at
+     * any node of the cluster.
      */
     hostPort?: string;
     /**
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?:   FilterPattern;
-    sslConfig?:                  SSLConfig;
+    sslConfig?:                  Config;
     supportsMetadataExtraction?: boolean;
     /**
      * ElasticSearch Type
@@ -228,14 +235,28 @@ export interface ConfigObject {
      * OpenSearch Type
      *
      * Custom search service type
+     *
+     * Solr Type
      */
-    type?:              SearchServiceType;
+    type?: SearchServiceType;
+    /**
+     * Client SSL verification. Make sure to configure the SSLConfig if enabled.
+     */
     verifySSL?:         VerifySSL;
     connectionOptions?: { [key: string]: string };
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
      */
     sourcePythonClass?: string;
+    /**
+     * Password to connect to Solr.
+     */
+    password?: string;
+    /**
+     * Username to connect to Solr. This user should have privileges to read all the metadata in
+     * Solr.
+     */
+    username?: string;
     [property: string]: any;
 }
 
@@ -331,12 +352,28 @@ export interface FilterPattern {
 
 /**
  * SSL Config
+ *
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
  */
-export interface SSLConfig {
+export interface Config {
     /**
      * SSL Certificates
      */
     certificates?: SSLCertificates;
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
     [property: string]: any;
 }
 
@@ -389,6 +426,10 @@ export interface SSLCertificates {
  *
  * Custom search service type
  *
+ * Solr Type
+ *
+ * Solr service type
+ *
  * Type of search service such as S3, GCS, AZURE...
  *
  * Type of search service such as ElasticSearch or OpenSearch.
@@ -397,6 +438,7 @@ export enum SearchServiceType {
     CustomSearch = "CustomSearch",
     ElasticSearch = "ElasticSearch",
     OpenSearch = "OpenSearch",
+    Solr = "Solr",
 }
 
 /**

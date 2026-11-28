@@ -110,6 +110,7 @@ import amazons3 from '../assets/img/service-icon-amazon-s3.svg';
 import gcs from '../assets/img/service-icon-gcs.webp';
 
 // Search services
+import solr from '../assets/img/service-icon-solr.svg';
 import elasticsearch from '../assets/svg/elasticsearch.svg';
 import opensearch from '../assets/svg/open-search.svg';
 
@@ -256,6 +257,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   // Search services
   elasticsearch: elasticsearch,
   opensearch: opensearch,
+  solr: solr,
 
   // Metadata services
   amundsen: amundsen,

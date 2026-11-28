@@ -37097,6 +37097,143 @@
                   "required": [
                     "type"
                   ]
+                },
+                {
+                  "title": "Solr Connection",
+                  "description": "Apache Solr Connection.",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.search.SolrConnection",
+                  "definitions": {
+                    "solrType": {
+                      "description": "Solr service type",
+                      "type": "string",
+                      "enum": [
+                        "Solr"
+                      ],
+                      "default": "Solr"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Solr Type",
+                      "description": "Solr Type",
+                      "default": "Solr",
+                      "type": "string",
+                      "enum": [
+                        "Solr"
+                      ]
+                    },
+                    "hostPort": {
+                      "expose": true,
+                      "title": "Host and Port",
+                      "description": "Base URL of the Solr instance, e.g. `http://localhost:8983/solr`. For SolrCloud, point at any node of the cluster.",
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "username": {
+                      "title": "Username",
+                      "description": "Username to connect to Solr. This user should have privileges to read all the metadata in Solr.",
+                      "type": "string"
+                    },
+                    "password": {
+                      "title": "Password",
+                      "description": "Password to connect to Solr.",
+                      "type": "string",
+                      "format": "password"
+                    },
+                    "verifySSL": {
+                      "title": "Verify SSL",
+                      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+                      "default": "no-ssl",
+                      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+                      "type": "string",
+                      "enum": [
+                        "no-ssl",
+                        "ignore",
+                        "validate"
+                      ]
+                    },
+                    "sslConfig": {
+                      "title": "SSL Config",
+                      "description": "Client SSL configuration",
+                      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "title": "Validate SSL Client Config",
+                          "description": "OpenMetadata Client configured to validate SSL certificates.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                          "additionalProperties": false,
+                          "properties": {
+                            "caCertificate": {
+                              "title": "CA Certificate",
+                              "description": "The CA certificate used for SSL validation.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslCertificate": {
+                              "title": "SSL Certificate",
+                              "description": "The SSL certificate used for client authentication.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslKey": {
+                              "title": "SSL Key",
+                              "description": "The private key associated with the SSL certificate.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "connectionTimeoutSecs": {
+                      "title": "Connection Timeout in Seconds",
+                      "description": "Connection timeout in seconds when talking to the Solr instance.",
+                      "type": "integer",
+                      "default": 30
+                    },
+                    "connectionArguments": {
+                      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+                      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+                      "type": "object",
+                      "additionalProperties": {
+                        ".{1,}": {
+                          "type": "string"
+                        }
+                      },
+                      "title": "Connection Arguments"
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort"
+                  ]
                 }
               ]
             }
@@ -75667,6 +75804,143 @@
                   "additionalProperties": true,
                   "required": [
                     "type"
+                  ]
+                },
+                {
+                  "title": "Solr Connection",
+                  "description": "Apache Solr Connection.",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.search.SolrConnection",
+                  "definitions": {
+                    "solrType": {
+                      "description": "Solr service type",
+                      "type": "string",
+                      "enum": [
+                        "Solr"
+                      ],
+                      "default": "Solr"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Solr Type",
+                      "description": "Solr Type",
+                      "default": "Solr",
+                      "type": "string",
+                      "enum": [
+                        "Solr"
+                      ]
+                    },
+                    "hostPort": {
+                      "expose": true,
+                      "title": "Host and Port",
+                      "description": "Base URL of the Solr instance, e.g. `http://localhost:8983/solr`. For SolrCloud, point at any node of the cluster.",
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "username": {
+                      "title": "Username",
+                      "description": "Username to connect to Solr. This user should have privileges to read all the metadata in Solr.",
+                      "type": "string"
+                    },
+                    "password": {
+                      "title": "Password",
+                      "description": "Password to connect to Solr.",
+                      "type": "string",
+                      "format": "password"
+                    },
+                    "verifySSL": {
+                      "title": "Verify SSL",
+                      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+                      "default": "no-ssl",
+                      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+                      "type": "string",
+                      "enum": [
+                        "no-ssl",
+                        "ignore",
+                        "validate"
+                      ]
+                    },
+                    "sslConfig": {
+                      "title": "SSL Config",
+                      "description": "Client SSL configuration",
+                      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "title": "Validate SSL Client Config",
+                          "description": "OpenMetadata Client configured to validate SSL certificates.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                          "additionalProperties": false,
+                          "properties": {
+                            "caCertificate": {
+                              "title": "CA Certificate",
+                              "description": "The CA certificate used for SSL validation.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslCertificate": {
+                              "title": "SSL Certificate",
+                              "description": "The SSL certificate used for client authentication.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslKey": {
+                              "title": "SSL Key",
+                              "description": "The private key associated with the SSL certificate.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "connectionTimeoutSecs": {
+                      "title": "Connection Timeout in Seconds",
+                      "description": "Connection timeout in seconds when talking to the Solr instance.",
+                      "type": "integer",
+                      "default": 30
+                    },
+                    "connectionArguments": {
+                      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+                      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+                      "type": "object",
+                      "additionalProperties": {
+                        ".{1,}": {
+                          "type": "string"
+                        }
+                      },
+                      "title": "Connection Arguments"
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort"
                   ]
                 }
               ]
