@@ -17,10 +17,15 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { DateTime } from 'luxon';
 import { useContext } from 'react';
+import { useParams } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
+import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
 import { getListTestCaseBySearch } from '../../../../rest/testAPI';
+import SummaryCardV1 from '../../../common/SummaryCard/SummaryCardV1';
+import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import {
   TableProfilerContext,
   TableProfilerProvider,
@@ -72,7 +77,7 @@ jest.mock('../../../../utils/TablePureUtils', () => ({
   generateEntityLink: jest.fn().mockReturnValue('entityLink'),
 }));
 jest.mock('../../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue('table1'),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'sample.db.schema.table' }),
 }));
 jest.mock('../../../../constants/profiler.constant', () => ({
   DEFAULT_RANGE_DATA: {
@@ -177,6 +182,15 @@ const mockPermissions = {
   ViewTests: true,
 } as OperationPermission;
 
+const ProfilerSummary = () => {
+  const { isProfilerDataLoading, overallSummary } =
+    useContext(TableProfilerContext);
+
+  return overallSummary.map(({ key, ...summary }) => (
+    <SummaryCardV1 {...summary} isLoading={isProfilerDataLoading} key={key} />
+  ));
+};
+
 // Test component to access context and display state
 const TestComponent = () => {
   const context = useContext(TableProfilerContext);
@@ -200,8 +214,70 @@ const TestComponent = () => {
 describe('TableProfilerProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(useParams).mockReturnValue({ subTab: 'data-quality' });
     // Reset mock paging state
     mockPagingState.total = 0;
+  });
+
+  describe('Profiler last run', () => {
+    beforeEach(() => {
+      jest
+        .mocked(useParams)
+        .mockReturnValue({ subTab: ProfilerTabPath.TABLE_PROFILE });
+    });
+
+    it('labels the recorded profiler run even when the source has a different modification time', async () => {
+      const timestamp = Date.UTC(2026, 10, 25, 17);
+      const sourceUpdatedAt = Date.UTC(2026, 10, 24, 15);
+      const table = {
+        ...MOCK_TABLE,
+        lifeCycle: { updated: { timestamp: sourceUpdatedAt } },
+        profile: undefined,
+      };
+      jest.mocked(getLatestTableProfileByFqn).mockResolvedValueOnce({
+        ...MOCK_TABLE,
+        lifeCycle: undefined,
+        profile: { timestamp },
+      });
+
+      render(
+        <TableProfilerProvider permissions={mockPermissions} table={table}>
+          <ProfilerSummary />
+        </TableProfilerProvider>
+      );
+
+      const runTime = DateTime.fromMillis(timestamp).toLocaleString(
+        DateTime.DATETIME_MED
+      );
+      const sourceTime = DateTime.fromMillis(sourceUpdatedAt).toLocaleString(
+        DateTime.DATETIME_MED
+      );
+
+      expect(
+        await screen.findByText(`label.profiler-last-run: ${runTime}`)
+      ).toBeInTheDocument();
+      expect(screen.queryByText(sourceTime, { exact: false })).toBeNull();
+    });
+
+    it('leaves the run time absent on a metadata-only table', async () => {
+      const table = {
+        ...MOCK_TABLE,
+        lifeCycle: { updated: { timestamp: Date.UTC(2026, 10, 24, 15) } },
+        profile: undefined,
+      };
+      jest.mocked(getLatestTableProfileByFqn).mockResolvedValueOnce(table);
+
+      render(
+        <TableProfilerProvider permissions={mockPermissions} table={table}>
+          <ProfilerSummary />
+        </TableProfilerProvider>
+      );
+
+      expect(await screen.findByText('label.created-date')).toBeInTheDocument();
+      expect(
+        screen.queryByText(/label\.(profiler-last-run|last-updated)/)
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('renders children without crashing', async () => {
