@@ -98,14 +98,16 @@ class ChangeRequestDaoIT {
   }
 
   // Regression for the pending-changes indicator: the status-unfiltered LIMIT must not hide open
-  // requests behind a wall of closed rows, and the status-filtered query must surface all open ones.
+  // requests behind a wall of closed rows, and the status-filtered query must surface all open
+  // ones.
   @Test
   void openRequestsAreNotHiddenByClosedHistory() {
     UUID entityId = UUID.randomUUID();
     long base = System.currentTimeMillis();
     // 51 closed rows, each bumped on close (as update() does), so they rank newest by updatedAt.
     for (int i = 0; i < 51; i++) {
-      ChangeRequest closed = pending(entityId, "closer" + i).withStatus(ChangeRequestStatus.APPLIED);
+      ChangeRequest closed =
+          pending(entityId, "closer" + i).withStatus(ChangeRequestStatus.APPLIED);
       closed.setUpdatedAt(base + 10_000L + i);
       dao().insert(closed);
       dao().update(closed.withStatus(ChangeRequestStatus.APPLIED));
@@ -119,15 +121,19 @@ class ChangeRequestDaoIT {
       pendingIds.add(open.getId());
     }
 
-    // The legacy unfiltered query returns the 50 newest rows — all closed — and hides the open ones.
+    // The legacy unfiltered query returns the 50 newest rows — all closed — and hides the open
+    // ones.
     List<ChangeRequest> legacyPage = dao().listByEntity(entityId, 50);
     assertEquals(50, legacyPage.size());
     assertTrue(legacyPage.stream().allMatch(r -> r.getStatus() == ChangeRequestStatus.APPLIED));
 
     // The status-filtered query returns exactly the 4 open rows, newest first.
     List<ChangeRequest> openPage =
-        dao().listByEntityAndStatuses(
-            entityId, List.of(ChangeRequestStatus.PENDING.value(), ChangeRequestStatus.APPROVED.value()), 50);
+        dao()
+            .listByEntityAndStatuses(
+                entityId,
+                List.of(ChangeRequestStatus.PENDING.value(), ChangeRequestStatus.APPROVED.value()),
+                50);
     assertEquals(4, openPage.size());
     assertEquals(pendingIds, openPage.stream().map(ChangeRequest::getId).toList());
     assertTrue(openPage.stream().allMatch(r -> r.getStatus() == ChangeRequestStatus.PENDING));

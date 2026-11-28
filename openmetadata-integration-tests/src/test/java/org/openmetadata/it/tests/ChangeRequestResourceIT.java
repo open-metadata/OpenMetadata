@@ -551,10 +551,8 @@ class ChangeRequestResourceIT {
     UUID entityId = glossary.getId();
 
     // The staged edit is Pending; the status filter must return it.
-    assertEquals(
-        1, visibleCount(SdkClients.adminClient(), entityId, "Pending"));
-    assertEquals(
-        1, visibleCount(SdkClients.adminClient(), entityId, "Pending,Approved"));
+    assertEquals(1, visibleCount(SdkClients.adminClient(), entityId, "Pending"));
+    assertEquals(1, visibleCount(SdkClients.adminClient(), entityId, "Pending,Approved"));
     // Applied matches nothing (the only request is still open).
     assertEquals(0, visibleCount(SdkClients.adminClient(), entityId, "Applied"));
     // No statuses returns the same pending request (legacy behavior).
@@ -571,8 +569,7 @@ class ChangeRequestResourceIT {
                 .getHttpClient()
                 .executeForString(
                     HttpMethod.GET,
-                    "/v1/changeRequests?entityId=%s&statuses=Nope"
-                        .formatted(UUID.randomUUID()),
+                    "/v1/changeRequests?entityId=%s&statuses=Nope".formatted(UUID.randomUUID()),
                     null));
     // An unknown token among valid ones -> 400 (no partial result).
     assertThrows(
@@ -606,7 +603,8 @@ class ChangeRequestResourceIT {
               .withEntityId(entityId)
               .withEntityFullyQualifiedName(glossary.getFullyQualifiedName())
               .withRequestedBy("closer" + i)
-              .withOrigin(org.openmetadata.schema.governance.changeRequest.ChangeRequestOrigin.INTERCEPTED)
+              .withOrigin(
+                  org.openmetadata.schema.governance.changeRequest.ChangeRequestOrigin.INTERCEPTED)
               .withWorkflowDefinitionId(UUID.randomUUID())
               .withStatus(ChangeRequestStatus.APPLIED)
               .withActiveRevisionId(UUID.randomUUID())
@@ -618,7 +616,8 @@ class ChangeRequestResourceIT {
 
     // The status-filtered list still returns the one open request.
     assertEquals(
-        1, visibleCount(SdkClients.adminClient(), entityId, "Pending,Approved"),
+        1,
+        visibleCount(SdkClients.adminClient(), entityId, "Pending,Approved"),
         "the open request must surface beside 50 closed rows");
     // The legacy unfiltered page is full of closed rows, so the open request is hidden without the
     // status filter — the pre-fix behavior the indicator suffered from.
