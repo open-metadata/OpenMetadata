@@ -142,7 +142,13 @@ const DimensionalityTab = () => {
     setSelectedDimension(String(value));
   };
 
-  const fetchDimensionColumnData = async () => {
+  // `isStale` guards against a late response overwriting state after the
+  // dimension or date range changed while the request was in flight —
+  // otherwise a slower, superseded response could render stale results for a
+  // selection the user already switched away from (and a late failure could
+  // wipe valid data via the catch branch). Mirrors the guard in
+  // FailedTestCaseSampleData / TestCaseIncidentTab.
+  const fetchDimensionColumnData = async (isStale?: () => boolean) => {
     setIsLoading(true);
     try {
       if (!testCase?.fullyQualifiedName || !selectedDimension) {
@@ -157,18 +163,30 @@ const DimensionalityTab = () => {
         }
       );
 
-      setDimensionData(response.data);
+      if (!isStale?.()) {
+        setDimensionData(response.data);
+      }
     } catch {
-      setDimensionData([]);
+      if (!isStale?.()) {
+        setDimensionData([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (!isStale?.()) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     if (selectedDimension) {
-      fetchDimensionColumnData();
+      fetchDimensionColumnData(() => cancelled);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedDimension, dateRange]);
 
   const getLatestResultPerDimension = useMemo(() => {
