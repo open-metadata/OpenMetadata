@@ -19,6 +19,7 @@ import {
   LineageNode,
 } from '../Lineage/Lineage.interface';
 import {
+  DependencyTypeFilter,
   EImpactLevel,
   LineageTableAction,
   LineageTableState,
@@ -36,6 +37,7 @@ const initialState: LineageTableState = {
   lineageDirection: LineageDirection.Downstream,
   lineagePagingInfo: null,
   nodeDepth: 1,
+  dependencyTypeFilter: 'ALL',
 };
 
 function lineageTableReducerPrimary(
@@ -93,6 +95,7 @@ function lineageTableReducerSecondary(
         searchValue: '',
         filterNodes: [],
         filterSelectionActive: false,
+        dependencyTypeFilter: 'ALL',
       };
 
     case 'TOGGLE_FILTER_SELECTION':
@@ -103,6 +106,9 @@ function lineageTableReducerSecondary(
 
     case 'UPDATE_NODE_DEPTH':
       return { ...state, nodeDepth: action.payload };
+
+    case 'SET_DEPENDENCY_TYPE_FILTER':
+      return { ...state, dependencyTypeFilter: action.payload };
 
     default:
       return undefined;
@@ -194,6 +200,13 @@ export function useLineageTableState() {
     dispatch({ type: 'UPDATE_NODE_DEPTH', payload: depth });
   }, []);
 
+  const setDependencyTypeFilter = useCallback(
+    (dependencyType: DependencyTypeFilter) => {
+      dispatch({ type: 'SET_DEPENDENCY_TYPE_FILTER', payload: dependencyType });
+    },
+    []
+  );
+
   return {
     // State values
     ...state,
@@ -212,6 +225,7 @@ export function useLineageTableState() {
     setLineageDirection,
     setLineagePagingInfo,
     setNodeDepth,
+    setDependencyTypeFilter,
     resetFilters,
   };
 }

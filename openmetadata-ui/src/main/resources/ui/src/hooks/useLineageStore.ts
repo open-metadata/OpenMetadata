@@ -158,6 +158,7 @@ const defaultLineageSettings = {
   downstreamDepth: 3,
   nodesPerLayer: 50,
   pipelineViewMode: PipelineViewMode.Node,
+  showIndirectEdges: true,
 };
 
 export const useLineageStore = create<LineageState>((set, get) => ({

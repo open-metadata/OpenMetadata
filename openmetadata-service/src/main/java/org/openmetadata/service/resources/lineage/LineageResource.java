@@ -67,6 +67,7 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.LineageScene;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
@@ -83,6 +84,7 @@ import org.openmetadata.service.lineage.LineageHydrator;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.lineage.LineageSceneResolver;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.search.lineage.LineageDependencyResolver;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -475,10 +477,17 @@ public class LineageResource {
               description =
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
-          Long endTime)
+          Long endTime,
+      @Parameter(
+              description =
+                  "Optional filter by effective transitive dependency type: DIRECT, INDIRECT, or ALL.")
+          @QueryParam("dependencyType")
+          String dependencyType)
       throws IOException {
     authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
+    DependencyType dependencyTypeFilter =
+        LineageDependencyResolver.parseDependencyTypeFilter(dependencyType);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     SearchLineageResult lineage =
         Entity.getSearchRepository()
@@ -497,7 +506,8 @@ public class LineageResource {
                     .withPreservePaths(preservePaths)
                     .withStartTime(startTime)
                     .withEndTime(endTime),
-                subjectContext);
+                subjectContext,
+                dependencyTypeFilter);
     return searchLineagePermissionFilter.filter(securityContext, subjectContext, lineage, fqn);
   }
 
@@ -604,10 +614,17 @@ public class LineageResource {
               description =
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
-          Long endTime)
+          Long endTime,
+      @Parameter(
+              description =
+                  "Optional filter by effective transitive dependency type: DIRECT, INDIRECT, or ALL.")
+          @QueryParam("dependencyType")
+          String dependencyType)
       throws IOException {
     authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
+    DependencyType dependencyTypeFilter =
+        LineageDependencyResolver.parseDependencyTypeFilter(dependencyType);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     SearchLineageResult lineage =
         Entity.getSearchRepository()
@@ -627,7 +644,8 @@ public class LineageResource {
                     .withPreservePaths(preservePaths)
                     .withStartTime(startTime)
                     .withEndTime(endTime),
-                subjectContext);
+                subjectContext,
+                dependencyTypeFilter);
     return searchLineagePermissionFilter.filter(securityContext, subjectContext, lineage, fqn);
   }
 
@@ -826,10 +844,17 @@ public class LineageResource {
               description =
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
-          Long endTime)
+          Long endTime,
+      @Parameter(
+              description =
+                  "Optional filter by effective transitive dependency type: DIRECT, INDIRECT, or ALL.")
+          @QueryParam("dependencyType")
+          String dependencyType)
       throws IOException {
     authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
+    DependencyType dependencyTypeFilter =
+        LineageDependencyResolver.parseDependencyTypeFilter(dependencyType);
     return Entity.getSearchRepository()
         .getLineagePaginationInfo(
             fqn,
@@ -839,7 +864,8 @@ public class LineageResource {
             deleted,
             entityType,
             startTime,
-            endTime);
+            endTime,
+            dependencyTypeFilter);
   }
 
   @GET
@@ -1024,10 +1050,17 @@ public class LineageResource {
               description =
                   "Filter lineage edges by observed time window (epoch millis). Inclusive upper bound; matched via range overlap on edge createdAt/updatedAt.")
           @QueryParam("endTime")
-          Long endTime)
+          Long endTime,
+      @Parameter(
+              description =
+                  "Optional filter by effective transitive dependency type: DIRECT, INDIRECT, or ALL.")
+          @QueryParam("dependencyType")
+          String dependencyType)
       throws IOException {
     authorizeLineageRoot(securityContext, entityType, fqn);
     validateTemporalBounds(startTime, endTime);
+    DependencyType dependencyTypeFilter =
+        LineageDependencyResolver.parseDependencyTypeFilter(dependencyType);
     if (nullOrEmpty(direction)) {
       throw new IllegalArgumentException("Lineage Direction is required.");
     }
@@ -1052,7 +1085,8 @@ public class LineageResource {
             .withStartTime(startTime)
             .withEndTime(endTime);
     SearchLineageResult page =
-        Entity.getSearchRepository().searchLineageByEntityCount(request, subjectContext);
+        Entity.getSearchRepository()
+            .searchLineageByEntityCount(request, subjectContext, dependencyTypeFilter);
     return searchLineagePermissionFilter.filterPage(securityContext, subjectContext, page, request);
   }
 

@@ -21,7 +21,10 @@ import {
   LineageScene,
 } from '../generated/api/lineage/lineageScene';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
-import { LineageDetails } from '../generated/type/entityLineage';
+import {
+  DependencyType,
+  LineageDetails,
+} from '../generated/type/entityLineage';
 import { CSVExportResponse } from '../interface/entity/csv.interface';
 import {
   EdgeDetails,
@@ -73,6 +76,7 @@ export const getLineageDataByFQN = async ({
   config,
   queryFilter,
   columnFilter,
+  dependencyType,
   from,
   direction,
   startTime,
@@ -83,6 +87,7 @@ export const getLineageDataByFQN = async ({
   config?: LineageConfig;
   queryFilter?: string;
   columnFilter?: string;
+  dependencyType?: DependencyType;
   from?: number;
   direction?: LineageDirection;
   startTime?: number;
@@ -102,6 +107,7 @@ export const getLineageDataByFQN = async ({
       downstreamDepth,
       query_filter: queryFilter,
       column_filter: columnFilter,
+      dependencyType,
       includeDeleted: false,
       size: config?.nodesPerLayer,
       from,
@@ -241,6 +247,7 @@ export const getLineageByEntityCount = async (params: {
   size: number;
   query_filter?: string;
   column_filter?: string;
+  dependencyType?: DependencyType;
   include_pagination_info?: boolean;
   startTime?: number;
   endTime?: number;
@@ -332,6 +339,7 @@ export const getLineagePagingData = async (params: {
   type?: EntityType;
   entityType?: EntityType;
   query_filter?: string;
+  dependencyType?: DependencyType;
   startTime?: number;
   endTime?: number;
 }) => {

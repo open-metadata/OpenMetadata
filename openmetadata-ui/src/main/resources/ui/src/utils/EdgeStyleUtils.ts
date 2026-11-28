@@ -11,25 +11,55 @@
  *  limitations under the License.
  */
 import type { Edge } from 'reactflow';
+import { DependencyType } from '../generated/type/entityLineage';
+
+export const INDIRECT_EDGE_LINE_DASH = [6, 4];
 
 export interface EdgeStyle {
   stroke: string;
   opacity: number;
   strokeWidth: number;
+  lineDash?: number[];
 }
 
 export interface LineageEdgeColors {
   primary: string;
   columnHighlight: string;
   dqHighlight: string;
+  indirect?: string;
   labelBackground: string;
   labelBorder?: string;
   labelText: string;
 }
 
+export function isIndirectEdge(edge: Edge): boolean {
+  const dependencyType =
+    edge.data?.edge?.dependencyType ?? edge.data?.sceneEdge?.dependencyType;
+
+  return dependencyType === DependencyType.Indirect;
+}
+
 const EDGE_STYLE_CACHE_MAX = 1_000;
 const edgeStyleCache = new Map<string, EdgeStyle>();
 let cachedColorSignature = '';
+
+function getBaseEdgeAppearance(
+  isIndirect: boolean,
+  isEdgeHovered: boolean | undefined,
+  colors: LineageEdgeColors
+): { stroke: string; opacity: number } {
+  if (isEdgeHovered) {
+    return { stroke: colors.primary, opacity: 1 };
+  }
+  if (isIndirect) {
+    return {
+      stroke: colors.indirect ?? 'rgba(177, 177, 183)',
+      opacity: 0.7,
+    };
+  }
+
+  return { stroke: 'rgba(177, 177, 183)', opacity: 1 };
+}
 
 function calculateEdgeStyle(
   edge: Edge,
@@ -42,12 +72,17 @@ function calculateEdgeStyle(
   isColumnHighlighted: boolean,
   isEdgeHovered?: boolean
 ): EdgeStyle {
-  let stroke = isEdgeHovered ? colors.primary : 'rgba(177, 177, 183)';
-  let opacity = 1;
+  const isIndirect = isIndirectEdge(edge);
+  let { stroke, opacity } = getBaseEdgeAppearance(
+    isIndirect,
+    isEdgeHovered,
+    colors
+  );
   const strokeWidth = 2;
 
   if (isNodeTraced) {
     stroke = colors.primary;
+    opacity = 1;
   } else if (hasTracedContext) {
     opacity = 0.3;
   }
@@ -62,11 +97,9 @@ function calculateEdgeStyle(
     opacity = 1;
   }
 
-  return {
-    stroke,
-    opacity,
-    strokeWidth,
-  };
+  return isIndirect
+    ? { stroke, opacity, strokeWidth, lineDash: INDIRECT_EDGE_LINE_DASH }
+    : { stroke, opacity, strokeWidth };
 }
 
 function isEdgeNodeTraced(edge: Edge, tracedNodes: Set<string>): boolean {
@@ -83,6 +116,7 @@ function isEdgeNodeTraced(edge: Edge, tracedNodes: Set<string>): boolean {
 
 function getStyleCacheKey(
   edgeId: string,
+  isIndirect: boolean,
   isNodeTraced: boolean,
   hasTracedContext: boolean,
   dqHighlightedEdgesHas: boolean,
@@ -90,7 +124,7 @@ function getStyleCacheKey(
   isColumnHighlighted: boolean,
   isHoveredEdge?: boolean
 ): string {
-  return `${edgeId}-${isNodeTraced}-${hasTracedContext}-${dqHighlightedEdgesHas}-${selectedColumn}-${isColumnHighlighted}-${isHoveredEdge}`;
+  return `${edgeId}-${isIndirect}-${isNodeTraced}-${hasTracedContext}-${dqHighlightedEdgesHas}-${selectedColumn}-${isColumnHighlighted}-${isHoveredEdge}`;
 }
 
 export function computeEdgeStyle(
@@ -108,12 +142,15 @@ export function computeEdgeStyle(
   // Cache keys don't encode colors, so drop cached styles when the resolved
   // colors change (e.g. the user updates the brand/custom theme) to avoid
   // repainting stale strokes.
-  const colorSignature = `${colors.primary}|${colors.columnHighlight}|${colors.dqHighlight}|${colors.labelBackground}|${colors.labelText}`;
+  const colorSignature = `${colors.primary}|${colors.columnHighlight}|${
+    colors.dqHighlight
+  }|${colors.indirect ?? ''}|${colors.labelBackground}|${colors.labelText}`;
   if (colorSignature !== cachedColorSignature) {
     edgeStyleCache.clear();
     cachedColorSignature = colorSignature;
   }
 
+  const isIndirect = isIndirectEdge(edge);
   const isNodeTraced = isEdgeNodeTraced(edge, tracedNodes);
 
   const isColumnHighlighted =
@@ -130,6 +167,7 @@ export function computeEdgeStyle(
 
   const cacheKey = getStyleCacheKey(
     edge.id,
+    isIndirect,
     isNodeTraced,
     hasTracedContext,
     dqHighlightedEdges.has(edge.id),

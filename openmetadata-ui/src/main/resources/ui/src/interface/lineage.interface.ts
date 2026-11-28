@@ -26,6 +26,8 @@ import { EntityReference } from '../generated/entity/type';
 import { APISchema } from '../generated/type/apiSchema';
 import {
   ColumnLineage,
+  DependencyType,
+  IndirectColumn,
   TempLineageTable,
 } from '../generated/type/entityLineage';
 import { SearchSourceAlias, TableSearchSource } from './search.interface';
@@ -60,6 +62,8 @@ export interface EdgeDetails {
   source?: string;
   sqlQuery?: string;
   columns?: ColumnLineage[];
+  dependencyType?: DependencyType;
+  indirectColumns?: IndirectColumn[];
   description?: string;
   pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
   docId?: string;
@@ -83,6 +87,7 @@ export type NodeData = {
     entityUpstreamCount?: number;
   };
   nodeDepth?: number;
+  dependencyType?: DependencyType;
 };
 
 export interface LineageNodeType
@@ -140,6 +145,7 @@ export type LineageData = {
 export interface LineageNodeData {
   entity: SearchSourceAlias;
   nodeDepth?: number;
+  dependencyType?: DependencyType;
   paging?: {
     entityDownstreamCount?: number;
     entityUpstreamCount?: number;

@@ -1,9 +1,12 @@
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { DependencyType } from '../../generated/type/entityLineage';
 import { LineagePagingInfo } from '../../interface/lineage.interface';
 import {
   ColumnLevelLineageNode,
   LineageNode,
 } from '../Lineage/Lineage.interface';
+
+export type DependencyTypeFilter = DependencyType | 'ALL';
 
 /*
  *  Copyright 2025 Collate.
@@ -36,6 +39,7 @@ export interface LineageTableState {
   lineageDirection: LineageDirection;
   lineagePagingInfo: LineagePagingInfo | null;
   nodeDepth?: number;
+  dependencyTypeFilter: DependencyTypeFilter;
 }
 
 export type LineageTableAction =
@@ -64,4 +68,5 @@ export type LineageTableAction =
   | { type: 'RESET_FILTERS' }
   | { type: 'TOGGLE_FILTER_SELECTION' }
   | { type: 'SET_LINEAGE_PAGING_INFO'; payload: LineagePagingInfo | null }
-  | { type: 'UPDATE_NODE_DEPTH'; payload: number };
+  | { type: 'UPDATE_NODE_DEPTH'; payload: number }
+  | { type: 'SET_DEPENDENCY_TYPE_FILTER'; payload: DependencyTypeFilter };

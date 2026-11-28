@@ -85,12 +85,21 @@ export const getNewLineageConnectionDetails = (
   selectedEdgeValue: Edge | undefined,
   selectedPipeline: EntityReference | undefined
 ) => {
-  const { fromEntity, toEntity, sqlQuery, columns, tempLineageTables } =
-    selectedEdgeValue?.data.edge ?? {};
+  const {
+    fromEntity,
+    toEntity,
+    sqlQuery,
+    columns,
+    dependencyType,
+    indirectColumns,
+    tempLineageTables,
+  } = selectedEdgeValue?.data.edge ?? {};
   const updatedLineageDetails: LineageDetails = {
     sqlQuery: sqlQuery ?? '',
     columnsLineage: columns ?? [],
     pipeline: selectedPipeline,
+    dependencyType,
+    indirectColumns,
     tempLineageTables,
   };
 
@@ -272,6 +281,8 @@ export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
     pipeline,
     source,
     pipelineEntityType,
+    dependencyType,
+    indirectColumns,
     tempLineageTables,
   } = edge.data?.edge || {};
 
@@ -287,6 +298,8 @@ export const getLineageDetailsObject = (edge: Edge): LineageDetails => {
         )
       : undefined,
     source,
+    dependencyType,
+    indirectColumns,
     tempLineageTables,
   };
 };

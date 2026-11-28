@@ -281,6 +281,7 @@ public class SettingsCache {
                       .withDownstreamDepth(2)
                       .withUpstreamDepth(2)
                       .withLineageLayer(LineageLayer.ENTITY_LINEAGE)
+                      .withShowIndirectEdges(true)
                       .withGraphPerformanceConfig(
                           new org.openmetadata.schema.api.lineage.GraphPerformanceConfig()
                               .withSmallGraphThreshold(5000)

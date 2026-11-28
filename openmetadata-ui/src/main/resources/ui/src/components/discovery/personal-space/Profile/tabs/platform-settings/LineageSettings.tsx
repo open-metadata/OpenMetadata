@@ -96,6 +96,16 @@ const LineageSettings = (props: PlatformSettingsPageProps) => {
           }
         />
       </ReadOnlyRow>
+      <ReadOnlyRow title={t('label.show-indirect-dependencies')}>
+        <SettingValue
+          testId="show-indirect-edges-value"
+          value={t(
+            config?.showIndirectEdges ?? true
+              ? 'label.enabled'
+              : 'label.disabled'
+          )}
+        />
+      </ReadOnlyRow>
     </SettingsSection>
   );
 };

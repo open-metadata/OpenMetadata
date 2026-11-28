@@ -95,6 +95,7 @@ describe('LineageConfigModal', () => {
         downstreamDepth: 6,
         nodesPerLayer: 7,
         pipelineViewMode: PipelineViewMode.Node,
+        showIndirectEdges: true,
       });
     });
   });
@@ -173,12 +174,83 @@ describe('LineageConfigModal', () => {
       );
       fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
 
-      await waitFor(() => expect(onSave).toHaveBeenCalledWith(config));
+      await waitFor(() =>
+        expect(onSave).toHaveBeenCalledWith({
+          ...config,
+          showIndirectEdges: true,
+        })
+      );
 
       expect(
         usePersistentStorage.getState().getUserPreference('admin')
           .showLineageTempTables
       ).toBe(false);
+    });
+  });
+
+  describe('show indirect dependencies', () => {
+    it('defaults to enabled when showIndirectEdges is unset on config', async () => {
+      render(
+        <LineageConfigModal
+          visible
+          config={config}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      );
+
+      expect(
+        await screen.findByRole('switch', {
+          name: /label.show-indirect-dependencies/,
+        })
+      ).toBeChecked();
+    });
+
+    it('reflects showIndirectEdges: false and saves toggled value', async () => {
+      render(
+        <LineageConfigModal
+          visible
+          config={{ ...config, showIndirectEdges: false }}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      );
+
+      const toggle = await screen.findByRole('switch', {
+        name: /label.show-indirect-dependencies/,
+      });
+
+      expect(toggle).not.toBeChecked();
+
+      fireEvent.click(toggle);
+      fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
+
+      await waitFor(() =>
+        expect(onSave).toHaveBeenCalledWith({
+          ...config,
+          showIndirectEdges: true,
+        })
+      );
+    });
+
+    it('hides the switch when showIndirectEdgesToggle is false', async () => {
+      render(
+        <LineageConfigModal
+          visible
+          config={config}
+          showIndirectEdgesToggle={false}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      );
+
+      await screen.findByTestId('field-upstream');
+
+      expect(
+        screen.queryByRole('switch', {
+          name: /label.show-indirect-dependencies/,
+        })
+      ).not.toBeInTheDocument();
     });
   });
 

@@ -17,18 +17,25 @@ import ELKGraph, {
   LayoutOptions,
 } from 'elkjs/lib/elk.bundled.js';
 
+const getEdgePriority = (edge: ElkExtendedEdge): number => {
+  const raw = edge.layoutOptions?.['elk.priority'];
+  const parsed = raw !== undefined ? Number(raw) : 0;
+
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 const collapseParallelEdges = (edges: ElkExtendedEdge[]) => {
-  const seen = new Set<string>();
+  const bestByKey = new Map<string, ElkExtendedEdge>();
 
-  return edges.filter((edge) => {
+  for (const edge of edges) {
     const key = `${edge.sources.join(',')}->${edge.targets.join(',')}`;
-    if (seen.has(key)) {
-      return false;
+    const existing = bestByKey.get(key);
+    if (!existing || getEdgePriority(edge) > getEdgePriority(existing)) {
+      bestByKey.set(key, edge);
     }
-    seen.add(key);
+  }
 
-    return true;
-  });
+  return Array.from(bestByKey.values());
 };
 
 class ELKLayout {

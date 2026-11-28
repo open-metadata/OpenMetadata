@@ -29,6 +29,7 @@ export const useLineageEdgeColors = (): LineageEdgeColors => {
       primary: brandColors?.primaryColor ?? '#1570ef',
       columnHighlight: '#444ce7', // It's a replacement to indigo-600 not a theme color
       dqHighlight: brandColors?.errorColor ?? '#d92d20',
+      indirect: resolveCssColor('var(--tw-color-fg-quaternary)', '#a4a7ae'),
       labelBackground: resolveCssColor(
         'var(--tw-background-color-surface)',
         '#ffffff'

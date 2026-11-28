@@ -798,6 +798,12 @@
                     "ignore_above": 512
                   }
                 }
+              },
+              "transformationType": {
+                "type": "keyword"
+              },
+              "transformationSubtype": {
+                "type": "keyword"
               }
             }
           },
@@ -832,6 +838,31 @@
           },
           "docUniqueId": {
             "type": "keyword"
+          },
+          "dependencyType": {
+            "type": "keyword"
+          },
+          "indirectColumns": {
+            "properties": {
+              "fromColumn": {
+                "type": "text",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 512
+                  }
+                }
+              },
+              "transformationType": {
+                "type": "keyword"
+              },
+              "transformationSubtype": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              }
+            }
           }
         }
       },

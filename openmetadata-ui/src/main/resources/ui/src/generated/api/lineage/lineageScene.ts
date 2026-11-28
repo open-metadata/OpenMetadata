@@ -116,6 +116,11 @@ export enum LineageLevelKind {
 export interface LineageSceneEdge {
     band: LineageBand;
     /**
+     * Whether this lineage edge represents a DIRECT or INDIRECT dependency. Unset/null is
+     * treated as DIRECT.
+     */
+    dependencyType?: DependencyType;
+    /**
      * Description associated with this concrete lineage edge.
      */
     description?: string;
@@ -163,6 +168,19 @@ export interface LineageSceneEdge {
      * Number of concrete edges represented by this scene edge.
      */
     weight?: number;
+}
+
+/**
+ * Whether this lineage edge represents a DIRECT or INDIRECT dependency. Unset/null is
+ * treated as DIRECT.
+ *
+ * Whether the upstream entity contributes values directly to the downstream entity or only
+ * influences it indirectly (e.g., via JOIN, WHERE/FILTER, GROUP BY, ORDER BY, QUALIFY, or
+ * WINDOW).
+ */
+export enum DependencyType {
+    Direct = "DIRECT",
+    Indirect = "INDIRECT",
 }
 
 /**

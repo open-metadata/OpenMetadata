@@ -14,6 +14,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/tests/testCase';
+import { DependencyType } from '../../generated/type/entityLineage';
 import {
   EdgeDetails,
   EdgeFromToData,
@@ -54,6 +55,7 @@ export interface ColumnLevelLineageNode
   docId?: string;
   extraInfo?: EdgeDetails;
   nodeDepth?: number;
+  dependencyType?: DependencyType;
   tier?: TagLabel | string;
   name?: string;
   entityType?: EntityType;
@@ -83,6 +85,7 @@ export interface LineageEntityReference extends EntityReference {
 
 export type LineageNode = SearchSourceAlias & {
   nodeDepth?: number;
+  dependencyType?: DependencyType;
   paging: {
     entityDownstreamCount?: number;
     entityUpstreamCount?: number;

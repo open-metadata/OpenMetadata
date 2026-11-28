@@ -60,6 +60,7 @@ export type LineageConfigFormValues = Record<
   string
 > & {
   showTempTables: boolean;
+  showIndirectEdges: boolean;
 };
 
 export interface LineageConfigField {
@@ -75,6 +76,8 @@ export interface LineageConfigModalProps {
   config: LineageConfig;
   /** Only the entity Lineage canvas draws temp tables, so only it offers the switch. */
   showTempTablesToggle?: boolean;
+  /** Toggle visibility of INDIRECT lineage edges (defaults to showing toggle on graph views). */
+  showIndirectEdgesToggle?: boolean;
   onCancel: () => void;
   onSave: (config: LineageConfig) => void;
 }

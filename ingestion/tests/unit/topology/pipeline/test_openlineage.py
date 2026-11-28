@@ -48,7 +48,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.entityLineage import ColumnLineage
+from metadata.generated.schema.type.entityLineage import ColumnLineage, DependencyType, IndirectColumn
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
@@ -564,21 +564,133 @@ class OpenLineageUnitTest(unittest.TestCase):
             (request,) = self.open_lineage_source.yield_pipeline_lineage_details(parsed)
 
         columns = request.right.edge.lineageDetails.columnsLineage
+        self.assertEqual(request.right.edge.lineageDetails.dependencyType, DependencyType.DIRECT)
         self.assertEqual(
             [
                 (
                     col.toColumn.root.rsplit(".", 1)[1],
                     col.function.root if col.function else None,
+                    col.transformationType,
+                    col.transformationSubtype,
                     [fqn.root.rsplit(".", 1)[1] for fqn in col.fromColumns],
                 )
                 for col in columns
             ],
             [
-                ("id", "DIRECT/AGGREGATION", ["amount", "tax"]),
-                ("id", "INDIRECT/FILTER (eligible rows), DIRECT [masked]", ["flag"]),
-                ("id", "  legacy formula  ", ["old"]),
-                ("randomid", "IDENTITY", ["products"]),
-                ("zip", None, ["platform"]),
+                ("id", "DIRECT/AGGREGATION", "DIRECT", "AGGREGATION", ["amount", "tax"]),
+                ("id", "INDIRECT/FILTER (eligible rows), DIRECT [masked]", "DIRECT", None, ["flag"]),
+                ("id", "  legacy formula  ", None, None, ["old"]),
+                ("randomid", "IDENTITY", None, None, ["products"]),
+                ("zip", None, None, None, ["platform"]),
+            ],
+        )
+
+    def test_dataset_indirect_columns_and_dependency_type(self):
+        event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        direct_source = {
+            "namespace": "postgres://host:5432",
+            "name": "db.public.sat_user",
+            "facets": {},
+        }
+        indirect_source = {
+            "namespace": "postgres://host:5432",
+            "name": "db.public.xref_team",
+            "facets": {},
+        }
+        event["inputs"] = [direct_source, indirect_source]
+
+        direct_ref = {
+            "namespace": direct_source["namespace"],
+            "name": direct_source["name"],
+        }
+        indirect_ref = {
+            "namespace": indirect_source["namespace"],
+            "name": indirect_source["name"],
+        }
+        event["outputs"][0]["facets"]["columnLineage"] = {
+            "fields": {
+                "id": {
+                    "inputFields": [
+                        {
+                            **direct_ref,
+                            "field": "user_id",
+                            "transformations": [{"type": "DIRECT", "subtype": "IDENTITY"}],
+                        }
+                    ]
+                }
+            },
+            "dataset": [
+                {
+                    **indirect_ref,
+                    "field": "team_id",
+                    "transformations": [
+                        {"type": "INDIRECT", "subtype": "JOIN", "description": "join key"},
+                        {"type": "INDIRECT", "subtype": "FILTER", "description": "active only"},
+                    ],
+                },
+                {
+                    **direct_ref,
+                    "field": "is_active",
+                    "transformations": [{"type": "INDIRECT", "subtype": "FILTER"}],
+                },
+            ],
+        }
+        parsed = self.read_openlineage_event_from_kafka(event)
+        table_ids = {}
+
+        def _fake_get_by_name(entity, fqn, **kwargs):
+            if fqn not in table_ids:
+                table_ids[fqn] = uuid4()
+            return Mock(id=Mock(root=table_ids[fqn]), columns=[])
+
+        with (
+            patch.object(OpenMetadataConnection, "get_by_name", create=True, side_effect=_fake_get_by_name),
+            patch.object(OpenMetadataConnection, "get_lineage_by_id", create=True, return_value=None),
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn_from_om",
+                side_effect=lambda table, services=None: f"svc.db.{table.name}",
+            ),
+        ):
+            requests = list(self.open_lineage_source.yield_pipeline_lineage_details(parsed))
+
+        self.assertEqual(len(requests), 2)
+        by_from_id = {req.right.edge.fromEntity.id.root: req.right.edge.lineageDetails for req in requests}
+        direct_details = by_from_id[table_ids["svc.db.sat_user"]]
+        indirect_details = by_from_id[table_ids["svc.db.xref_team"]]
+
+        self.assertEqual(direct_details.dependencyType, DependencyType.DIRECT)
+        self.assertEqual(len(direct_details.columnsLineage), 1)
+        self.assertEqual(direct_details.columnsLineage[0].transformationType, "DIRECT")
+        self.assertEqual(direct_details.columnsLineage[0].transformationSubtype, "IDENTITY")
+        self.assertEqual(
+            direct_details.indirectColumns,
+            [
+                IndirectColumn(
+                    fromColumn=FullyQualifiedEntityName("svc.db.sat_user.is_active"),
+                    transformationType="INDIRECT",
+                    transformationSubtype="FILTER",
+                )
+            ],
+        )
+
+        self.assertEqual(indirect_details.dependencyType, DependencyType.INDIRECT)
+        self.assertEqual(indirect_details.columnsLineage, [])
+        self.assertEqual(
+            indirect_details.indirectColumns,
+            [
+                IndirectColumn(
+                    fromColumn=FullyQualifiedEntityName("svc.db.xref_team.team_id"),
+                    transformationType="INDIRECT",
+                    transformationSubtype="JOIN",
+                    description="join key",
+                ),
+                IndirectColumn(
+                    fromColumn=FullyQualifiedEntityName("svc.db.xref_team.team_id"),
+                    transformationType="INDIRECT",
+                    transformationSubtype="FILTER",
+                    description="active only",
+                ),
             ],
         )
 

@@ -780,6 +780,15 @@ export interface ColumnLineage {
      * transformation of source columns.
      */
     toColumn?: string;
+    /**
+     * Structured transformation subtype (e.g., IDENTITY, TRANSFORMATION, AGGREGATION, FILTER,
+     * JOIN, GROUP_BY, SORT, WINDOW, CONDITIONAL).
+     */
+    transformationSubtype?: string;
+    /**
+     * Structured transformation type (e.g., DIRECT, INDIRECT).
+     */
+    transformationType?: string;
     [property: string]: any;
 }
 

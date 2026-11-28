@@ -774,4 +774,31 @@ describe('useCanvasEdgeRenderer', () => {
 
     mockUseViewport.mockReturnValue({ x: 0, y: 0, zoom: 1 });
   });
+
+  it('applies style.lineDash on the canvas context for indirect edges and resets before arrow', () => {
+    const { computeEdgeStyle } = jest.requireMock('../utils/EdgeStyleUtils');
+    computeEdgeStyle.mockReturnValueOnce({
+      stroke: '#a4a7ae',
+      opacity: 0.7,
+      strokeWidth: 2,
+      lineDash: [6, 4],
+    });
+    const edge = createMockEdge({ animated: false });
+    mockGetNode.mockImplementation((id: string) => createMockNode(id));
+
+    renderHook(() =>
+      useCanvasEdgeRenderer({
+        canvasRef,
+        edges: [edge],
+        dqHighlightedEdges: new Set(),
+        colors: createMockColors(),
+        containerWidth: 800,
+        containerHeight: 600,
+        theme: 'light',
+      })
+    );
+
+    expect(mockCtx.setLineDash).toHaveBeenNthCalledWith(1, [6, 4]);
+    expect(mockCtx.setLineDash).toHaveBeenNthCalledWith(2, []);
+  });
 });

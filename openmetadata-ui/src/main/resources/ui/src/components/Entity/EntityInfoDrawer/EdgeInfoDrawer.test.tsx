@@ -20,6 +20,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { Edge, Node } from 'reactflow';
 import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
+import { DependencyType } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import EdgeInfoDrawer from './EdgeInfoDrawer.component';
 
@@ -489,5 +490,59 @@ describe('EdgeInfoDrawer Component', () => {
 
     expect(createdByInfo?.value).toBe('alice');
     expect(updatedByInfo?.value).toBe('2 days ago');
+  });
+
+  it('should display dependency type badge and indirect column references when present', async () => {
+    (getNameFromFQN as jest.Mock).mockImplementation((fqn: string) =>
+      fqn.split('.').pop()
+    );
+
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                dependencyType: DependencyType.Indirect,
+                indirectColumns: [
+                  {
+                    fromColumn: 'svc.db.schema.orders.status',
+                    transformationSubtype: 'FILTER',
+                  },
+                  {
+                    fromColumn: 'svc.db.schema.orders.customer_id',
+                    transformationSubtype: 'JOIN',
+                  },
+                ],
+              },
+            },
+          } as Edge
+        }
+      />
+    );
+
+    const indirectSection = await screen.findByTestId('edge-indirect-columns');
+
+    expect(indirectSection).toBeInTheDocument();
+    expect(
+      screen.getByText('label.indirect-column-plural')
+    ).toBeInTheDocument();
+    expect(screen.getByText('status')).toBeInTheDocument();
+    expect(screen.getByText('FILTER')).toBeInTheDocument();
+    expect(screen.getByText('customer_id')).toBeInTheDocument();
+    expect(screen.getByText('JOIN')).toBeInTheDocument();
+
+    const overviewSectionCalls = (OverviewSection as jest.Mock).mock.calls;
+    const lastProps =
+      overviewSectionCalls[overviewSectionCalls.length - 1]?.[0];
+    const dependencyTypeRow = lastProps?.entityInfoV1?.find(
+      (item: { name: string }) => item.name === 'label.dependency-type'
+    );
+
+    expect(dependencyTypeRow).toBeDefined();
   });
 });

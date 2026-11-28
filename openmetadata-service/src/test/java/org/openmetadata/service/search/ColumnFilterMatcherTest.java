@@ -11,6 +11,8 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.DependencyType;
+import org.openmetadata.schema.type.IndirectColumn;
 import org.openmetadata.service.search.ColumnMetadataCache.ColumnFilterCriteria;
 import org.openmetadata.service.search.ColumnMetadataCache.ColumnFilterCriteria.FilterType;
 
@@ -596,6 +598,72 @@ class ColumnFilterMatcherTest {
                 .withToColumn("svc.db.schema.t2.name")));
 
     assertTrue(ColumnFilterMatcher.matchesColumnFilter(edge, "name"));
+  }
+
+  @Test
+  void matchesColumnFilterSupportsDependencyTypeAndIndirectColumns() {
+    EsLineageData directEdge =
+        new EsLineageData()
+            .withDependencyType(DependencyType.DIRECT)
+            .withColumns(
+                List.of(
+                    new ColumnLineage()
+                        .withFromColumns(List.of("svc.db.schema.t1.id"))
+                        .withToColumn("svc.db.schema.t2.id")));
+    EsLineageData unsetEdge =
+        new EsLineageData()
+            .withColumns(
+                List.of(
+                    new ColumnLineage()
+                        .withFromColumns(List.of("svc.db.schema.t1.id"))
+                        .withToColumn("svc.db.schema.t2.id")));
+    EsLineageData indirectEdge =
+        new EsLineageData()
+            .withDependencyType(DependencyType.INDIRECT)
+            .withIndirectColumns(
+                List.of(
+                    new IndirectColumn()
+                        .withFromColumn("svc.db.schema.t1.status")
+                        .withTransformationSubtype("FILTER")));
+
+    assertTrue(ColumnFilterMatcher.matchesColumnFilter(directEdge, "dependencyType:DIRECT"));
+    assertFalse(ColumnFilterMatcher.matchesColumnFilter(directEdge, "dependencyType:INDIRECT"));
+    assertTrue(ColumnFilterMatcher.matchesColumnFilter(unsetEdge, "dependencyType:DIRECT"));
+    assertFalse(ColumnFilterMatcher.matchesColumnFilter(unsetEdge, "dependencyType:INDIRECT"));
+    assertTrue(ColumnFilterMatcher.matchesColumnFilter(indirectEdge, "dependencyType:INDIRECT"));
+    assertTrue(ColumnFilterMatcher.matchesColumnFilter(indirectEdge, "dependencyType:ALL"));
+    assertTrue(ColumnFilterMatcher.matchesColumnFilter(indirectEdge, "columnName:status"));
+    assertTrue(
+        ColumnFilterMatcher.matchesColumnFilter(
+            indirectEdge, "dependencyType:INDIRECT,columnName:status"));
+    assertFalse(
+        ColumnFilterMatcher.matchesColumnFilter(
+            indirectEdge, "dependencyType:DIRECT,columnName:status"));
+    assertEquals(
+        Set.of("svc.db.schema.t1.status"), ColumnFilterMatcher.extractColumnFqns(indirectEdge));
+  }
+
+  @Test
+  void matchesColumnFilterWithMetadataMatchesIndirectColumnsByTag() {
+    EsLineageData indirectEdge =
+        new EsLineageData()
+            .withDependencyType(DependencyType.INDIRECT)
+            .withIndirectColumns(
+                List.of(
+                    new IndirectColumn()
+                        .withFromColumn("svc.db.schema.t1.region")
+                        .withTransformationSubtype("JOIN")));
+    ColumnMetadataCache cache = new ColumnMetadataCache();
+    cache.loadColumnMetadata(
+        Set.of("svc.db.schema.t1.region"),
+        parentFqn -> doc(parentFqn, column("region", "PII.Geo")));
+
+    assertTrue(
+        ColumnFilterMatcher.matchesColumnFilter(
+            indirectEdge, "dependencyType:INDIRECT,tag:PII.Geo", cache));
+    assertFalse(
+        ColumnFilterMatcher.matchesColumnFilter(
+            indirectEdge, "dependencyType:DIRECT,tag:PII.Geo", cache));
   }
 
   private static Map<String, Object> doc(String fullyQualifiedName, Map<String, Object> column) {

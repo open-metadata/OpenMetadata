@@ -34,6 +34,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
   config,
   showTempTablesToggle = false,
+  showIndirectEdgesToggle = true,
   onCancel,
   onSave,
 }) => {
@@ -46,6 +47,7 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
     () => ({
       ...getLineageConfigFormValues(config),
       showTempTables: showLineageTempTables,
+      showIndirectEdges: config.showIndirectEdges ?? true,
     }),
     [config, showLineageTempTables]
   );
@@ -71,6 +73,9 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
       upstreamDepth: Number(values.upstreamDepth),
       downstreamDepth: Number(values.downstreamDepth),
       nodesPerLayer: Number(values.nodesPerLayer),
+      ...(showIndirectEdgesToggle && {
+        showIndirectEdges: values.showIndirectEdges,
+      }),
     });
   };
 
@@ -140,6 +145,24 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
                       )}
                       isSelected={field.value}
                       label={t('label.show-temporary-table-plural')}
+                      size="sm"
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              )}
+              {showIndirectEdgesToggle && (
+                <Controller
+                  control={form.control}
+                  name="showIndirectEdges"
+                  render={({ field }) => (
+                    <Toggle
+                      data-testid="lineage-config-show-indirect-edges"
+                      hint={t(
+                        'message.lineage-show-indirect-dependencies-hint'
+                      )}
+                      isSelected={field.value}
+                      label={t('label.show-indirect-dependencies')}
                       size="sm"
                       onChange={field.onChange}
                     />

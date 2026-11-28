@@ -18,6 +18,7 @@ import {
   HookForm,
   Input,
   Select,
+  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -54,6 +55,7 @@ interface LineageConfigFormValues {
   downstreamDepth: string;
   lineageLayer?: LineageLayer;
   pipelineViewMode?: PipelineViewMode;
+  showIndirectEdges: boolean;
 }
 
 type DepthField = 'upstreamDepth' | 'downstreamDepth';
@@ -63,6 +65,7 @@ const toFormValues = (config?: LineageSettings): LineageConfigFormValues => ({
   downstreamDepth: String(config?.downstreamDepth ?? ''),
   lineageLayer: config?.lineageLayer,
   pipelineViewMode: config?.pipelineViewMode,
+  showIndirectEdges: config?.showIndirectEdges ?? true,
 });
 
 const LineageConfigPage = () => {
@@ -119,6 +122,7 @@ const LineageConfigPage = () => {
           downstreamDepth: Number(values.downstreamDepth),
           lineageLayer: values.lineageLayer,
           pipelineViewMode: values.pipelineViewMode,
+          showIndirectEdges: values.showIndirectEdges,
         },
       };
 
@@ -293,6 +297,23 @@ const LineageConfigPage = () => {
                               <Select.Item id={item.id} label={item.label} />
                             )}
                           </Select>
+                        )}
+                      </FormField>
+                      <FormField
+                        control={form.control}
+                        name="showIndirectEdges">
+                        {({ field }) => (
+                          <Toggle
+                            data-testid="field-show-indirect-edges"
+                            hint={t(
+                              'message.lineage-show-indirect-dependencies-hint'
+                            )}
+                            id="root/showIndirectEdges"
+                            isSelected={field.value}
+                            label={t('label.show-indirect-dependencies')}
+                            size="sm"
+                            onChange={field.onChange}
+                          />
                         )}
                       </FormField>
                     </HookForm>
