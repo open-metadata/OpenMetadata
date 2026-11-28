@@ -1,26 +1,140 @@
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.it.bootstrap.PrometheusText;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 class PrometheusResourceIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(PrometheusResourceIT.class);
+
+  private static final HttpClient HTTP = HttpClient.newHttpClient();
+  private static final String TABLE_ROUTE = "/v1/tables";
+  private static final String JETTY_REQUESTS = "jetty_http_requests_total";
+  private static final String JETTY_RESPONSES = "jetty_http_responses_total";
+  private static final String JETTY_UTILIZATION = "jetty_threads_utilization_ratio";
+  private static final String REQUEST_LATENCY_COUNT = "request_latency_total_seconds_count";
+
+  @Test
+  void publishesCanonicalMetricsAndPreservesDiagnostics() throws Exception {
+    String before = fetchScrape();
+    assertTrue(before.contains("# TYPE " + JETTY_REQUESTS + " counter"));
+    assertTrue(before.contains("# TYPE " + JETTY_RESPONSES + " counter"));
+    assertTrue(before.contains("# TYPE jetty_requests gauge"));
+    assertTrue(before.contains("# TYPE jetty_responses_2xx gauge"));
+    assertTrue(before.contains("# TYPE jetty_response_time_max_seconds gauge"));
+    assertTrue(before.contains("# TYPE " + JETTY_UTILIZATION + " gauge"));
+
+    assertEquals(200, applicationRequest("GET", TABLE_ROUTE + "?limit=1").statusCode());
+    String firstTable = TABLE_ROUTE + "/" + UUID.randomUUID();
+    String secondTable = TABLE_ROUTE + "/" + UUID.randomUUID();
+    assertEquals(404, applicationRequest("GET", firstTable).statusCode());
+    assertEquals(404, applicationRequest("GET", secondTable).statusCode());
+    assertEquals(
+        400,
+        applicationRequest("POST", TABLE_ROUTE, HttpRequest.BodyPublishers.ofString("{}"))
+            .statusCode());
+
+    await()
+        .atMost(Duration.ofSeconds(15))
+        .untilAsserted(() -> verifyTraffic(before, fetchScrape()));
+    verifyDiagnostics();
+  }
+
+  private void verifyTraffic(String before, String after) {
+    assertTrue(
+        PrometheusText.sum(after, JETTY_REQUESTS)
+            >= PrometheusText.sum(before, JETTY_REQUESTS) + 4);
+    verifyResponseDelta(before, after, "2xx", 1);
+    verifyResponseDelta(before, after, "4xx", 3);
+    verifyLatencyDelta(before, after, "GET", 3);
+    verifyLatencyDelta(before, after, "POST", 1);
+    assertFalse(PrometheusText.contains(after, REQUEST_LATENCY_COUNT, "endpoint", TABLE_ROUTE));
+    double utilization = PrometheusText.sum(after, JETTY_UTILIZATION);
+    assertTrue(utilization >= 0 && utilization <= 1);
+  }
+
+  private void verifyLatencyDelta(String before, String after, String method, int expected) {
+    String[] tags = {"http_route", TABLE_ROUTE, "method", method};
+    double beforeCount =
+        PrometheusText.contains(before, REQUEST_LATENCY_COUNT, tags)
+            ? PrometheusText.sum(before, REQUEST_LATENCY_COUNT, tags)
+            : 0.0;
+    assertTrue(PrometheusText.sum(after, REQUEST_LATENCY_COUNT, tags) >= beforeCount + expected);
+  }
+
+  private void verifyResponseDelta(String before, String after, String statusClass, int expected) {
+    assertTrue(
+        PrometheusText.sum(after, JETTY_RESPONSES, "status_class", statusClass)
+            >= PrometheusText.sum(before, JETTY_RESPONSES, "status_class", statusClass) + expected);
+  }
+
+  private void verifyDiagnostics() throws Exception {
+    HttpResponse<String> response = applicationRequest("GET", "/v1/system/diagnostics");
+    assertEquals(200, response.statusCode());
+    JsonNode diagnostics = JsonUtils.readTree(response.body());
+    JsonNode jetty = diagnostics.path("jetty");
+    double busy = jetty.get("threads_busy").doubleValue();
+    double max = jetty.get("threads_max").doubleValue();
+    assertTrue(jetty.has("queue_time_avg_ms"));
+    assertTrue(jetty.get("threads_current").isNumber());
+    double expectedPercent = max > 0 ? Math.round(Math.clamp(busy / max, 0, 1) * 1000) / 10.0 : 0;
+    assertEquals(expectedPercent, jetty.get("utilization_pct").doubleValue());
+    JsonNode latency = diagnostics.path("request_latency");
+    assertTrue(latency.path("GET " + TABLE_ROUTE).path("count").asLong() >= 3);
+    assertTrue(latency.path("POST " + TABLE_ROUTE).path("count").asLong() >= 1);
+    assertTrue(latency.path("GET " + TABLE_ROUTE).path("avg_total_ms").isNumber());
+  }
+
+  private static String fetchScrape() throws Exception {
+    URI uri = URI.create("http://localhost:" + TestSuiteBootstrap.getAdminPort() + "/prometheus");
+    HttpRequest request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(30)).GET().build();
+    HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode());
+    return response.body();
+  }
+
+  private static HttpResponse<String> applicationRequest(String method, String path)
+      throws Exception {
+    return applicationRequest(method, path, HttpRequest.BodyPublishers.noBody());
+  }
+
+  private static HttpResponse<String> applicationRequest(
+      String method, String path, HttpRequest.BodyPublisher body) throws Exception {
+    URI uri = URI.create(TestSuiteBootstrap.getBaseUrl() + "/api" + path);
+    HttpRequest request =
+        HttpRequest.newBuilder(uri)
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .method(method, body)
+            .build();
+    return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+  }
 
   @Test
   void testPrometheusEndpoint() throws Exception {

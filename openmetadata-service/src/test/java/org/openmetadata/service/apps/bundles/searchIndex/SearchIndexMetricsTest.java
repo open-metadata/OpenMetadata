@@ -10,6 +10,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -72,10 +74,46 @@ class SearchIndexMetricsTest {
       assertEquals(45.0, registry.get("search_index_shard_current").gauge().value(), 0.0001);
       assertEquals(100.0, registry.get("search_index_shard_max").gauge().value(), 0.0001);
       assertEquals(45.0, registry.get("search_index_shard_usage_percent").gauge().value(), 0.0001);
+      assertEquals(0.45, registry.get("search_index_shard_usage_ratio").gauge().value(), 0.0001);
       assertEquals(1.0, registry.get("search_index_missing_count").gauge().value(), 0.0001);
       assertEquals(2.0, registry.get("search_index_expected_count").gauge().value(), 0.0001);
       verify(searchClient).getAllIndexStats();
       verify(searchRepository, never()).indexExists(any(IndexMapping.class));
+    }
+  }
+
+  @Test
+  void scrapesBoundedShardUsageFromTheCachedSnapshot() throws IOException {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchClient searchClient = mock(SearchClient.class);
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    when(searchClient.getAllIndexStats()).thenReturn(List.of());
+    when(searchRepository.getEntityIndexMap()).thenReturn(Map.of());
+
+    PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    try (var validator =
+        mockConstruction(
+            SearchIndexClusterValidator.class,
+            (mock, context) ->
+                when(mock.getClusterCapacity(searchRepository))
+                    .thenReturn(
+                        new SearchIndexClusterValidator.ClusterCapacity(120, 100, 1.2, 0)))) {
+      registry.throwExceptionOnRegistrationFailure();
+      SearchIndexMetrics metrics = new SearchIndexMetrics(registry, searchRepository);
+      metrics.registerMetrics();
+      assertEquals(0.0, registry.get("search_index_shard_usage_ratio").gauge().value());
+
+      metrics.refreshStats();
+      String scrape = registry.scrape();
+      assertTrue(scrape.contains("# TYPE search_index_shard_usage_ratio gauge"));
+      assertTrue(scrape.contains("search_index_shard_usage_ratio 1.0"));
+      assertTrue(scrape.contains("search_index_shard_usage_percent 120.0"));
+      assertTrue(scrape.contains("search_index_shard_current 120.0"));
+      assertTrue(scrape.contains("search_index_shard_max 100.0"));
+      verify(validator.constructed().getFirst()).getClusterCapacity(searchRepository);
+      verify(searchClient).getAllIndexStats();
+    } finally {
+      registry.close();
     }
   }
 

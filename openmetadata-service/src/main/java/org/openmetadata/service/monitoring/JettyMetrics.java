@@ -111,16 +111,15 @@ public class JettyMetrics implements MeterBinder, Managed {
         .tags(tags)
         .register(registry);
 
-    // Thread pool utilization percentage
     Gauge.builder(
-            "jetty.threads.utilization",
-            threadPool,
-            tp -> {
-              int busy = tp.getBusyThreads();
-              int current = tp.getThreads();
-              return current > 0 ? (double) busy / current * 100.0 : 0.0;
-            })
-        .description("Thread pool utilization percentage")
+            "jetty.threads.utilization", threadPool, pool -> threadUtilizationRatio(pool) * 100.0)
+        .description("Busy threads as a percentage of configured capacity")
+        .tags(tags)
+        .register(registry);
+
+    Gauge.builder(
+            "jetty.threads.utilization.ratio", threadPool, JettyMetrics::threadUtilizationRatio)
+        .description("Fraction of configured thread capacity in use")
         .tags(tags)
         .register(registry);
 
@@ -203,6 +202,16 @@ public class JettyMetrics implements MeterBinder, Managed {
         .register(registry);
 
     LOG.info("Jetty metrics registered with Prometheus");
+  }
+
+  private static double threadUtilizationRatio(QueuedThreadPool pool) {
+    return threadUtilizationRatio(pool.getBusyThreads(), pool.getMaxThreads());
+  }
+
+  public static double threadUtilizationRatio(double busyThreads, double maxThreads) {
+    return Double.isFinite(busyThreads) && Double.isFinite(maxThreads) && maxThreads > 0
+        ? Math.clamp(busyThreads / maxThreads, 0.0, 1.0)
+        : 0.0;
   }
 
   private boolean isVirtualThreadsEnabled() {

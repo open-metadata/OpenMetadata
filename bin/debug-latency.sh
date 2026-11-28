@@ -43,7 +43,7 @@ usage() {
     echo "  -s                Use HTTPS instead of HTTP"
     echo ""
     echo "Analyze Mode Options:"
-    echo "  -e <endpoint>     The endpoint to analyze (e.g., 'v1/tables/123-456-789')"
+    echo "  -e <endpoint>     The classified route to analyze (e.g., '/v1/tables')"
     echo "  -r                Show raw metrics data"
     echo ""
     echo "List Mode Options:"
@@ -52,9 +52,9 @@ usage() {
     echo "  -o <sort_by>      Sort by: count, time, or name (default: count)"
     echo ""
     echo "Examples:"
-    echo "  # Analyze specific endpoint"
-    echo "  $0 -e 'v1/tables/0a4cd328-50c3-44c8-a7d2-ba71ba53bbe3'"
-    echo "  $0 -e 'v1/users' -h 'myserver.com' -p 9090 -r"
+    echo "  # Analyze the table route"
+    echo "  $0 -e '/v1/tables'"
+    echo "  $0 -e '/v1/users' -h 'myserver.com' -p 9090 -r"
     echo ""
     echo "  # List all endpoints"
     echo "  $0 -l"
@@ -123,317 +123,209 @@ if [ -z "$METRICS" ]; then
     exit 1
 fi
 
-# Branch based on mode
-if [ "$LIST_MODE" = true ]; then
-    # List mode
+# Decode the route label once and keep the method with each sample.
+SAMPLES=$(awk '
+    function label(name, pattern, value) {
+        pattern = "[{,][[:space:]]*" name "=\"[^\"]*\""
+        if (match($0, pattern)) {
+            value = substr($0, RSTART, RLENGTH)
+            sub(/^[^=]*="/, "", value)
+            return substr(value, 1, length(value) - 1)
+        }
+        return ""
+    }
+
+    /^request_(latency|operations|percentage)_[^{]*[{]/ {
+        route = label("http_route")
+        if (route == "") route = label("exported_endpoint")
+        if (route == "") route = label("endpoint")
+        if (route == "") next
+
+        name = substr($0, 1, index($0, "{") - 1)
+        method = label("method")
+        bucket = label("le")
+        data = $0
+        sub(/^.*}[[:space:]]+/, "", data)
+        split(data, sample, /[[:space:]]+/)
+        print name, route, (method == "" ? "-" : method), (bucket == "" ? "-" : bucket), sample[1], $0
+    }
+' OFS='\t' <<< "$METRICS")
+
+show_header() {
     echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${BLUE}OpenMetadata Endpoints with Metrics${NC}"
+    echo -e "${BLUE}$1${NC}"
     echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}Host:${NC} $HOST"
     echo -e "${GREEN}Port:${NC} $PORT"
     echo -e "${GREEN}Protocol:${NC} $PROTOCOL"
     echo -e "${GREEN}Metrics URL:${NC} $METRICS_URL"
-    echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
-    echo ""
-    
-    echo -e "${YELLOW}Processing endpoint data...${NC}"
-    echo ""
-    
-    # Create temporary file for processing
-    TEMP_FILE=$(mktemp)
-    
-    # Extract endpoint data
-    echo "$METRICS" | grep -E "^request_latency_total_seconds_count" | while read -r line; do
-        endpoint=$(echo "$line" | sed -n 's/.*endpoint="\([^"]*\)".*/\1/p')
-        count=$(echo "$line" | awk '{print $NF}')
-        
-        # Get total time for this endpoint
-        total_time=$(echo "$METRICS" | grep -E "^request_latency_total_seconds_sum.*endpoint=\"${endpoint}\"" | head -1 | awk '{print $NF}')
-        
-        # Get percentages
-        db_pct=$(echo "$METRICS" | grep -E "^request_percentage_database.*endpoint=\"${endpoint}\"" | head -1 | awk '{print $NF}')
-        search_pct=$(echo "$METRICS" | grep -E "^request_percentage_search.*endpoint=\"${endpoint}\"" | head -1 | awk '{print $NF}')
-        internal_pct=$(echo "$METRICS" | grep -E "^request_percentage_internal.*endpoint=\"${endpoint}\"" | head -1 | awk '{print $NF}')
-        
-        # Calculate average time in ms
-        if [ -n "$total_time" ] && [ -n "$count" ] && [ "$count" != "0" ]; then
-            avg_time=$(echo "scale=3; $total_time * 1000 / $count" | bc)
-        else
-            avg_time="0"
-        fi
-        
-        # Format percentages
-        db_pct=${db_pct:-0}
-        search_pct=${search_pct:-0}
-        internal_pct=${internal_pct:-0}
-        
-        # Output in tab-separated format
-        echo -e "$endpoint\t$count\t$total_time\t$avg_time\t$db_pct\t$search_pct\t$internal_pct"
-    done > "$TEMP_FILE"
-    
-    # Sort based on option
+    echo
+}
+
+list_routes() {
+    local route_rows sorted sort_field
+    route_rows=$(awk -F '\t' '
+        { key = $2 FS $3 }
+        $1 == "request_latency_total_seconds_count" { counts[key] = $5 }
+        $1 == "request_latency_total_seconds_sum" { totals[key] = $5 }
+        $1 == "request_percentage_database" { database[key] = $5 }
+        $1 == "request_percentage_search" { search[key] = $5 }
+        $1 == "request_percentage_internal" { internal[key] = $5 }
+        END {
+            for (key in counts) {
+                count = counts[key] + 0
+                total = totals[key] + 0
+                average = count > 0 ? total * 1000 / count : 0
+                printf "%s\t%.0f\t%.3f\t%.1f\t%.1f\t%.1f\t%.1f\n",
+                    key, count, total, average, database[key], search[key], internal[key]
+            }
+        }
+    ' <<< "$SAMPLES")
+
     case "$SORT_BY" in
-        count)
-            SORTED=$(sort -t$'\t' -k2 -nr "$TEMP_FILE")
-            ;;
-        time)
-            SORTED=$(sort -t$'\t' -k3 -nr "$TEMP_FILE")
-            ;;
-        name)
-            SORTED=$(sort -t$'\t' -k1 "$TEMP_FILE")
-            ;;
+        count) sort_field=(-k3,3nr) ;;
+        time) sort_field=(-k4,4nr) ;;
+        name) sort_field=(-k1,1 -k2,2) ;;
     esac
-    
-    # Apply top N filter if specified
+    sorted=$(sort -t$'\t' "${sort_field[@]}" <<< "$route_rows")
     if [ "$TOP_N" -gt 0 ]; then
-        SORTED=$(echo "$SORTED" | head -n "$TOP_N")
+        sorted=$(head -n "$TOP_N" <<< "$sorted")
     fi
-    
-    # Display header
-    printf "${GREEN}%-60s %10s %15s %12s %10s %10s %10s${NC}\n" \
-        "Endpoint" "Requests" "Total Time(s)" "Avg(ms)" "DB%" "Search%" "Internal%"
-    echo -e "${BLUE}$(printf '%.0s─' {1..130})${NC}"
-    
-    # Display data
-    echo "$SORTED" | while IFS=$'\t' read -r endpoint count total_time avg_time db_pct search_pct internal_pct; do
-        # Truncate endpoint if too long
-        if [ ${#endpoint} -gt 57 ]; then
-            display_endpoint="${endpoint:0:54}..."
-        else
-            display_endpoint="$endpoint"
-        fi
-        
-        # Format numbers
-        total_time_fmt=$(printf "%.3f" "$total_time" 2>/dev/null || echo "0.000")
-        avg_time_fmt=$(printf "%.1f" "$avg_time" 2>/dev/null || echo "0.0")
-        db_pct_fmt=$(printf "%.1f" "$db_pct" 2>/dev/null || echo "0.0")
-        search_pct_fmt=$(printf "%.1f" "$search_pct" 2>/dev/null || echo "0.0")
-        internal_pct_fmt=$(printf "%.1f" "$internal_pct" 2>/dev/null || echo "0.0")
-        
-        printf "%-60s %10s %15s %12s %10s %10s %10s\n" \
-            "$display_endpoint" "$count" "$total_time_fmt" "$avg_time_fmt" \
-            "$db_pct_fmt" "$search_pct_fmt" "$internal_pct_fmt"
-    done
-    
-    # Summary
-    echo -e "${BLUE}$(printf '%.0s─' {1..130})${NC}"
-    TOTAL_ENDPOINTS=$(echo "$SORTED" | wc -l | tr -d ' ')
-    TOTAL_REQUESTS=$(echo "$SORTED" | awk -F$'\t' '{sum+=$2} END {print sum}')
-    echo -e "${GREEN}Total Endpoints:${NC} $TOTAL_ENDPOINTS"
-    echo -e "${GREEN}Total Requests:${NC} $TOTAL_REQUESTS"
-    
-    # Cleanup
-    rm -f "$TEMP_FILE"
-    
-    echo ""
-    echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
+
+    show_header "OpenMetadata Endpoints with Metrics"
+    printf "${GREEN}%-60s %-8s %10s %15s %12s %10s %10s %10s${NC}\n" \
+        "Endpoint" "Method" "Requests" "Total Time(s)" "Avg(ms)" "DB%" "Search%" "Internal%"
+    awk -F '\t' '
+        NF {
+            route = length($1) > 57 ? substr($1, 1, 54) "..." : $1
+            printf "%-60s %-8s %10s %15s %12s %10s %10s %10s\n", route, $2, $3, $4, $5, $6, $7, $8
+            requests += $3
+            if (!($1 in routes)) route_count++
+            routes[$1] = 1
+        }
+        END {
+            printf "\nTotal Endpoints: %d\nTotal Requests: %.0f\n", route_count, requests
+        }
+    ' <<< "$sorted"
+}
+
+metric_value() {
+    local samples=$1 name=$2
+    awk -F '\t' -v name="$name" '$1 == name { print $5; exit }' <<< "$samples"
+}
+
+format_time() {
+    local seconds=$1 count=${2:-1}
+    awk -v seconds="$seconds" -v count="$count" 'BEGIN {
+        if (seconds + 0 > 0 && count + 0 > 0) printf "%.3fms\n", seconds * 1000 / count
+        else print "N/A"
+    }'
+}
+
+get_percentile() {
+    local samples=$1 percentile=$2
+    awk -F '\t' -v percentile="$percentile" '
+        $1 == "request_latency_total_seconds_bucket" { buckets[$4] = $5 }
+        END {
+            target = buckets["+Inf"] * percentile / 100
+            for (bound in buckets) {
+                if (target > 0 && bound != "+Inf" && buckets[bound] >= target &&
+                    (result == "" || bound + 0 < result)) result = bound + 0
+            }
+            if (result != "") printf "%.3fms\n", result * 1000
+            else print "N/A"
+        }
+    ' <<< "$samples"
+}
+
+show_operations() {
+    local samples=$1 total_count=$2 title=$3 metric=$4
+    local count sum percentage
+    count=$(metric_value "$samples" "request_latency_${metric}_seconds_count")
+    sum=$(metric_value "$samples" "request_latency_${metric}_seconds_sum")
+    percentage=$(metric_value "$samples" "request_percentage_${metric}")
+    echo -e "${YELLOW}$title${NC}"
+    printf '  Total Operations: %.0f (across %.0f requests)\n' "${count:-0}" "$total_count"
+    awk -v count="${count:-0}" -v requests="$total_count" 'BEGIN {
+        printf "  Avg Operations/Request: %.1f\n", count / requests
+    }'
+    echo "  Avg Time/Operation: $(format_time "${sum:-0}" "${count:-0}")"
+    echo "  Avg Time/Request: $(format_time "${sum:-0}" "$total_count")"
+    echo "  Percentage of Request: ${percentage:-0}%"
+}
+
+show_time_distribution() {
+    local samples=$1
+    awk -F '\t' '
+        function bar(title, percent, width, i) {
+            width = percent < 100 ? int(percent / 2) : 50
+            printf "%-12s", title
+            for (i = 0; i < width; i++) printf "█"
+            printf " %s%%\n", percent + 0
+        }
+        $1 == "request_percentage_database" { database = $5 }
+        $1 == "request_percentage_search" { search = $5 }
+        $1 == "request_percentage_internal" { internal = $5 }
+        END {
+            if (database != "" || search != "" || internal != "") {
+                print "\nTime Distribution"
+                bar("Database", database)
+                bar("Search", search)
+                bar("Internal", internal)
+            }
+        }
+    ' <<< "$samples"
+}
+
+show_analysis() {
+    local method=$1 samples total_count total_sum internal_sum internal_percentage
+    samples=$(awk -F '\t' -v route="$ENDPOINT" -v method="$method" \
+        '$2 == route && $3 == method' <<< "$SAMPLES")
+    total_count=$(metric_value "$samples" "request_latency_total_seconds_count")
+    total_sum=$(metric_value "$samples" "request_latency_total_seconds_sum")
+    internal_sum=$(metric_value "$samples" "request_latency_internal_seconds_sum")
+    internal_percentage=$(metric_value "$samples" "request_percentage_internal")
+
+    echo -e "${GREEN}Endpoint:${NC} $ENDPOINT"
+    echo -e "${GREEN}Method:${NC} $method"
+    printf 'Total Requests: %.0f\n' "$total_count"
+    echo "Total Time: $(format_time "${total_sum:-0}")"
+    echo "Average Time: $(format_time "${total_sum:-0}" "$total_count")"
+    echo "P50: $(get_percentile "$samples" 50)"
+    echo "P95: $(get_percentile "$samples" 95)"
+    echo "P99: $(get_percentile "$samples" 99)"
+    echo
+    show_operations "$samples" "$total_count" "Database Operations" "database"
+    show_operations "$samples" "$total_count" "Search Operations" "search"
+    echo -e "${YELLOW}Internal Processing${NC}"
+    echo "  Avg Time/Request: $(format_time "${internal_sum:-0}" "$total_count")"
+    echo "  Percentage of Request: ${internal_percentage:-0}%"
+    show_time_distribution "$samples"
+
+    if [ "$SHOW_RAW" = true ]; then
+        echo -e "${GREEN}Raw Metrics${NC}"
+        cut -f6- <<< "$samples" | sort
+    fi
+    echo
+}
+
+if [ "$LIST_MODE" = true ]; then
+    list_routes
     exit 0
 fi
 
-# Analyze mode
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}OpenMetadata Endpoint Metrics Analysis${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}Endpoint:${NC} $ENDPOINT"
-echo -e "${GREEN}Host:${NC} $HOST"
-echo -e "${GREEN}Port:${NC} $PORT"
-echo -e "${GREEN}Protocol:${NC} $PROTOCOL"
-echo -e "${GREEN}Metrics URL:${NC} $METRICS_URL"
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
-echo ""
-
-# Escape special characters in endpoint for regex
-ENDPOINT_ESCAPED=$(echo "$ENDPOINT" | sed 's/[[\.*^$()+?{|]/\\&/g')
-
-# Function to extract metric value
-get_metric_value() {
-    local metric_name=$1
-    local metric_type=$2
-    
-    if [ "$metric_type" = "counter" ]; then
-        # For counters, get the total count
-        echo "$METRICS" | grep -E "^${metric_name}.*endpoint=\"${ENDPOINT_ESCAPED}\"[^}]*} " | grep -v "_total" | grep -v "_created" | head -1 | awk '{print $NF}'
-    elif [ "$metric_type" = "histogram_count" ]; then
-        # For histograms, get the count
-        echo "$METRICS" | grep -E "^${metric_name}_count.*endpoint=\"${ENDPOINT_ESCAPED}\"" | head -1 | awk '{print $NF}'
-    elif [ "$metric_type" = "histogram_sum" ]; then
-        # For histograms, get the sum (total time)
-        echo "$METRICS" | grep -E "^${metric_name}_sum.*endpoint=\"${ENDPOINT_ESCAPED}\"" | head -1 | awk '{print $NF}'
-    elif [ "$metric_type" = "gauge" ]; then
-        # For gauges, get the value
-        echo "$METRICS" | grep -E "^${metric_name}.*endpoint=\"${ENDPOINT_ESCAPED}\"" | grep -v "#" | head -1 | awk '{print $NF}'
-    fi
-}
-
-# Function to calculate mean from histogram
-calculate_mean() {
-    local sum=$1
-    local count=$2
-    if [ -n "$sum" ] && [ -n "$count" ] && [ "$count" != "0" ]; then
-        echo "scale=6; $sum / $count" | bc
-    else
-        echo "0"
-    fi
-}
-
-# Function to format time
-format_time() {
-    local seconds=$1
-    if [ -z "$seconds" ] || [ "$seconds" = "0" ]; then
-        echo "N/A"
-    else
-        local ms=$(echo "scale=3; $seconds * 1000" | bc)
-        echo "${ms}ms"
-    fi
-}
-
-# Function to get percentile from histogram
-get_percentile() {
-    local metric_name=$1
-    local percentile=$2
-    
-    # Get all bucket values for this metric
-    local buckets=$(echo "$METRICS" | grep -E "^${metric_name}_bucket.*endpoint=\"${ENDPOINT_ESCAPED}\"" | grep -v "#")
-    
-    if [ -z "$buckets" ]; then
-        echo "N/A"
-        return
-    fi
-    
-    # Get total count
-    local total_count=$(echo "$buckets" | grep 'le="+Inf"' | awk '{print $NF}')
-    if [ -z "$total_count" ] || [ "$total_count" = "0" ]; then
-        echo "N/A"
-        return
-    fi
-    
-    # Calculate target count for percentile
-    local target_count=$(echo "scale=0; $total_count * $percentile / 100" | bc)
-    
-    # Find the bucket that contains the percentile
-    local prev_le="0"
-    echo "$buckets" | sort -t'=' -k3 -g | while IFS= read -r line; do
-        local le=$(echo "$line" | sed -n 's/.*le="\([^"]*\)".*/\1/p')
-        local count=$(echo "$line" | awk '{print $NF}')
-        
-        if [ "$le" != "+Inf" ] && [ "$(echo "$count >= $target_count" | bc)" -eq 1 ]; then
-            format_time "$le"
-            break
-        fi
-        prev_le="$le"
-    done
-}
-
-# Collect metrics
-echo -e "${YELLOW}Analyzing metrics for endpoint: ${NC}${ENDPOINT}"
-echo ""
-
-# Total request metrics
-TOTAL_COUNT=$(get_metric_value "request_latency_total_seconds" "histogram_count")
-TOTAL_SUM=$(get_metric_value "request_latency_total_seconds" "histogram_sum")
-TOTAL_MEAN=$(calculate_mean "$TOTAL_SUM" "$TOTAL_COUNT")
-
-# Database metrics
-DB_COUNT=$(get_metric_value "request_latency_database_seconds" "histogram_count")
-DB_SUM=$(get_metric_value "request_latency_database_seconds" "histogram_sum")
-DB_MEAN=$(calculate_mean "$DB_SUM" "$DB_COUNT")
-DB_OPERATIONS=$(get_metric_value "request_operations_database" "counter")
-DB_PERCENTAGE=$(get_metric_value "request_percentage_database" "gauge")
-
-# Search metrics
-SEARCH_COUNT=$(get_metric_value "request_latency_search_seconds" "histogram_count")
-SEARCH_SUM=$(get_metric_value "request_latency_search_seconds" "histogram_sum")
-SEARCH_MEAN=$(calculate_mean "$SEARCH_SUM" "$SEARCH_COUNT")
-SEARCH_OPERATIONS=$(get_metric_value "request_operations_search" "counter")
-SEARCH_PERCENTAGE=$(get_metric_value "request_percentage_search" "gauge")
-
-# Internal processing metrics
-INTERNAL_COUNT=$(get_metric_value "request_latency_internal_seconds" "histogram_count")
-INTERNAL_SUM=$(get_metric_value "request_latency_internal_seconds" "histogram_sum")
-INTERNAL_MEAN=$(calculate_mean "$INTERNAL_SUM" "$INTERNAL_COUNT")
-INTERNAL_PERCENTAGE=$(get_metric_value "request_percentage_internal" "gauge")
-
-# Calculate average time per request (not per operation)
-if [ -n "$TOTAL_COUNT" ] && [ "$TOTAL_COUNT" != "0" ]; then
-    DB_TIME_PER_REQUEST=$(echo "scale=6; $DB_SUM / $TOTAL_COUNT" | bc)
-    SEARCH_TIME_PER_REQUEST=$(echo "scale=6; $SEARCH_SUM / $TOTAL_COUNT" | bc)
-    INTERNAL_TIME_PER_REQUEST=$(echo "scale=6; $INTERNAL_SUM / $TOTAL_COUNT" | bc)
-else
-    DB_TIME_PER_REQUEST="0"
-    SEARCH_TIME_PER_REQUEST="0"
-    INTERNAL_TIME_PER_REQUEST="0"
-fi
-
-# Check if we have any data
-if [ -z "$TOTAL_COUNT" ] || [ "$TOTAL_COUNT" = "0" ]; then
+methods=$(awk -F '\t' -v route="$ENDPOINT" \
+    '$1 == "request_latency_total_seconds_count" && $2 == route && $5 + 0 > 0 { print $3 }' \
+    <<< "$SAMPLES" | sort -u)
+if [ -z "$methods" ]; then
     echo -e "${RED}No metrics found for endpoint: $ENDPOINT${NC}"
-    echo ""
     echo "Available endpoints with metrics:"
-    echo "$METRICS" | grep -E "request_latency_total.*endpoint=" | sed -n 's/.*endpoint="\([^"]*\)".*/\1/p' | sort | uniq | head -20
+    awk -F '\t' '$1 == "request_latency_total_seconds_count" { print $2 }' \
+        <<< "$SAMPLES" | sort -u | head -20
     exit 1
 fi
 
-# Display summary
-echo -e "${GREEN}📊 REQUEST SUMMARY${NC}"
-echo -e "├─ Total Requests: ${BLUE}${TOTAL_COUNT}${NC}"
-echo -e "├─ Total Time: ${BLUE}$(format_time "$TOTAL_SUM")${NC}"
-echo -e "└─ Average Time: ${BLUE}$(format_time "$TOTAL_MEAN")${NC}"
-echo ""
-
-# Display component breakdown
-echo -e "${GREEN}⏱️  LATENCY BREAKDOWN${NC}"
-echo -e "├─ ${YELLOW}Total Request Time:${NC}"
-echo -e "│  ├─ Mean: ${BLUE}$(format_time "$TOTAL_MEAN")${NC}"
-echo -e "│  ├─ P50: ${BLUE}$(get_percentile "request_latency_total_seconds" 50)${NC}"
-echo -e "│  ├─ P95: ${BLUE}$(get_percentile "request_latency_total_seconds" 95)${NC}"
-echo -e "│  └─ P99: ${BLUE}$(get_percentile "request_latency_total_seconds" 99)${NC}"
-echo -e "│"
-echo -e "├─ ${YELLOW}Database Operations:${NC}"
-echo -e "│  ├─ Total Operations: ${BLUE}${DB_COUNT:-0}${NC} (across ${BLUE}${TOTAL_COUNT}${NC} requests)"
-echo -e "│  ├─ Avg Operations/Request: ${BLUE}$(echo "scale=1; ${DB_COUNT:-0} / ${TOTAL_COUNT}" | bc)${NC}"
-echo -e "│  ├─ Avg Time/Operation: ${BLUE}$(format_time "$DB_MEAN")${NC}"
-echo -e "│  ├─ Avg Time/Request: ${BLUE}$(format_time "$DB_TIME_PER_REQUEST")${NC}"
-echo -e "│  └─ Percentage of Request: ${BLUE}${DB_PERCENTAGE:-0}%${NC}"
-echo -e "│"
-echo -e "├─ ${YELLOW}Search Operations:${NC}"
-echo -e "│  ├─ Total Operations: ${BLUE}${SEARCH_COUNT:-0}${NC} (across ${BLUE}${TOTAL_COUNT}${NC} requests)"
-echo -e "│  ├─ Avg Operations/Request: ${BLUE}$(echo "scale=1; ${SEARCH_COUNT:-0} / ${TOTAL_COUNT}" | bc)${NC}"
-echo -e "│  ├─ Avg Time/Operation: ${BLUE}$(format_time "$SEARCH_MEAN")${NC}"
-echo -e "│  ├─ Avg Time/Request: ${BLUE}$(format_time "$SEARCH_TIME_PER_REQUEST")${NC}"
-echo -e "│  └─ Percentage of Request: ${BLUE}${SEARCH_PERCENTAGE:-0}%${NC}"
-echo -e "│"
-echo -e "└─ ${YELLOW}Internal Processing:${NC}"
-echo -e "   ├─ Avg Time/Request: ${BLUE}$(format_time "$INTERNAL_TIME_PER_REQUEST")${NC}"
-echo -e "   └─ Percentage of Request: ${BLUE}${INTERNAL_PERCENTAGE:-0}%${NC}"
-echo ""
-
-# Calculate and display percentage summary
-if [ -n "$DB_PERCENTAGE" ] || [ -n "$SEARCH_PERCENTAGE" ] || [ -n "$INTERNAL_PERCENTAGE" ]; then
-    echo -e "${GREEN}📈 TIME DISTRIBUTION${NC}"
-    
-    # Create a simple bar chart
-    DB_PCT=${DB_PERCENTAGE:-0}
-    SEARCH_PCT=${SEARCH_PERCENTAGE:-0}
-    INTERNAL_PCT=${INTERNAL_PERCENTAGE:-0}
-    
-    # Function to create bar
-    create_bar() {
-        local pct=$1
-        local width=$(echo "scale=0; $pct / 2" | bc)
-        printf '█%.0s' $(seq 1 $width)
-    }
-    
-    echo -e "Database:  $(create_bar $DB_PCT) ${DB_PCT}%"
-    echo -e "Search:    $(create_bar $SEARCH_PCT) ${SEARCH_PCT}%"
-    echo -e "Internal:  $(create_bar $INTERNAL_PCT) ${INTERNAL_PCT}%"
-    echo ""
-fi
-
-# Show raw metrics if requested
-if [ "$SHOW_RAW" = true ]; then
-    echo -e "${GREEN}📋 RAW METRICS${NC}"
-    echo "$METRICS" | grep -E "(request_latency|request_percentage|request_operations).*endpoint=\"${ENDPOINT_ESCAPED}\"" | sort
-    echo ""
-fi
-
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════════════${NC}"
+show_header "OpenMetadata Endpoint Metrics Analysis"
+while IFS= read -r method; do
+    show_analysis "$method"
+done <<< "$methods"

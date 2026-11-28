@@ -3,6 +3,8 @@ package org.openmetadata.service.monitoring;
 import io.dropwizard.core.ConfiguredBundle;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
+import io.micrometer.core.instrument.FunctionCounter;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
@@ -13,12 +15,14 @@ import io.micrometer.core.instrument.binder.logging.LogbackMetrics;
 import io.micrometer.core.instrument.binder.system.FileDescriptorMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
+import io.micrometer.core.instrument.config.MeterFilter;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.inject.AbstractBinder;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -42,6 +46,9 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
   public void initialize(Bootstrap<?> bootstrap) {
     // Create Prometheus registry
     prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    prometheusMeterRegistry
+        .config()
+        .meterFilter(MeterFilter.renameTag("request.latency.", "endpoint", "http_route"));
 
     // Set as global registry for convenience
     Metrics.addRegistry(prometheusMeterRegistry);
@@ -119,6 +126,7 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
 
     // System metrics
     new ProcessorMetrics().bindTo(prometheusMeterRegistry);
+    registerProcessCpuSeconds(prometheusMeterRegistry);
     new UptimeMetrics().bindTo(prometheusMeterRegistry);
     new FileDescriptorMetrics().bindTo(prometheusMeterRegistry);
 
@@ -126,6 +134,19 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
     new LogbackMetrics().bindTo(prometheusMeterRegistry);
 
     LOG.debug("System and JVM metrics bound to Prometheus registry");
+  }
+
+  static void registerProcessCpuSeconds(MeterRegistry registry) {
+    FunctionCounter cpuTime = registry.find("process.cpu.time").functionCounter();
+    if (cpuTime != null && cpuTime.count() >= 0.0) {
+      FunctionCounter.builder(
+              "process.cpu.seconds",
+              cpuTime,
+              source -> source.count() / TimeUnit.SECONDS.toNanos(1))
+          .baseUnit("seconds")
+          .description("Total CPU time consumed by the OpenMetadata process")
+          .register(registry);
+    }
   }
 
   private void registerPrometheusEndpoint(Environment environment) {

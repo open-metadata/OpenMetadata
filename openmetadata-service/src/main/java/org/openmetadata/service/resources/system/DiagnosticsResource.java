@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.BulkExecutor;
+import org.openmetadata.service.monitoring.JettyMetrics;
 import org.openmetadata.service.security.Authorizer;
 
 @Path("/v1/system/diagnostics")
@@ -130,14 +131,15 @@ public class DiagnosticsResource {
     Map<String, Object> jetty = new LinkedHashMap<>();
     MeterRegistry registry = Metrics.globalRegistry;
 
-    jetty.put("threads_current", gaugeValue(registry, "jetty.threads.current"));
-    jetty.put("threads_busy", gaugeValue(registry, "jetty.threads.busy"));
-    jetty.put("threads_idle", gaugeValue(registry, "jetty.threads.idle"));
-    jetty.put("threads_max", gaugeValue(registry, "jetty.threads.max"));
-
-    double current = gaugeValue(registry, "jetty.threads.current");
     double busy = gaugeValue(registry, "jetty.threads.busy");
-    jetty.put("utilization_pct", current > 0 ? Math.round(busy / current * 1000.0) / 10.0 : 0.0);
+    double max = gaugeValue(registry, "jetty.threads.max");
+    jetty.put("threads_current", gaugeValue(registry, "jetty.threads.current"));
+    jetty.put("threads_busy", busy);
+    jetty.put("threads_idle", gaugeValue(registry, "jetty.threads.idle"));
+    jetty.put("threads_max", max);
+    jetty.put(
+        "utilization_pct",
+        Math.round(JettyMetrics.threadUtilizationRatio(busy, max) * 1000.0) / 10.0);
 
     jetty.put("queue_size", gaugeValue(registry, "jetty.queue.size"));
     jetty.put("queue_time_avg_ms", gaugeValue(registry, "jetty.request.queue.time.ms"));

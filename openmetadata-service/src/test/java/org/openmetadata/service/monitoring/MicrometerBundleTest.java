@@ -1,5 +1,6 @@
 package org.openmetadata.service.monitoring;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,13 +12,18 @@ import static org.mockito.Mockito.when;
 
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
+import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import jakarta.servlet.ServletRegistration;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -50,6 +56,15 @@ public class MicrometerBundleTest {
 
     // Mock config for all tests
     when(config.getClusterName()).thenReturn("test-cluster");
+  }
+
+  @AfterEach
+  void removeRegistry() {
+    PrometheusMeterRegistry registry = bundle.getPrometheusMeterRegistry();
+    if (registry != null) {
+      Metrics.removeRegistry(registry);
+      registry.close();
+    }
   }
 
   @Test
@@ -97,13 +112,72 @@ public class MicrometerBundleTest {
         bundle
             .getPrometheusMeterRegistry()
             .find("request.latency.total")
-            .tag("endpoint", endpoint)
+            .tag("http_route", endpoint)
             .tag("method", "GET")
             .timer();
     assertNotNull(timer);
     assertTrue(
         timer.takeSnapshot().histogramCounts().length > MetricUtils.LATENCY_SLA_BUCKETS.length);
     RequestLatencyContext.reset();
+  }
+
+  @Test
+  void renamesTheApplicationRouteOnlyInThePrometheusRegistry() {
+    bundle.initialize(bootstrap);
+    String route = "/v1/micrometer-bundle-route";
+    Timer timer =
+        Timer.builder("request.latency.total")
+            .tags("endpoint", route, "method", "GET")
+            .serviceLevelObjectives(MetricUtils.LATENCY_SLA_BUCKETS)
+            .register(Metrics.globalRegistry);
+    try {
+      timer.record(12, TimeUnit.MILLISECONDS);
+      String scrape = bundle.getPrometheusMeterRegistry().scrape();
+      assertTrue(scrape.contains("http_route=\"" + route + "\""));
+      assertFalse(scrape.contains("endpoint=\"" + route + "\""));
+      assertEquals(
+          1L,
+          Metrics.globalRegistry
+              .get("request.latency.total")
+              .tag("endpoint", route)
+              .timer()
+              .count());
+    } finally {
+      Metrics.globalRegistry.remove(timer);
+    }
+  }
+
+  @Test
+  void exportsCpuSecondsFromTheExistingNanosecondsCounter() {
+    AtomicLong cpuNanos = new AtomicLong(9_000_000_000L);
+    PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    try {
+      registry.throwExceptionOnRegistrationFailure();
+      FunctionCounter.builder("process.cpu.time", cpuNanos, AtomicLong::get)
+          .baseUnit("ns")
+          .register(registry);
+      MicrometerBundle.registerProcessCpuSeconds(registry);
+
+      String scrape = registry.scrape();
+      assertTrue(scrape.contains("# TYPE process_cpu_seconds_total counter"));
+      assertTrue(scrape.contains("process_cpu_seconds_total 9.0"));
+      assertTrue(scrape.contains("process_cpu_time_ns_total 9.0E9"));
+      cpuNanos.addAndGet(125_000_000L);
+      assertTrue(registry.scrape().contains("process_cpu_seconds_total 9.125"));
+    } finally {
+      registry.close();
+    }
+  }
+
+  @Test
+  void leavesCpuTimeAbsentWhenTheJvmHasNoCounter() {
+    PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+    try {
+      MicrometerBundle.registerProcessCpuSeconds(registry);
+      assertFalse(registry.scrape().contains("process_cpu_seconds_total"));
+    } finally {
+      registry.close();
+    }
   }
 
   @Test

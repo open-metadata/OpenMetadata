@@ -1146,6 +1146,7 @@
         "openmetadata-spec/src/main/resources/json/schema/monitoring/**",
         "openmetadata-spec/src/main/resources/json/schema/api/configuration/**",
         "openmetadata-spec/src/main/resources/json/schema/api/openMetadataServerVersion.json",
+        "bin/debug-latency.sh",
         "conf/**"
       ],
       "tests": [
