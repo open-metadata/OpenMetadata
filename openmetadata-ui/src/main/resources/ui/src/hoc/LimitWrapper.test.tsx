@@ -23,6 +23,11 @@ const mockUseLimitStore = useLimitStore as jest.MockedFunction<
 >;
 const mockGetResourceLimit = jest.fn();
 const mockSetBannerDetails = jest.fn();
+const mockGetState = jest.fn();
+
+// Wire the static `getState()` (used by the cleanup's ownership check) to a
+// controllable mock so each test can stage the banner the cleanup reads.
+(useLimitStore as unknown as { getState: jest.Mock }).getState = mockGetState;
 
 const UntitledButton = ({
   children,
@@ -54,7 +59,7 @@ const metricLimit = {
 const setLimitStore = (
   overrides: Partial<ReturnType<typeof useLimitStore>> = {}
 ) => {
-  mockUseLimitStore.mockReturnValue({
+  const storeValue = {
     config: {
       enable: true,
       limits: {
@@ -77,7 +82,11 @@ const setLimitStore = (
     setResourceLimit: jest.fn(),
     setBannerDetails: mockSetBannerDetails,
     ...overrides,
-  });
+  };
+  mockUseLimitStore.mockReturnValue(storeValue);
+  // The cleanup reads `useLimitStore.getState().bannerDetails`, so keep the
+  // static snapshot in sync with the hook's per-render value.
+  mockGetState.mockReturnValue({ bannerDetails: storeValue.bannerDetails });
 };
 
 describe('LimitWrapper', () => {
@@ -222,8 +231,20 @@ describe('LimitWrapper', () => {
     ).toBeEnabled();
   });
 
-  it('recovers from a failed limit request and clears the banner on cleanup', async () => {
+  it('recovers from a failed limit request and clears its own banner on cleanup', async () => {
     mockGetResourceLimit.mockRejectedValue(new Error('limit service failed'));
+    // Stage a banner owned by this wrapper's resource so the ownership-aware
+    // cleanup retracts it; a banner owned by another resource must survive.
+    setLimitStore({
+      bannerDetails: {
+        header: 'server.entity-limit-reached',
+        subheader: '3/3 (test, 100%)',
+        type: 'danger',
+        hardLimitExceed: true,
+        softLimitExceed: true,
+        resource: 'metric',
+      },
+    });
     const { unmount } = render(
       <LimitWrapper resource="metric">
         <button type="button">Create</button>
@@ -237,5 +258,37 @@ describe('LimitWrapper', () => {
     unmount();
 
     expect(mockSetBannerDetails).toHaveBeenCalledWith(null);
+  });
+
+  it('does not retract another resource banner on unmount', async () => {
+    mockGetResourceLimit.mockResolvedValue(metricLimit);
+    // The banner is owned by 'table', but this wrapper is for 'metric', so the
+    // cleanup must leave the banner in place.
+    const tableBanner = {
+      header: 'server.entity-limit-reached',
+      subheader: '3/3 (test, 100%)',
+      type: 'danger',
+      hardLimitExceed: true,
+      softLimitExceed: true,
+      resource: 'table',
+    };
+    setLimitStore({
+      bannerDetails: tableBanner,
+      resourceLimit: { metric: metricLimit, table: metricLimit },
+    });
+
+    const { unmount } = render(
+      <LimitWrapper resource="metric">
+        <button type="button">Create</button>
+      </LimitWrapper>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled()
+    );
+
+    unmount();
+
+    expect(mockSetBannerDetails).not.toHaveBeenCalled();
   });
 });

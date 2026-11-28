@@ -53,7 +53,13 @@ const LimitWrapper = ({ resource, children }: LimitWrapperProps) => {
 
     return () => {
       isMounted = false;
-      setBannerDetails(null);
+      // The banner is global, so only retract it when it was raised for this
+      // resource; unmounting a wrapper for another resource must not hide it.
+      // Read from `getState()` so the cleanup sees the store's current value
+      // rather than a stale closure snapshot from when the effect ran.
+      if (useLimitStore.getState().bannerDetails?.resource === resource) {
+        setBannerDetails(null);
+      }
     };
   }, [resource, config?.enable, getResourceLimit, setBannerDetails]);
   const currentLimits = resourceLimit[resource];
