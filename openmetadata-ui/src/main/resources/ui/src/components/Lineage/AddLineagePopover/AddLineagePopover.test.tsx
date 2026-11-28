@@ -149,7 +149,15 @@ describe('AddLineagePopover', () => {
     const list = screen.getByTestId('pick-orders');
 
     expect(list).toHaveAttribute('data-search-index', 'table');
-    expect(list.getAttribute('data-query-filter')).toContain('self');
+    // The `id` field is mapped as `text` in the asset indexes, so a bare
+    // `term: { id }` exclusion is a no-op (the hyphenated UUID is tokenized).
+    // Exclude self by the document `_id` via an `ids` query instead, matching
+    // the codebase's established pattern (DataProductPureUtils, InputOutputPortsTab).
+    expect(
+      JSON.parse(list.getAttribute('data-query-filter') ?? 'null')
+    ).toEqual({
+      query: { bool: { must_not: [{ ids: { values: ['self'] } }] } },
+    });
 
     fireEvent.click(list);
 
@@ -162,6 +170,25 @@ describe('AddLineagePopover', () => {
         entity: { id: 'b', type: 'table', fullyQualifiedName: 's.d.sc.orders' },
       })
     );
+  });
+
+  it('omits the exclusion filter entirely when no entity is being excluded', async () => {
+    render(
+      <AddLineagePopover
+        {...baseProps}
+        excludeEntityId={undefined}
+        request={{
+          nodeId: 'n1',
+          direction: LineageDirection.Downstream,
+          triggerRef,
+        }}
+      />
+    );
+
+    await pickType();
+    const list = screen.getByTestId('pick-orders');
+
+    expect(list.getAttribute('data-query-filter')).toBeNull();
   });
 
   it('previews the new edge with the current node on the matching side', async () => {
