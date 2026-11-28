@@ -16,7 +16,7 @@ on:
       connectors:
         description: CLI E2E connectors as a JSON array (subset of the default list)
         required: true
-        default: &default-connectors '["mysql", "postgres", "bigquery", "oracle", "snowflake", "mssql"]'
+        default: &default-connectors '["mysql", "postgres", "bigquery", "oracle", "snowflake", "mssql", "exasol"]'
 permissions:
   id-token: write
   contents: read

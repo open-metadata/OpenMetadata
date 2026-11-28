@@ -123,6 +123,7 @@ def _run_workflow(tmp_path, connector, command_exit=0, caller="v2"):
         ("v2", "mysql", 1, "v2", False),
         ("v2", "bigquery", 0, "v2", False),
         ("v2", "snowflake", 0, "v2", False),
+        ("v2", "exasol", 0, "v2", False),
     ],
 )
 def test_ci_forwards_caller_inputs_and_command_status(
@@ -211,3 +212,15 @@ def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
         assert _condition_holds(condition, "snowflake", suite)
         assert not _condition_holds(condition, "mysql", suite)
         assert ast.literal_eval(group.strip()) == "cli-e2e-snowflake-database"
+
+
+def test_ci_reclaims_runner_disk_before_either_exasol_suite():
+    """The Exasol image needs the reclaimed disk whichever suite runs it, and no other connector pays for it."""
+    _, _, reusable, _ = _workflows("v2")
+    steps = reusable["jobs"]["py-cli-e2e-tests"]["steps"]
+    reclaim = next(step for step in steps if step.get("name") == "Reclaim unused disk for Exasol")
+    test_steps = [step.get("id") for step in steps if step.get("id") in _TEST_STEP_IDS]
+    assert steps.index(reclaim) < min(index for index, step in enumerate(steps) if step.get("id") in test_steps)
+    for suite in ("legacy", "v2"):
+        assert _condition_holds(reclaim["if"], "exasol", suite)
+        assert not _condition_holds(reclaim["if"], "mysql", suite)
