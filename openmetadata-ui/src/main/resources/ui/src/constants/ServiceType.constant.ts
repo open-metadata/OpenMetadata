@@ -199,6 +199,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Clickzetta,
   DatabaseServiceType.Databend,
   DatabaseServiceType.Neo4J,
+  DatabaseServiceType.DuckDB,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =

@@ -1,0 +1,21 @@
+source:
+  type: duckdb
+  serviceName: local_duckdb
+  serviceConnection:
+    config:
+      type: DuckDB
+      databaseFilePath: /path/to/warehouse.duckdb
+      # databaseName: warehouse  # defaults to the DuckDB catalog name (the file name without extension)
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: ""

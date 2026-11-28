@@ -54,6 +54,8 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/starrocksConnection.json'),
   [DatabaseServiceType.Druid]: () =>
     loadConnectionSchema('connections/database/druidConnection.json'),
+  [DatabaseServiceType.DuckDB]: () =>
+    loadConnectionSchema('connections/database/duckDBConnection.json'),
   [DatabaseServiceType.DynamoDB]: () =>
     loadConnectionSchema('connections/database/dynamoDBConnection.json'),
   [DatabaseServiceType.Exasol]: () =>

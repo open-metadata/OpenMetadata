@@ -41,6 +41,7 @@
         "Databend",
         "AzureSQL",
         "DynamoDB",
+        "DuckDB",
         "SingleStore",
         "SQLite",
         "Salesforce",
@@ -153,6 +154,9 @@
         },
         {
           "name": "DynamoDB"
+        },
+        {
+          "name": "DuckDB"
         },
         {
           "name": "SingleStore"
@@ -306,6 +310,9 @@
             },
             {
               "$ref": "./connections/database/dynamoDBConnection.json"
+            },
+            {
+              "$ref": "./connections/database/duckDBConnection.json"
             },
             {
               "$ref": "./connections/database/glueConnection.json"

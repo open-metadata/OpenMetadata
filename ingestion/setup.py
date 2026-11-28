@@ -357,6 +357,7 @@ plugins: dict[str, set[str]] = {
     "doris": {VERSIONS["pydoris"]},
     "starrocks": {VERSIONS["pymysql"]},
     "druid": {"pydruid>=0.6.5"},
+    "duckdb": {"duckdb>=1.1.0,<3", "duckdb-engine~=0.17"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
         VERSIONS["elasticsearch"],
@@ -604,6 +605,7 @@ test = {
     *plugins["pgspider"],
     *plugins["clickhouse"],
     *plugins["databend"],
+    *plugins["duckdb"],
     *plugins["dagster"],
     *plugins["oracle"],
     *plugins["mssql"],

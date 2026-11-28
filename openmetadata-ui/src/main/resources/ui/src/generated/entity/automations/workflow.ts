@@ -841,6 +841,8 @@ export interface RequestConnection {
  *
  * DynamoDB Connection Config
  *
+ * DuckDB Connection Config
+ *
  * Glue Connection Config
  *
  * Hive SQL Connection Config
@@ -1506,6 +1508,9 @@ export interface AirflowConnectionObject {
      *
      * ClickZetta workspace to ingest.
      *
+     * Optional name to give to the database in OpenMetadata. If left blank, the DuckDB catalog
+     * name (the file name without its extension) is used.
+     *
      * Optional name to give to the database in OpenMetadata. If left blank, the Glue Catalog ID
      * (your AWS account ID) is used. This only names the database in OpenMetadata, it does not
      * select which Glue database to ingest.
@@ -1835,6 +1840,9 @@ export interface AirflowConnectionObject {
      * connection. When omitted, the connection starts in the `default` database and all
      * accessible Databend databases are scanned as OpenMetadata schemas.
      *
+     * Database Schema of the data source. This is optional parameter, if you would like to
+     * restrict the metadata reading to a single schema.
+     *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
      * Ingestion attempts to scan all the databaseSchema.
@@ -1968,6 +1976,11 @@ export interface AirflowConnectionObject {
      */
     sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
+    /**
+     * Path to the DuckDB database file, as seen from the machine running the ingestion.
+     * OpenMetadata opens the file in read-only mode.
+     */
+    databaseFilePath?: string;
     /**
      * Authentication mode to connect to hive.
      *
@@ -5651,6 +5664,7 @@ export enum AirflowConnectionScheme {
     Druid = "druid",
     DruidHTTP = "druid+http",
     DruidHTTPS = "druid+https",
+    Duckdb = "duckdb",
     ExaWebsocket = "exa+websocket",
     Hana = "hana",
     Hive = "hive",
@@ -5965,6 +5979,7 @@ export enum AirflowConnectionType {
     Doris = "Doris",
     Dremio = "Dremio",
     Druid = "Druid",
+    DuckDB = "DuckDB",
     DynamoDB = "DynamoDB",
     ElasticSearch = "ElasticSearch",
     Epic = "Epic",

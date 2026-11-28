@@ -76,6 +76,7 @@ class PythonDialects(Enum):
     Doris = "pydoris"
     StarRocks = "starrocks"
     Druid = "druid"
+    DuckDB = "duckdb"
     DynamoDB = "dynamoDB"
     Exasol = "exasol"
     Glue = "glue"

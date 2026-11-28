@@ -1,0 +1,102 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/duckDBConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DuckDBConnection",
+  "description": "DuckDB Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DuckDBConnection",
+  "definitions": {
+    "duckDBType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["DuckDB"],
+      "default": "DuckDB"
+    },
+    "duckDBScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["duckdb"],
+      "default": "duckdb"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/duckDBType",
+      "default": "DuckDB"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/duckDBScheme",
+      "default": "duckdb"
+    },
+    "databaseFilePath": {
+      "title": "Database File Path",
+      "description": "Path to the DuckDB database file, as seen from the machine running the ingestion. OpenMetadata opens the file in read-only mode.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, the DuckDB catalog name (the file name without its extension) is used.",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only include/exclude databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "supportsLineageExtraction": {
+      "title": "Supports Lineage Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "supportsViewLineageExtraction": {
+      "title": "Supports View Lineage Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
+    },
+    "supportsUsageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsUsageExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["databaseFilePath"]
+}

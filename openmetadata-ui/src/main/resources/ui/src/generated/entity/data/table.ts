@@ -1403,6 +1403,7 @@ export enum DatabaseServiceType {
     Doris = "Doris",
     Dremio = "Dremio",
     Druid = "Druid",
+    DuckDB = "DuckDB",
     DynamoDB = "DynamoDB",
     Epic = "Epic",
     Exasol = "Exasol",

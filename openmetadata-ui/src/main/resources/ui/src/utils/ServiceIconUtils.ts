@@ -27,6 +27,7 @@ import datalake from '../assets/img/service-icon-datalake.webp';
 import doris from '../assets/img/service-icon-doris.webp';
 import dremio from '../assets/img/service-icon-dremio.webp';
 import druid from '../assets/img/service-icon-druid.webp';
+import duckdb from '../assets/img/service-icon-duckdb.svg';
 import dynamodb from '../assets/img/service-icon-dynamodb.webp';
 import exasol from '../assets/img/service-icon-exasol.webp';
 import glue from '../assets/img/service-icon-glue.webp';
@@ -171,6 +172,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   dremio: dremio,
   starrocks: starrocks,
   druid: druid,
+  duckdb: duckdb,
   dynamodb: dynamodb,
   singlestore: singlestore,
   salesforce: salesforce,
