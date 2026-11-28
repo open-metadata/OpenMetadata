@@ -15,24 +15,21 @@
 name: UI Browser Tests
 
 on:
-  pull_request:
-    paths:
-      - "openmetadata-ui/src/main/resources/ui/**"
-      - "openmetadata-ui-core-components/src/main/resources/ui/**"
-      - ".github/workflows/ui-browser-tests.yml"
-      - ".github/actions/ui-browser-setup/**"
-  # Without the merge queue, a full run on main every 6 hours (or run by hand)
-  # keeps the map fresh and catches what a selection missed.
+  # Pull requests and merge-queue entries: called by ci-pr.yml and ci-merge-queue.yml.
+  workflow_call: null
+  # A full run on main every 6 hours (or run by hand) keeps the map fresh and
+  # catches what a selection missed.
   schedule:
     - cron: "0 */6 * * *"
-  merge_group:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# github.workflow is the caller's name when called, so this never shares a group
+# with the scheduled run.
 concurrency:
-  group: ui-browser-tests-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-ui-browser-tests-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -42,14 +39,15 @@ env:
   SHARDS: 5
   # Test files per runner when only some run (130 files over 5 runners).
   FILES_PER_SHARD: 26
-  # What a merge-queue entry must touch to select browser tests at all
-  # (merge_group has no `paths` filter). A core change that breaks the app
-  # is caught by the scheduled full run.
+  # What the scheduled run must see changed since the last full run to run at
+  # all. Pull requests and merge-queue entries are selected by the caller's
+  # plan job (.github/ui-ci/paths.yml).
   UI_PATHS: >-
     openmetadata-ui/src/main/resources/ui/
     openmetadata-ui-core-components/src/main/resources/ui/
     .github/workflows/ui-browser-tests.yml
     .github/actions/ui-browser-setup/
+    .github/actions/setup-ui/
 
 jobs:
   select:
@@ -129,8 +127,10 @@ jobs:
         run: |
           # Queried per event, so pull-request runs cannot push a good map off
           # the list while main's full run stays red; newest first across them.
-          runs=$(for query in "event=schedule&branch=main" "event=workflow_dispatch&branch=main" "event=merge_group"; do
-            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-browser-tests.yml/runs?status=success&per_page=50&$query" \
+          # Merge-queue entries run this workflow from ci-merge-queue.yml.
+          runs=$(for query in "ui-browser-tests.yml event=schedule&branch=main" "ui-browser-tests.yml event=workflow_dispatch&branch=main" "ci-merge-queue.yml event=merge_group"; do
+            read -r workflow filter <<< "$query"
+            gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?status=success&per_page=50&$filter" \
               --jq ".workflow_runs[] | select(.head_repository.full_name == \"$GITHUB_REPOSITORY\") | \"\\(.created_at) \\(.id)\""
           done | sort -r | cut -d' ' -f2)
           for run in $runs; do
@@ -150,9 +150,7 @@ jobs:
         env:
           BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
         run: |
-          if [ "${{ github.event_name }}" = "merge_group" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
-            echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
-          elif [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
             echo '{"mode": "none", "reason": "no UI change since the last full run", "tests": [], "uncovered": []}' > selection.json
           elif [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "merge_group" ]; then
             # A pull request's merge commit has its base at HEAD^1; a merge-queue
@@ -224,7 +222,7 @@ jobs:
         working-directory: ${{ env.CORE_DIR }}
         run: |
           for attempt in 1 2 3; do
-            yarn install --frozen-lockfile --network-timeout 120000 && exit 0
+            YARN_HTTP_TIMEOUT=120000 yarn install --immutable && exit 0
             echo "yarn install failed (attempt $attempt), retrying"
             sleep 15
           done

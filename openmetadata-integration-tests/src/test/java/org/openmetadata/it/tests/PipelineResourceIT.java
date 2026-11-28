@@ -98,6 +98,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   private static final long AGGREGATE_WINDOW_END_TS = 4_102_444_800_000L;
 
   {
+    supportsLineage = true;
     supportsLifeCycle = true;
     supportsAsyncDelete = true;
     supportsCustomExtension = true;
@@ -1529,12 +1530,16 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
         bulkStatuses.get(4).getTimestamp(), putResponse.getPipelineStatus().getTimestamp());
 
     // Verify ALL 5 statuses were persisted as separate rows, not overwritten
-    var statusList =
+    ListResponse<PipelineStatus> statusList =
         client
             .pipelines()
             .listPipelineStatuses(
                 pipeline.getFullyQualifiedName(), baseTime - 1, baseTime + 5 * 3600000);
     assertEquals(5, statusList.getData().size(), "All 5 statuses should be persisted");
+    for (PipelineStatus status : statusList.getData()) {
+      assertNotNull(status.getTimestamp());
+      assertEquals(StatusType.Successful, status.getExecutionStatus());
+    }
 
     Pipeline fetched = client.pipelines().get(pipeline.getId().toString(), "pipelineStatus");
     assertNotNull(fetched.getPipelineStatus());
@@ -1703,7 +1708,16 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
         tooLarge.getResponseBody().contains("must be less than or equal to 1000"),
         tooLarge.getResponseBody());
 
-    assertEquals(12, client.pipelines().listPipelineStatuses(fqn, startTs, endTs).getData().size());
+    ListResponse<PipelineStatus> allStatuses =
+        client.pipelines().listPipelineStatuses(fqn, startTs, endTs);
+    assertEquals(12, allStatuses.getData().size());
+    List<Long> actualTimestamps = new ArrayList<>();
+    for (PipelineStatus status : allStatuses.getData()) {
+      assertEquals(StatusType.Successful, status.getExecutionStatus());
+      actualTimestamps.add(status.getTimestamp());
+    }
+    assertEquals(baseTime + 11000, actualTimestamps.getFirst());
+    assertEquals(baseTime, actualTimestamps.getLast());
   }
 
   /**

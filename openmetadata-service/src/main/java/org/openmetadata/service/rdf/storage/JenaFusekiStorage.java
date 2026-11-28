@@ -300,6 +300,12 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   private FusekiWriteCapabilities verifyDataset(final String datasetEndpoint) {
+    final FusekiWriteCapabilities capabilities = probeDataset(datasetEndpoint);
+    warnAboutMissingGuarantees(datasetEndpoint, capabilities);
+    return capabilities;
+  }
+
+  private FusekiWriteCapabilities probeDataset(final String datasetEndpoint) {
     try {
       final DatasetEndpoint info = requireDatasetEndpoint(datasetEndpoint);
       final HttpRequest.Builder request =
@@ -312,11 +318,8 @@ public class JenaFusekiStorage implements RdfStorageInterface {
       addBasicAuth(request, username, password, info.userInfo());
       final HttpResponse<Void> response =
           streamingHttpClient.send(request.build(), HttpResponse.BodyHandlers.discarding());
-      final FusekiWriteCapabilities capabilities =
-          FusekiWriteCapabilities.negotiate(
-              response.statusCode(), response.headers(), info.serverBaseUrl(), info.datasetName());
-      warnAboutMissingGuarantees(datasetEndpoint, capabilities);
-      return capabilities;
+      return FusekiWriteCapabilities.negotiate(
+          response.statusCode(), response.headers(), info.serverBaseUrl(), info.datasetName());
     } catch (IOException exception) {
       throw new IllegalStateException("Could not verify Fuseki dataset configuration", exception);
     } catch (InterruptedException exception) {
@@ -1725,6 +1728,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     throwIfCircuitOpen("replaceGraph");
     final String graph = requireAbsoluteGraphUri(graphUri).toString();
     try {
+      // A release can hold a literal over stock Fuseki's 100 KB Thrift row cap; refuse before the
+      // upload so activation names the missing extension instead of failing on Fuseki's 500.
+      // Graph writes are rare, so each asks the store again.
+      probeDataset(endpoint);
       new ChunkedGraphReplace(new FusekiGraphStore(), graphReplaceChunkBytes).replace(graph, model);
       recordSuccess();
     } catch (RuntimeException failure) {

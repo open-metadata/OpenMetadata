@@ -38,4 +38,40 @@ describe('ScheduleInterval utilities', () => {
   it('accepts a valid hourly cron expression', () => {
     expect(validateCronExpression('0 * * * *')).toBeUndefined();
   });
+
+  it.each([
+    ['*/0 0 * * *', 'message.cron-invalid-minute-field'],
+    ['0 */0 * * *', 'message.cron-invalid-hour-field'],
+    ['0 0 */0 * *', 'message.cron-invalid-day-of-month-field'],
+    ['0 0 1 */0 *', 'message.cron-invalid-month-field'],
+    ['0 0 * * */0', 'message.cron-invalid-day-of-week-field'],
+    ['0 0 1-5/0 * *', 'message.cron-invalid-day-of-month-field'],
+    ['0 0 1 5/0 *', 'message.cron-invalid-month-field'],
+    ['0 0 1/0 * *', 'message.cron-invalid-day-of-month-field'],
+    ['0 0 1,2/0 * *', 'message.cron-invalid-day-of-month-field'],
+    ['*/00 0 * * *', 'message.cron-invalid-minute-field'],
+  ])(
+    'rejects the zero-step cron %s with the offending field error',
+    (cron, error) => {
+      expect(validateCronExpression(cron)).toBe(error);
+    }
+  );
+
+  it.each([
+    '0 */2 * * *',
+    '0 0 */2 * *',
+    '0 0 1 */2 *',
+    '0 0 * * */2',
+    '0 0 1-5/2 * *',
+    '0 0 1,15/2 * *',
+    '0 0 1 1/2 *',
+  ])('accepts the valid non-zero-step cron %s', (cron) => {
+    expect(validateCronExpression(cron)).toBeUndefined();
+  });
+
+  it('reports a later field format error before an earlier field zero step', () => {
+    expect(validateCronExpression('*/0 0 * 13 *')).toBe(
+      'message.cron-invalid-month-field'
+    );
+  });
 });

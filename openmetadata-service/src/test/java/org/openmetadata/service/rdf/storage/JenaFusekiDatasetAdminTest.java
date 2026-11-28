@@ -15,15 +15,22 @@ package org.openmetadata.service.rdf.storage;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalLong;
 import java.util.UUID;
@@ -42,6 +49,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.inference.InferenceDirtyMarker;
+import org.slf4j.LoggerFactory;
 
 /**
  * Exercises the Fuseki admin surface blue/green rebuilds depend on — dataset existence, readiness,
@@ -88,7 +96,14 @@ class JenaFusekiDatasetAdminTest {
         statusByPath.getOrDefault(method + " " + path, statusByPath.getOrDefault(path, 200));
     byte[] body = bodyForPath.apply(method, path).getBytes(StandardCharsets.UTF_8);
     if (hasHeader(exchange, "Accept", "sparql-results")) {
-      body = ("{\"head\":{},\"boolean\":" + askAnswer + "}").getBytes(StandardCharsets.UTF_8);
+      final String query =
+          URLDecoder.decode(
+              request + " " + exchange.getRequestURI().getRawQuery(), StandardCharsets.UTF_8);
+      final String answer =
+          query.toUpperCase(Locale.ROOT).contains("SELECT")
+              ? "{\"head\":{\"vars\":[]},\"results\":{\"bindings\":[]}}"
+              : "{\"head\":{},\"boolean\":" + askAnswer + "}";
+      body = answer.getBytes(StandardCharsets.UTF_8);
       exchange.getResponseHeaders().set("Content-Type", "application/sparql-results+json");
     }
     if (method.equals("OPTIONS")) {
@@ -183,11 +198,139 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
-  @DisplayName("a dataset on Fuseki without the OpenMetadata extension is usable")
-  void datasetWithoutTheExtensionIsUsable() {
+  @DisplayName("a dataset on Fuseki without the OpenMetadata extension is refused before any write")
+  void datasetWithoutTheExtensionIsRefusedBeforeAnyWrite() {
     optionsHeaders = Map.of(FusekiWriteCapabilities.REQUEST_ID, "1");
     try (JenaFusekiStorage storage = storage()) {
-      assertDoesNotThrow(() -> storage.createDatasetIfMissing("build_a"));
+      requests.clear();
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> storage.createDatasetIfMissing("build_a"));
+      assertTrue(
+          failure.getMessage().contains("does not run the OpenMetadata Graph Store extension"),
+          failure.getMessage());
+      assertTrue(
+          failure.getMessage().contains("OPENMETADATA_EXTENSION_ENABLED=true"),
+          failure.getMessage());
+      assertTrue(updates.isEmpty(), updates.toString());
+      assertEquals(List.of("OPTIONS /build_a/data"), requests);
+    }
+  }
+
+  @Test
+  @DisplayName("each ontology graph write asks the store, not what readiness saw earlier")
+  void everyOntologyGraphWriteAsksTheStoreAgain() {
+    final Model release = ModelFactory.createDefaultModel();
+    try (JenaFusekiStorage storage = storage()) {
+      assertDoesNotThrow(storage::ensureStorageReady);
+      optionsHeaders = Map.of(FusekiWriteCapabilities.REQUEST_ID, "1");
+      requests.clear();
+      assertThrows(
+          RdfStorageUnsupportedException.class,
+          () ->
+              storage.replaceGraph(
+                  "https://open-metadata.org/graph/ontology/" + UUID.randomUUID(),
+                  UUID.randomUUID(),
+                  release));
+      assertTrue(
+          requests.stream().noneMatch(sent -> sent.startsWith("PUT ") || sent.startsWith("POST ")),
+          requests.toString());
+    } finally {
+      release.close();
+    }
+  }
+
+  @Test
+  @DisplayName("an activation that cannot reach Fuseki counts toward the circuit breaker")
+  void unreachableActivationOpensTheCircuitBreaker() throws Exception {
+    final int closedPort;
+    try (ServerSocket socket = new ServerSocket(0)) {
+      closedPort = socket.getLocalPort();
+    }
+    final RdfConfiguration config =
+        new RdfConfiguration()
+            .withEnabled(true)
+            .withBaseUri(URI.create("https://open-metadata.org/"))
+            .withRemoteEndpoint(URI.create("http://localhost:" + closedPort + DATASET_PATH))
+            .withWriteMaxRetries(0);
+    try (JenaFusekiStorage storage = new JenaFusekiStorage(config, delayMs -> {})) {
+      final RuntimeException last = failActivationsUntilTheCircuitOpens(storage);
+      assertInstanceOf(RdfStorageCircuitOpenException.class, last, String.valueOf(last));
+    }
+  }
+
+  @Test
+  @DisplayName(
+      "a gateway answering the activation probe with 503 counts toward the circuit breaker")
+  void unavailableActivationProbeOpensTheCircuitBreaker() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("OPTIONS " + DATASET_PATH + "/data", 503);
+      requests.clear();
+      final RuntimeException last = failActivationsUntilTheCircuitOpens(storage);
+      assertInstanceOf(RdfStorageCircuitOpenException.class, last, String.valueOf(last));
+      assertTrue(
+          requests.stream().noneMatch(sent -> sent.startsWith("PUT ") || sent.startsWith("POST ")),
+          requests.toString());
+    }
+  }
+
+  @Test
+  @DisplayName("a guarantee readiness reported missing is not logged again on every graph write")
+  void ontologyGraphWritesDoNotRepeatTheReadinessWarning() {
+    optionsHeaders =
+        Map.of(
+            FusekiWriteCapabilities.DEADLINE, "50000",
+            FusekiWriteCapabilities.LIMIT, "67108864",
+            FusekiWriteCapabilities.UNION, "true",
+            FusekiWriteCapabilities.UPDATE, "50000");
+    final Logger logger = (Logger) LoggerFactory.getLogger(JenaFusekiStorage.class);
+    final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    final Model release = ModelFactory.createDefaultModel();
+    try (JenaFusekiStorage storage = storage()) {
+      appender.start();
+      logger.addAppender(appender);
+      storage.ensureStorageReady();
+      for (int write = 0; write < 2; write++) {
+        storage.replaceGraph(
+            "https://open-metadata.org/graph/ontology/" + UUID.randomUUID(),
+            UUID.randomUUID(),
+            release);
+      }
+      assertEquals(
+          1,
+          appender.list.stream()
+              .map(ILoggingEvent::getFormattedMessage)
+              .filter(message -> message.contains("lacks guarantees"))
+              .filter(message -> message.contains(":" + server.getAddress().getPort() + "/"))
+              .count(),
+          appender.list.toString());
+    } finally {
+      logger.detachAppender(appender);
+      appender.stop();
+      release.close();
+    }
+  }
+
+  private static RuntimeException failActivationsUntilTheCircuitOpens(
+      final JenaFusekiStorage storage) {
+    final Model release = ModelFactory.createDefaultModel();
+    try {
+      RuntimeException last = null;
+      for (int attempt = 0;
+          attempt < 10 && !(last instanceof RdfStorageCircuitOpenException);
+          attempt++) {
+        last =
+            assertThrows(
+                RuntimeException.class,
+                () ->
+                    storage.replaceGraph(
+                        "https://open-metadata.org/graph/ontology/" + UUID.randomUUID(),
+                        UUID.randomUUID(),
+                        release));
+      }
+      return last;
+    } finally {
+      release.close();
     }
   }
 

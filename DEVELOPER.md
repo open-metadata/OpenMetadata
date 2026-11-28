@@ -108,7 +108,7 @@ For local setup and test commands, see [Python commands](#locked-local-python-en
 | `/playwright` | Adding E2E tests | Generates zero-flakiness Playwright tests following handbook |
 | `/connector-standards` | Before connector work | Loads all 23 connector development standards |
 | `/connector-review` | Reviewing connector PRs | Multi-agent review against golden standards |
-| `/scaffold-connector` | Building a new connector | Generates JSON Schema, Python boilerplate, AI context |
+| `/connector-building` | Building a new connector | Generates JSON Schema, Python boilerplate, AI context |
 | `/test-locally` | Testing in full environment | Builds and deploys local Docker stack |
 | `/ui-pr-recording` | Creating a PR for a UI feature or feature task | Runs the PR build in Docker with sample data and embeds a verified GitHub-hosted recording in the PR description |
 
@@ -121,7 +121,7 @@ The `openmetadata-workflow` meta-skill (loaded at session start) routes tasks au
 | New feature (multi-file) | `/planning` -> `/tdd` -> `/test-enforcement` -> `/verification` |
 | Bug fix | `/systematic-debugging` -> `/tdd` -> `/verification` |
 | New API endpoint | `/planning` -> `/tdd` -> `/test-enforcement` (must include IT) |
-| New connector | `/connector-standards` -> `/scaffold-connector` -> `/test-enforcement` |
+| New connector | `/connector-standards` -> `/connector-building` -> `/test-enforcement` |
 | UI component | `/tdd` -> `/test-enforcement` (Jest + browser test or Playwright) |
 | PR review | `/code-review` -> `/test-enforcement` |
 

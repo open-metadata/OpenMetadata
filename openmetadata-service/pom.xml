@@ -29,7 +29,6 @@
     <logback-core.version>1.5.38</logback-core.version>
     <logback-classic.version>1.5.38</logback-classic.version>
     <resilience4j-ratelimiter.version>2.4.0</resilience4j-ratelimiter.version>
-    <!-- Matches the reasoner worker in the openmetadata/fuseki image (open-metadata/jena). -->
     <owlapi.version>5.5.1</owlapi.version>
   </properties>
 
@@ -626,8 +625,8 @@
       <version>3.27.7</version>
       <scope>test</scope>
     </dependency>
-    <!-- Parses the ontology projection the way the reasoner worker does and runs the OWL 2 DL
-         profile check over it. Test scope only: the server never reasons in process. -->
+    <!-- Parses the ontology projection with OWL API and runs the OWL 2 DL profile check over it.
+         Test scope only: the server never runs OWL API. -->
     <dependency>
       <groupId>net.sourceforge.owlapi</groupId>
       <artifactId>owlapi-apibinding</artifactId>

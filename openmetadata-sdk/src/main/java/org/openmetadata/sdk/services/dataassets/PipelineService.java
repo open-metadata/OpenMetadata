@@ -1,5 +1,8 @@
 package org.openmetadata.sdk.services.dataassets;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -21,6 +24,9 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
    */
   private static final int MAX_STATUS_PAGE_SIZE = 1000;
 
+  private static final TypeReference<ResultList<PipelineStatus>> PIPELINE_STATUS_LIST_TYPE =
+      new TypeReference<>() {};
+
   public PipelineService(HttpClient httpClient) {
     super(httpClient, "/v1/pipelines");
   }
@@ -37,13 +43,7 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
 
   public Pipeline addPipelineStatus(String fqn, PipelineStatus status)
       throws OpenMetadataException {
-    String encodedFqn;
-    try {
-      encodedFqn = java.net.URLEncoder.encode(fqn, "UTF-8").replace("+", "%20");
-    } catch (java.io.UnsupportedEncodingException e) {
-      encodedFqn = fqn;
-    }
-    String path = basePath + "/" + encodedFqn + "/status";
+    String path = basePath + "/" + encodeFqn(fqn) + "/status";
     return httpClient.execute(HttpMethod.PUT, path, status, Pipeline.class);
   }
 
@@ -55,45 +55,54 @@ public class PipelineService extends EntityServiceBase<Pipeline> {
       throws OpenMetadataException {
     List<PipelineStatus> statuses = new ArrayList<>();
     ListParams params = new ListParams().setLimit(MAX_STATUS_PAGE_SIZE);
-    ListResponse<PipelineStatus> page;
-    do {
-      page = listPipelineStatuses(fqn, startTs, endTs, params);
-      statuses.addAll(page.getData());
-      params.setAfter(page.getPaging() == null ? null : page.getPaging().getAfter());
-    } while (page.getData().size() == MAX_STATUS_PAGE_SIZE && params.getAfter() != null);
+    String previousAfter = null;
+    while (true) {
+      ListResponse<PipelineStatus> page = listPipelineStatuses(fqn, startTs, endTs, params);
+      List<PipelineStatus> pageData = page.getData();
+      if (pageData != null && !pageData.isEmpty()) {
+        statuses.addAll(pageData);
+      }
+      String nextAfter = page.getPaging() == null ? null : page.getPaging().getAfter();
+      if (pageData == null
+          || pageData.size() < MAX_STATUS_PAGE_SIZE
+          || nextAfter == null
+          || nextAfter.isBlank()
+          || nextAfter.equals(previousAfter)) {
+        break;
+      }
+      previousAfter = nextAfter;
+      params.setAfter(nextAfter);
+    }
     return new ListResponse<>(statuses);
   }
 
   /** One page of statuses between {@code startTs} and {@code endTs}, newest first. */
   public ListResponse<PipelineStatus> listPipelineStatuses(
       String fqn, Long startTs, Long endTs, ListParams params) throws OpenMetadataException {
-    String encodedFqn;
-    try {
-      encodedFqn = java.net.URLEncoder.encode(fqn, "UTF-8").replace("+", "%20");
-    } catch (java.io.UnsupportedEncodingException e) {
-      encodedFqn = fqn;
+    String path = basePath + "/" + encodeFqn(fqn) + "/status";
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (params != null) {
+      optionsBuilder.queryParams(params.toQueryParams());
     }
-    String path = basePath + "/" + encodedFqn + "/status?startTs=" + startTs + "&endTs=" + endTs;
-    RequestOptions options = RequestOptions.builder().queryParams(params.toQueryParams()).build();
+    if (startTs != null) {
+      optionsBuilder.queryParam("startTs", String.valueOf(startTs));
+    }
+    if (endTs != null) {
+      optionsBuilder.queryParam("endTs", String.valueOf(endTs));
+    }
     ResultList<PipelineStatus> result =
-        httpClient.execute(HttpMethod.GET, path, null, getResultListType(), options);
+        httpClient.executeForType(
+            HttpMethod.GET, path, null, PIPELINE_STATUS_LIST_TYPE, optionsBuilder.build());
     return new ListResponse<>(result);
-  }
-
-  @SuppressWarnings("unchecked")
-  private Class<ResultList<PipelineStatus>> getResultListType() {
-    return (Class<ResultList<PipelineStatus>>) (Class<?>) ResultList.class;
   }
 
   public Pipeline addBulkPipelineStatus(String fqn, List<PipelineStatus> statuses)
       throws OpenMetadataException {
-    String encodedFqn;
-    try {
-      encodedFqn = java.net.URLEncoder.encode(fqn, "UTF-8").replace("+", "%20");
-    } catch (java.io.UnsupportedEncodingException e) {
-      encodedFqn = fqn;
-    }
-    String path = basePath + "/" + encodedFqn + "/status/bulk";
+    String path = basePath + "/" + encodeFqn(fqn) + "/status/bulk";
     return httpClient.execute(HttpMethod.PUT, path, statuses, Pipeline.class);
+  }
+
+  private static String encodeFqn(String fqn) {
+    return URLEncoder.encode(fqn, StandardCharsets.UTF_8).replace("+", "%20");
   }
 }

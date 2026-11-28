@@ -59,7 +59,7 @@ import org.semanticweb.owlapi.vocab.OWL2Datatype;
 
 /**
  * Every authorable expression and axiom construct is written through the writer, parsed by OWL API
- * as the reasoner worker parses it, and compared axiom for axiom with the intended OWL; each output
+ * through {@link OwlApiProjection}, and compared axiom for axiom with the intended OWL; each output
  * must also pass the OWL 2 DL profile check.
  */
 class OntologyExpressionRdfWriterTest {

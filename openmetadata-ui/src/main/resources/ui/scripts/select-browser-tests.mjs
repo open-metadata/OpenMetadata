@@ -37,6 +37,7 @@ const LOCALE = 'src/locale/languages/en-us.json';
 const RUN_ALL_PREFIXES = [
   '.github/workflows/ui-browser-tests.yml',
   '.github/actions/ui-browser-setup/',
+  '.github/actions/setup-ui/',
   `${UI}package.json`,
   `${UI}yarn.lock`,
   `${UI}.nvmrc`,

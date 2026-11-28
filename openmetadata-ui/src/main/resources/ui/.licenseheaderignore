@@ -84,6 +84,9 @@ Thumbs.db
 # yarn files
 "yarn-error.log"
 "yarn.lock"
+# Yarn 4's .yarn/install-state.gz. gitignore-to-glob drops any pattern starting with "." or
+# containing "/.", so the directory itself cannot be listed here.
+*.gz
 
 # Sonar cloud
 "sonar-project.properties"

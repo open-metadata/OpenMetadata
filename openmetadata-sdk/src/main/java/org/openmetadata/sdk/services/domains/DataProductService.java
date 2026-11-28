@@ -1,5 +1,7 @@
 package org.openmetadata.sdk.services.domains;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.DataProductPortsView;
@@ -14,6 +16,9 @@ import org.openmetadata.sdk.services.EntityServiceBase;
 
 public class DataProductService
     extends EntityServiceBase<org.openmetadata.schema.entity.domains.DataProduct> {
+
+  private static final TypeReference<ResultList<Map<String, Object>>> PORT_LIST_TYPE =
+      new TypeReference<>() {};
 
   public DataProductService(HttpClient httpClient) {
     super(httpClient, "/v1/dataProducts");
@@ -134,7 +139,6 @@ public class DataProductService
       return httpClient.execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
     }
 
-    @SuppressWarnings("unchecked")
     public ResultList<?> list(String fields, int limit, int offset) throws OpenMetadataException {
       String path =
           byName
@@ -147,10 +151,9 @@ public class DataProductService
       if (fields != null && !fields.isEmpty()) {
         builder.queryParam("fields", fields);
       }
-      return httpClient.execute(HttpMethod.GET, path, null, ResultList.class, builder.build());
+      return httpClient.executeForType(HttpMethod.GET, path, null, PORT_LIST_TYPE, builder.build());
     }
 
-    @SuppressWarnings("unchecked")
     public ResultList<?> list(int limit, int offset) throws OpenMetadataException {
       return list(null, limit, offset);
     }
@@ -192,7 +195,6 @@ public class DataProductService
       return httpClient.execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
     }
 
-    @SuppressWarnings("unchecked")
     public ResultList<?> list(String fields, int limit, int offset) throws OpenMetadataException {
       String path =
           byName
@@ -205,10 +207,9 @@ public class DataProductService
       if (fields != null && !fields.isEmpty()) {
         builder.queryParam("fields", fields);
       }
-      return httpClient.execute(HttpMethod.GET, path, null, ResultList.class, builder.build());
+      return httpClient.executeForType(HttpMethod.GET, path, null, PORT_LIST_TYPE, builder.build());
     }
 
-    @SuppressWarnings("unchecked")
     public ResultList<?> list(int limit, int offset) throws OpenMetadataException {
       return list(null, limit, offset);
     }

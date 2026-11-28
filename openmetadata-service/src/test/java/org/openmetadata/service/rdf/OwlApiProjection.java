@@ -36,8 +36,8 @@ import org.semanticweb.owlapi.profiles.OWL2DLProfile;
 import org.semanticweb.owlapi.profiles.OWLProfileViolation;
 
 /**
- * Reads a Jena projection the way the reasoner worker in the openmetadata/fuseki image does: OWL
- * API 5.5.1, no network, no punning repair, non-strict parsing. Rejects any placeholder OWL API
+ * Reads a Jena projection with OWL API 5.5.1: no network, no punning repair, non-strict parsing,
+ * failing on a missing import and never fetching one. Rejects any placeholder OWL API
  * substitutes for a malformed construct and any triple the OWL 2 RDF mapping cannot consume.
  */
 final class OwlApiProjection {

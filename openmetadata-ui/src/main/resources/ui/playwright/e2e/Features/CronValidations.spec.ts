@@ -131,5 +131,31 @@ test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     await expect(page.getByText('At 06:00 PM, only on Friday')).toBeAttached();
     await expect(page.getByTestId('custom-cron-error')).not.toBeAttached();
+
+    // A zero step in any field is invalid (cronstrue rejects "step value must be
+    // greater than 0"); the consolidated validator must block it at form time
+    // so the invalid schedule is never submitted to the backend. Cover each
+    // non-minute field plus the minute field, asserting the offending field's
+    // error is shown.
+    const zeroStepCases: Array<[string, string]> = [
+      ['0 0 */0 * *', 'Invalid day-of-month field.'],
+      ['0 0 * * */0', 'Invalid day-of-week field.'],
+      ['0 */0 * * *', 'Invalid hour field.'],
+      ['0 0 1 */0 *', 'Invalid month field.'],
+      ['*/0 0 * * *', 'Invalid minute field.'],
+    ];
+
+    for (const [cron, messagePrefix] of zeroStepCases) {
+      await setCustomCron(page, cron);
+
+      await expect(page.getByTestId('custom-cron-error')).toContainText(
+        messagePrefix
+      );
+    }
+
+    // A valid non-zero-step cron clears the error again.
+    await setCustomCron(page, '0 0 */2 * *');
+
+    await expect(page.getByTestId('custom-cron-error')).not.toBeAttached();
   });
 });

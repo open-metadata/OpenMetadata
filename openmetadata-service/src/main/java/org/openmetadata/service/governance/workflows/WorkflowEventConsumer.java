@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.governance.workflows.Workflow.CHANGED_BY_BOT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
@@ -38,6 +39,7 @@ import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -147,8 +149,8 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       return;
     }
 
-    if (isBotChange(event.getUserName(), event.getImpersonatedBy())
-        && !isAutomationProposal(event)) {
+    Author author = authorOf(event);
+    if (author == Author.OTHER_BOT) {
       LOG.debug(
           "Skipping bot change by {} for entity {} of type: {}",
           event.getUserName(),
@@ -168,7 +170,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
     Map<String, Object> variables;
     try {
-      variables = handler.apply(event);
+      variables = withChangedByBot(handler.apply(event), author, event);
 
       if (variables != null && !variables.isEmpty()) {
         LOG.info("WorkflowEventConsumer - Triggering with signal: {}", signal);
@@ -193,13 +195,64 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     }
   }
 
+  /** Who made a change, as far as deciding which workflows it reaches. */
+  enum Author {
+    PERSON,
+    // A bot's create of an entity an automation provides; its workflows review it as a person's.
+    AUTOMATION_PROPOSAL,
+    // A bot some workflow on the entity type lists in triggeringBots; only those workflows run.
+    TRIGGERING_BOT,
+    // Any other bot, and workflow automation itself; no workflow runs.
+    OTHER_BOT
+  }
+
+  static Author authorOf(ChangeEvent event) {
+    Author author = Author.PERSON;
+    if (isBotChange(event.getUserName(), event.getImpersonatedBy())) {
+      author = botAuthorOf(event);
+    }
+    return author;
+  }
+
+  private static Author botAuthorOf(ChangeEvent event) {
+    Author author = Author.OTHER_BOT;
+    if (isAutomationProposal(event)) {
+      author = Author.AUTOMATION_PROPOSAL;
+    } else if (!isWorkflowAutomation(event.getUserName(), event.getImpersonatedBy())
+        && GovernanceApprovalRegistry.isTriggeringBotOf(
+            event.getEntityType(), event.getUserName())) {
+      author = Author.TRIGGERING_BOT;
+    }
+    return author;
+  }
+
+  /** A write made by a workflow itself: governance-bot, or a user impersonated by it. */
+  public static boolean isWorkflowAutomation(String userName, String impersonatedBy) {
+    return GOVERNANCE_BOT.equals(userName) || GOVERNANCE_BOT.equals(impersonatedBy);
+  }
+
+  // Tells each workflow's trigger filter which bot made the change, so a workflow whose
+  // triggeringBots list does not contain it skips the run.
+  private static Map<String, Object> withChangedByBot(
+      Map<String, Object> variables, Author author, ChangeEvent event) {
+    Map<String, Object> result = variables;
+    if (author == Author.TRIGGERING_BOT && variables != null && !variables.isEmpty()) {
+      result = new HashMap<>(variables);
+      result.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, CHANGED_BY_BOT_VARIABLE),
+          event.getUserName());
+    }
+    return result;
+  }
+
   /**
-   * Bot changes are excluded from governance workflows: any change whose updatedBy user is a bot,
-   * and workflow automation, which writes as the acting user with governance-bot as impersonator. A
-   * bot impersonating a user records that user as updatedBy, so the change is the user's.
+   * A bot change: any change whose updatedBy user is a bot, and workflow automation, which writes as
+   * the acting user with governance-bot as impersonator. It starts only the workflows that list the
+   * bot in {@code triggeringBots}, and workflow automation starts none. A bot impersonating a user
+   * records that user as updatedBy, so the change is the user's.
    */
   public static boolean isBotChange(String userName, String impersonatedBy) {
-    boolean botChange = GOVERNANCE_BOT.equals(userName) || GOVERNANCE_BOT.equals(impersonatedBy);
+    boolean botChange = isWorkflowAutomation(userName, impersonatedBy);
     if (!botChange && userName != null) {
       User actor = Entity.findByNameOrNull(Entity.USER, userName, Include.NON_DELETED);
       botChange = actor != null && Boolean.TRUE.equals(actor.getIsBot());

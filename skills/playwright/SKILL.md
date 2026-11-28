@@ -1,5 +1,5 @@
 ---
-name: playwright-test
+name: playwright
 description: Generate robust, zero-flakiness Playwright E2E tests following OpenMetadata patterns. Creates comprehensive test files with proper waits, API validation, multi-role permissions, and complete entity lifecycle management.
 user-invocable: true
 ---
@@ -11,7 +11,7 @@ Generate production-ready, zero-flakiness Playwright tests following OpenMetadat
 ## Usage
 
 ```
-/playwright-test
+/playwright
 Feature: <feature name>
 Category: <Features|Pages|Flow|VersionPages>
 Entity: <Table|Dashboard|Pipeline|Topic|Database|User|Team|Glossary|Other>
@@ -26,7 +26,7 @@ Roles: <admin|dataConsumer|dataSteward|owner> (optional, defaults to admin)
 ## Quick Example
 
 ```
-/playwright-test
+/playwright
 Feature: Data Quality Rules
 Category: Features
 Entity: Table

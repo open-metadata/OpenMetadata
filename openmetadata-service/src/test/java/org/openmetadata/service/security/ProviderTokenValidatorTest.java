@@ -13,16 +13,23 @@
 package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.auth0.jwk.Jwk;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.security.IdentityProviderKeys.PublishedKey;
 
 class ProviderTokenValidatorTest {
   private static final String CLIENT_ID = "openmetadata-client";
@@ -103,17 +110,36 @@ class ProviderTokenValidatorTest {
         () ->
             validate(
                 entra,
-                token("https://login.microsoftonline.com/tenant-a/v2.0")
+                token("https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555/v2.0")
                     .withAudience(CLIENT_ID)
-                    .withClaim("tid", "tenant-a")));
+                    .withClaim("tid", "11111111-2222-3333-4444-555555555555")));
     assertThrows(
         AuthenticationException.class,
         () ->
             validate(
                 entra,
-                token("https://login.microsoftonline.com/tenant-a/v2.0")
+                token("https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555/v2.0")
                     .withAudience(CLIENT_ID)
-                    .withClaim("tid", "tenant-b")));
+                    .withClaim("tid", "99999999-8888-7777-6666-555555555555")));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {ENTRA_COMMON_ISSUER, "https://login.microsoftonline.com/%7Btenantid%7D/v2.0"})
+  void tenantIndependentAuthorityRequiresAKeyIssuerEvenForLegacyKeys(String providerIssuer) {
+    final String tenant = "11111111-2222-3333-4444-555555555555";
+    final DecodedJWT token =
+        decode(
+            token("https://login.microsoftonline.com/" + tenant + "/v2.0")
+                .withClaim("tid", tenant));
+    final PublishedKey legacyKey =
+        new PublishedKey(
+            Jwk.fromValues(Map.of("kty", "RSA", "kid", "legacy")),
+            "https://login.microsoftonline.com/common/discovery/keys");
+
+    assertFalse(
+        ProviderTokenValidator.signingKeyAllowsIssuer(
+            AuthProvider.AZURE, providerIssuer, legacyKey, token));
   }
 
   /**

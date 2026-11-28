@@ -30,6 +30,9 @@ on:
       - ".github/actions/hydrate-maven-cache/**"
       - "openmetadata-ui/src/main/resources/ui/jest.config.js"
       - "openmetadata-integration-tests/pom.xml"
+      - ".yarn/plugins/**"
+      - ".yarn/releases/**"
+      - "scripts/tests/test_yarn_engines_plugin.py"
 
 permissions:
   contents: read
@@ -69,6 +72,12 @@ jobs:
         run: |
           source env/bin/activate
           python -m pytest .github/scripts/tests/test_ci_speed_*.py .github/scripts/tests/test_summarize_surefire.py .github/scripts/tests/test_prune_ghcr_package.py -q
+
+      # A Yarn upgrade can break the engines-node plugin without failing any install (ADR:2026-10-22-ui-nvmrc-is-the-one-node-pin).
+      - name: Verify Yarn engines-node plugin
+        run: |
+          source env/bin/activate
+          python -m pytest scripts/tests/test_yarn_engines_plugin.py -q
 
       # Add back linting once we have 10/10 on main
       - name: Code style check

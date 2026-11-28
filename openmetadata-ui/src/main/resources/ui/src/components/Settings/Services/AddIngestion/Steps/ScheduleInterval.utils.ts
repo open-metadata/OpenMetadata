@@ -69,6 +69,13 @@ const hasMultipleRunsPerHour = (minuteField: string): boolean => {
   return false;
 };
 
+const hasZeroStep = (field: string): boolean =>
+  field.split(',').some((segment) => {
+    const step = segment.split('/')[1];
+
+    return step !== undefined && Number(step) <= 0;
+  });
+
 export const validateCronExpression = (cron: string): string | undefined => {
   const parts = cron.trim().split(/\s+/);
   if (parts.length !== CRON_FIELD_PATTERNS.length) {
@@ -77,6 +84,12 @@ export const validateCronExpression = (cron: string): string | undefined => {
 
   for (let i = 0; i < parts.length; i++) {
     if (!CRON_FIELD_PATTERNS[i].test(parts[i])) {
+      return CRON_FIELD_ERROR_KEYS[i];
+    }
+  }
+
+  for (let i = 0; i < parts.length; i++) {
+    if (hasZeroStep(parts[i])) {
       return CRON_FIELD_ERROR_KEYS[i];
     }
   }
