@@ -109,7 +109,7 @@
     <dependency>
       <groupId>org.opensearch</groupId>
       <artifactId>opensearch-testcontainers</artifactId>
-      <version>2.1.1</version>
+      <version>4.1.1</version>
       <scope>test</scope>
     </dependency>
     <dependency>
