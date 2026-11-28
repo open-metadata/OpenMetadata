@@ -20,6 +20,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -58,11 +59,12 @@ public final class ChangeRequestVisibility {
       SecurityContext securityContext,
       UUID entityId,
       String requestedBy,
+      List<String> statuses,
       int limit) {
     String caller = securityContext.getUserPrincipal().getName();
     List<ChangeRequest> visible;
     if (entityId != null) {
-      visible = listForEntity(authorizer, securityContext, entityId, caller, limit);
+      visible = listForEntity(authorizer, securityContext, entityId, caller, statuses, limit);
     } else if (requestedBy != null) {
       visible = listForRequester(caller, requestedBy, limit);
     } else {
@@ -237,19 +239,43 @@ public final class ChangeRequestVisibility {
       SecurityContext securityContext,
       UUID entityId,
       String caller,
+      List<String> statuses,
       int limit) {
+    boolean statusFilter = statuses != null && !statuses.isEmpty();
+    var dao = ChangeRequestService.dao().changeRequestDAO();
+    // Filter status inside SQL, before LIMIT, so closed requests (whose updatedAt is bumped on
+    // every decision and which are never deleted) cannot crowd open requests out of the page.
     List<ChangeRequest> all =
-        ChangeRequestService.dao().changeRequestDAO().listByEntity(entityId, limit);
+        statusFilter
+            ? dao.listByEntityAndStatuses(entityId, statuses, limit)
+            : dao.listByEntity(entityId, limit);
     List<ChangeRequest> visible = all;
     if (!all.isEmpty()) {
       ResourceContext<?> entity = authorizeEntityView(authorizer, securityContext, all.get(0));
       if (!seesAll(caller, entity)) {
+        // The SQL LIMIT runs before the visibility filter, so other users' requests can fill the
+        // page and crowd the caller's own out. With a status filter the matching set is small (an
+        // entity holds at most one open intercepted request per requester), so when the limited
+        // page is full, over-fetch every matching row, filter to what the caller may see, then
+        // re-apply the ordering and limit the SQL would have applied.
+        boolean overFetched = false;
+        if (statusFilter && all.size() == limit) {
+          all = dao.listByEntitiesAndStatuses(List.of(entityId.toString()), statuses);
+          overFetched = true;
+        }
         Set<UUID> reviewable = reviewableTasks(authorizer, securityContext, all);
         visible =
             all.stream()
                 .filter(
                     r -> caller.equals(r.getRequestedBy()) || reviewable.contains(r.getTaskId()))
                 .toList();
+        if (overFetched) {
+          visible =
+              visible.stream()
+                  .sorted(Comparator.comparingLong(ChangeRequest::getUpdatedAt).reversed())
+                  .limit(limit)
+                  .toList();
+        }
       }
     }
     return visible;

@@ -173,6 +173,33 @@ describe('ChangeRequestsIndicator', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('requests only open statuses from the server', async () => {
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([request({})]);
+
+    await renderIndicator();
+
+    expect(getChangeRequestsForEntity).toHaveBeenCalledWith('entity-1', 50, [
+      ChangeRequestStatus.Pending,
+      ChangeRequestStatus.Approved,
+    ]);
+  });
+
+  it('counts only open requests even when the server returns closed ones', async () => {
+    // After the fix the server filters by status, but the client-side filter stays as a safety
+    // net: a closed request in the response must not inflate the badge.
+    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
+      request({ id: 'cr-open', status: ChangeRequestStatus.Pending }),
+      request({ id: 'cr-closed', status: ChangeRequestStatus.Applied }),
+    ]);
+
+    await renderIndicator();
+
+    expect(screen.getByTestId('pending-change-requests')).toHaveTextContent(
+      'label.pending-changes'
+    );
+    expect(screen.getByText('1')).toBeInTheDocument();
+  });
+
   it('opens the review of every pending change, grouped by field', async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
       request({}),
