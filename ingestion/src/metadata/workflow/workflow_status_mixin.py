@@ -14,8 +14,13 @@ Add methods to the workflows for updating the IngestionPipeline status
 
 import traceback
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
+from time import sleep
+from typing import TypeVar
+
+from requests.exceptions import HTTPError
 
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
@@ -35,12 +40,21 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import Map, Timestamp
 from metadata.ingestion.api.step import Step, Summary
+from metadata.ingestion.ometa.client import APIError, RestTransportError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.utils.logger import ometa_logger
 from metadata.workflow.context.context_manager import ContextManager
 
 logger = ometa_logger()
+
+TERMINAL_STATUS_WRITE_ATTEMPTS = 3
+TERMINAL_STATUS_WRITE_RETRY_DELAY = 0.25
+TERMINAL_STATUS_GATEWAY_RETRY_DELAY = 5.0
+SLOW_RECOVERY_HTTP_CODES = {503, 504}
+RETRYABLE_STATUS_HTTP_CODES = {500, 502, 503, 504}
+
+_StatusResponse = TypeVar("_StatusResponse")
 
 
 class WorkflowResultStatus(Enum):
@@ -99,6 +113,60 @@ class WorkflowStatusMixin:
             pipeline_status.metadata = None
         return pipeline_status
 
+    def _run_pipeline_status_request(
+        self, request: Callable[[], _StatusResponse], terminal: bool
+    ) -> _StatusResponse:
+        """Retry the terminal read and write separately on short transient failures.
+
+        Terminal callers disable the REST client's HTTP retry loop per call, so
+        mixed gateway and transport failures share this budget. HTTPError also
+        covers gateways returning plain HTML or empty 5xx.
+        """
+        attempts = TERMINAL_STATUS_WRITE_ATTEMPTS if terminal else 1
+        for attempt in range(attempts):
+            try:
+                return request()
+            except (APIError, RestTransportError, HTTPError) as exc:
+                http_status = (
+                    exc.status_code
+                    if isinstance(exc, APIError)
+                    else getattr(getattr(exc, "response", None), "status_code", None)
+                )
+                retryable = isinstance(exc, RestTransportError) or http_status in RETRYABLE_STATUS_HTTP_CODES
+                if not retryable or attempt == attempts - 1:
+                    raise
+                logger.warning(
+                    "Transient terminal pipeline status request failure (attempt %s/%s): %s",
+                    attempt + 1,
+                    attempts,
+                    exc,
+                )
+                delay = (
+                    TERMINAL_STATUS_GATEWAY_RETRY_DELAY
+                    if http_status in SLOW_RECOVERY_HTTP_CODES
+                    else TERMINAL_STATUS_WRITE_RETRY_DELAY
+                )
+                sleep(delay * (attempt + 1))
+        raise RuntimeError("Terminal pipeline status retry loop did not complete")
+
+    def _write_pipeline_status(
+        self, fqn: str, status: PipelineStatus, terminal: bool
+    ) -> None:
+        """Repeat an idempotent final status PUT without changing the run's outcome."""
+        self._run_pipeline_status_request(
+            lambda: self.metadata.create_or_update_pipeline_status(fqn, status, **({"retries": 0} if terminal else {})),
+            terminal=terminal,
+        )
+
+    def _read_pipeline_status(
+        self, fqn: str, run_id: str, terminal: bool
+    ) -> PipelineStatus | None:
+        """Do not abandon a terminal status because its preceding GET times out."""
+        return self._run_pipeline_status_request(
+            lambda: self.metadata.get_pipeline_status(fqn, run_id, **({"retries": 0} if terminal else {})),
+            terminal=terminal,
+        )
+
     def set_ingestion_pipeline_status(
         self,
         state: PipelineState,
@@ -115,8 +183,10 @@ class WorkflowStatusMixin:
                 and self.ingestion_pipeline
                 and self.ingestion_pipeline.fullyQualifiedName
             ):
-                pipeline_status = self.metadata.get_pipeline_status(
-                    self.ingestion_pipeline.fullyQualifiedName.root, self.run_id
+                pipeline_status = self._read_pipeline_status(
+                    self.ingestion_pipeline.fullyQualifiedName.root,
+                    self.run_id,
+                    terminal=state is not PipelineState.running,
                 )
                 if not pipeline_status:
                     # We need to crete the status
@@ -138,8 +208,10 @@ class WorkflowStatusMixin:
 
                 pipeline_status = self.update_pipeline_status_metadata(pipeline_status)
 
-                self.metadata.create_or_update_pipeline_status(
-                    self.ingestion_pipeline.fullyQualifiedName.root, pipeline_status
+                self._write_pipeline_status(
+                    self.ingestion_pipeline.fullyQualifiedName.root,
+                    pipeline_status,
+                    terminal=state is not PipelineState.running,
                 )
         except Exception as err:
             logger.debug(traceback.format_exc())

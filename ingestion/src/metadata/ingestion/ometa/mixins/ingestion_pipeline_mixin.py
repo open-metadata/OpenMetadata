@@ -38,7 +38,9 @@ class OMetaIngestionPipelineMixin:
 
     client: REST
 
-    def create_or_update_pipeline_status(self, ingestion_pipeline_fqn: str, pipeline_status: PipelineStatus) -> None:
+    def create_or_update_pipeline_status(
+        self, ingestion_pipeline_fqn: str, pipeline_status: PipelineStatus, *, retries: int | None = None
+    ) -> None:
         """
         PUT create or update pipeline status
 
@@ -48,11 +50,14 @@ class OMetaIngestionPipelineMixin:
         resp = self.client.put(
             f"{self.get_suffix(IngestionPipeline)}/{quote(ingestion_pipeline_fqn)}/pipelineStatus",
             data=pipeline_status.model_dump_json(),
+            **({"retries": retries} if retries is not None else {}),
         )
         logger.debug(f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}")
         return resp
 
-    def get_pipeline_status(self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str) -> PipelineStatus | None:
+    def get_pipeline_status(
+        self, ingestion_pipeline_fqn: str, pipeline_status_run_id: str, *, retries: int | None = None
+    ) -> PipelineStatus | None:
         """
         GET pipeline status
 
@@ -61,7 +66,8 @@ class OMetaIngestionPipelineMixin:
         """
         resp = self.client.get(
             f"{self.get_suffix(IngestionPipeline)}/"
-            f"{quote(ingestion_pipeline_fqn)}/pipelineStatus/{pipeline_status_run_id}"
+            f"{quote(ingestion_pipeline_fqn)}/pipelineStatus/{pipeline_status_run_id}",
+            **({"retries": retries} if retries is not None else {}),
         )
         if resp:
             return PipelineStatus(**resp)
