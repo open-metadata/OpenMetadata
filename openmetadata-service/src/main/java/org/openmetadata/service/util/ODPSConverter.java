@@ -420,7 +420,9 @@ public final class ODPSConverter {
   // -------------------------------------------------------------------------
 
   private static ODPSProductDetails.OdpsType toODPSType(CreateDataProduct.DataProductType t) {
-    if (t == null) return null;
+    if (t == null) {
+      throw new IllegalArgumentException("dataProductType is required for ODPS export");
+    }
     return switch (t) {
       case RAW_DATA -> ODPSProductDetails.OdpsType.RAW_DATA;
       case DERIVED_DATA -> ODPSProductDetails.OdpsType.DERIVED_DATA;
