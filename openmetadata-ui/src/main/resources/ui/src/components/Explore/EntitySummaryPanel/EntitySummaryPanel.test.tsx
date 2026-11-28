@@ -22,6 +22,12 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Include } from '../../../generated/type/include';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -285,11 +291,53 @@ jest.mock('../../../rest/testAPI', () => ({
 const mockGetTableDetailsByFQN = jest.fn();
 
 const mockGetColumnByFQN = jest.fn();
+const mockPatchTableDetails = jest.fn();
+const mockUpdateTableColumn = jest.fn();
 jest.mock('../../../rest/tableAPI', () => ({
   getColumnByFQN: (...args: unknown[]) => mockGetColumnByFQN(...args),
   getTableDetailsByFQN: (...args: unknown[]) =>
     mockGetTableDetailsByFQN(...args),
-  patchTableDetails: jest.fn(),
+  patchTableDetails: (...args: unknown[]) => mockPatchTableDetails(...args),
+  updateTableColumn: (...args: unknown[]) => mockUpdateTableColumn(...args),
+}));
+
+const mockGetTypeByFQN = jest.fn();
+jest.mock('../../../rest/metadataTypeAPI', () => ({
+  getTypeByFQN: (...args: unknown[]) => mockGetTypeByFQN(...args),
+}));
+
+// The global setupTests.js mock only stubs showErrorToast; the panel's
+// post-PATCH handler also calls showSuccessToast, so stub it here too.
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
+// The custom-properties tab is only rendered when the user switches to it, so
+// this mock is inert for every existing test (which stays on the Overview tab).
+// It lets the extension-persistence test drive `onExtensionUpdate` without
+// standing up the real CustomPropertyListItem / type-detail machinery.
+jest.mock('./CustomPropertiesSection/CustomPropertiesSection', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(
+      (props: {
+        entityData?: { extension?: unknown };
+        onExtensionUpdate?: (ext: Record<string, unknown>) => void;
+      }) => (
+        <div data-testid="custom-properties-section-mock">
+          <span data-testid="captured-extension">
+            {JSON.stringify(props.entityData?.extension ?? {})}
+          </span>
+          <button
+            data-testid="trigger-extension-update"
+            onClick={() => props.onExtensionUpdate?.({ foo: 'bar' })}>
+            Update
+          </button>
+        </div>
+      )
+    ),
 }));
 
 describe('EntitySummaryPanel component tests', () => {
@@ -1491,6 +1539,508 @@ describe('EntitySummaryPanel component tests', () => {
 
       // The panel's own render must reflect the update right away, without
       // waiting for a refetch (e.g. panel close/reopen).
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '1'
+        );
+      });
+    });
+  });
+
+  // Regression coverage for the Lineage-drawer edit-persistence bug: when
+  // onEntityUpdate is wired, handleTagsUpdate / handleGlossaryTermsUpdate /
+  // handleOwnerUpdate / handleExtensionUpdate must still PATCH the server AND
+  // sync the panel's own entityData AND notify the parent — instead of the old
+  // early-return that only notified the parent (no PATCH, no sync), which
+  // silently dropped the edit and let a later sibling save roll it back.
+  describe('Edit persistence when onEntityUpdate is wired (Lineage drawer)', () => {
+    beforeEach(() => {
+      mockPatchTableDetails.mockReset();
+      mockUpdateTableColumn.mockReset();
+      mockGetTypeByFQN.mockReset();
+      mockGetTableDetailsByFQN.mockReset();
+      mockGetColumnByFQN.mockReset();
+    });
+
+    const capturePanel = (
+      render_: (props: {
+        dataAsset?: { tags?: unknown[]; owners?: unknown[] };
+      }) => JSX.Element
+    ) => {
+      const CapturingSummaryPanel = jest.fn().mockImplementation(render_);
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE]: CapturingSummaryPanel,
+      });
+
+      return CapturingSummaryPanel;
+    };
+
+    const latestProps = (Mock: jest.Mock) =>
+      Mock.mock.calls[Mock.mock.calls.length - 1][0];
+
+    it('handleTagsUpdate patches the server, syncs entityData, and notifies onEntityUpdate with the focused partial', async () => {
+      const mockOnEntityUpdate = jest.fn();
+      const newTag = {
+        tagFQN: 'PII.Sensitive',
+        source: 'Classification',
+        labelType: 'Manual',
+        state: 'Confirmed',
+      };
+      const tableEntity = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE,
+        tags: [],
+      };
+
+      const CapturingSummaryPanel = capturePanel((props) => (
+        <div data-testid="captured-tags-count">
+          {props.dataAsset?.tags?.length ?? 0}
+        </div>
+      ));
+      mockGetTableDetailsByFQN.mockResolvedValueOnce(tableEntity);
+      mockPatchTableDetails.mockResolvedValueOnce({
+        ...tableEntity,
+        tags: [newTag],
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: tableEntity }}
+          handleClosePanel={mockHandleClosePanel}
+          onEntityUpdate={mockOnEntityUpdate}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '0'
+        );
+      });
+
+      await act(async () => {
+        await latestProps(CapturingSummaryPanel).onTagsUpdate([newTag]);
+      });
+
+      // 1) Server PATCH happened (the bug skipped this entirely).
+      expect(mockPatchTableDetails).toHaveBeenCalledWith(
+        tableEntity.id,
+        expect.any(Array)
+      );
+      // 2) Parent (Lineage graph) is notified with the focused, id-free partial
+      //    so updateNodeData still matches the node by its scene id.
+      expect(mockOnEntityUpdate).toHaveBeenCalledWith({ tags: [newTag] });
+
+      // 3) The panel's own entityData is synced, so it re-renders from the
+      //    server-canonical value instead of a stale snapshot.
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '1'
+        );
+      });
+    });
+
+    it('handleGlossaryTermsUpdate patches the server, syncs entityData, and notifies onEntityUpdate', async () => {
+      const mockOnEntityUpdate = jest.fn();
+      const newTerm = {
+        tagFQN: 'Glossary.TermA',
+        source: 'Glossary',
+        labelType: 'Manual',
+        state: 'Confirmed',
+      };
+      const tableEntity = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE,
+        tags: [],
+      };
+
+      const CapturingSummaryPanel = capturePanel((props) => (
+        <div data-testid="captured-tags-count">
+          {props.dataAsset?.tags?.length ?? 0}
+        </div>
+      ));
+      mockGetTableDetailsByFQN.mockResolvedValueOnce(tableEntity);
+      mockPatchTableDetails.mockResolvedValueOnce({
+        ...tableEntity,
+        tags: [newTerm],
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: tableEntity }}
+          handleClosePanel={mockHandleClosePanel}
+          onEntityUpdate={mockOnEntityUpdate}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '0'
+        );
+      });
+
+      await act(async () => {
+        await latestProps(CapturingSummaryPanel).onGlossaryTermsUpdate([
+          newTerm,
+        ]);
+      });
+
+      expect(mockPatchTableDetails).toHaveBeenCalledWith(
+        tableEntity.id,
+        expect.any(Array)
+      );
+      expect(mockOnEntityUpdate).toHaveBeenCalledWith({ tags: [newTerm] });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '1'
+        );
+      });
+    });
+
+    it('handleOwnerUpdate patches the server, syncs entityData, and notifies onEntityUpdate', async () => {
+      const mockOnEntityUpdate = jest.fn();
+      const newOwner = {
+        id: 'user-1',
+        type: 'user',
+        name: 'alice',
+        displayName: 'Alice',
+      };
+      const tableEntity = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE,
+        owners: [],
+      };
+
+      const CapturingSummaryPanel = capturePanel((props) => (
+        <div data-testid="captured-owners-count">
+          {props.dataAsset?.owners?.length ?? 0}
+        </div>
+      ));
+      mockGetTableDetailsByFQN.mockResolvedValueOnce(tableEntity);
+      mockPatchTableDetails.mockResolvedValueOnce({
+        ...tableEntity,
+        owners: [newOwner],
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: tableEntity }}
+          handleClosePanel={mockHandleClosePanel}
+          onEntityUpdate={mockOnEntityUpdate}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-owners-count')).toHaveTextContent(
+          '0'
+        );
+      });
+
+      await act(async () => {
+        await latestProps(CapturingSummaryPanel).onOwnerUpdate([newOwner]);
+      });
+
+      expect(mockPatchTableDetails).toHaveBeenCalledWith(
+        tableEntity.id,
+        expect.any(Array)
+      );
+      expect(mockOnEntityUpdate).toHaveBeenCalledWith({ owners: [newOwner] });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-owners-count')).toHaveTextContent(
+          '1'
+        );
+      });
+    });
+
+    it('handleTagsUpdate persists via updateTableColumn for a TABLE_COLUMN entity in the Lineage drawer', async () => {
+      const mockOnEntityUpdate = jest.fn();
+      const newTag = {
+        tagFQN: 'PII.Sensitive',
+        source: 'Classification',
+        labelType: 'Manual',
+        state: 'Confirmed',
+      };
+      const columnEntity = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE_COLUMN,
+        table: { id: 'parent-table-id' },
+        tags: [],
+      };
+
+      const CapturingSummaryPanel = jest
+        .fn()
+        .mockImplementation((props) => (
+          <div data-testid="captured-tags-count">
+            {props.dataAsset?.tags?.length ?? 0}
+          </div>
+        ));
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE_COLUMN]: CapturingSummaryPanel,
+      });
+      mockGetColumnByFQN.mockResolvedValueOnce({
+        name: columnEntity.name,
+        tags: [],
+      });
+      mockUpdateTableColumn.mockResolvedValueOnce({
+        ...columnEntity,
+        tags: [newTag],
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnEntity as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+          onEntityUpdate={mockOnEntityUpdate}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '0'
+        );
+      });
+
+      await act(async () => {
+        await latestProps(CapturingSummaryPanel).onTagsUpdate([newTag]);
+      });
+
+      // TABLE_COLUMN takes the column API, not the entityUpdateMap PATCH.
+      expect(mockUpdateTableColumn).toHaveBeenCalledWith(
+        columnEntity.fullyQualifiedName,
+        { tags: [newTag] }
+      );
+      expect(mockOnEntityUpdate).toHaveBeenCalledWith({ tags: [newTag] });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '1'
+        );
+      });
+    });
+
+    it('handleExtensionUpdate patches the server, syncs entityData, and notifies onEntityUpdate (Custom Properties tab)', async () => {
+      const mockOnEntityUpdate = jest.fn();
+      const tableEntity = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE,
+        extension: {},
+      };
+
+      const CapturingSummaryPanel = jest
+        .fn()
+        .mockImplementation(() => (
+          <div data-testid="overview-summary">overview</div>
+        ));
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE]: CapturingSummaryPanel,
+      });
+      // The Custom Properties tab re-fires the entity fetch, so the table
+      // details must resolve for every call, not just the first.
+      mockGetTableDetailsByFQN.mockResolvedValue(tableEntity);
+      mockGetTypeByFQN.mockResolvedValue({ customProperties: [] });
+      mockPatchTableDetails.mockResolvedValueOnce({
+        ...tableEntity,
+        extension: { foo: 'bar' },
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: tableEntity }}
+          handleClosePanel={mockHandleClosePanel}
+          onEntityUpdate={mockOnEntityUpdate}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('overview-summary')).toBeInTheDocument();
+      });
+
+      // Switch to the Custom Properties tab, where onExtensionUpdate is wired.
+      fireEvent.click(screen.getByTestId('custom-properties-tab'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('custom-properties-section-mock')
+        ).toBeInTheDocument();
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('trigger-extension-update'));
+      });
+
+      await waitFor(() => {
+        expect(mockPatchTableDetails).toHaveBeenCalledWith(
+          tableEntity.id,
+          expect.any(Array)
+        );
+      });
+
+      expect(mockOnEntityUpdate).toHaveBeenCalledWith({
+        extension: { foo: 'bar' },
+      });
+
+      // The panel's own entityData.extension is synced to the server response.
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-extension')).toHaveTextContent(
+          JSON.stringify({ foo: 'bar' })
+        );
+      });
+    });
+
+    it('a tag edit survives a later sibling tier save in the Lineage drawer (no rollback)', async () => {
+      const mockOnEntityUpdate = jest.fn();
+      const tagA: TagLabel = {
+        tagFQN: 'Tag.A',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      };
+      const newTag: TagLabel = {
+        tagFQN: 'Tag.NEW',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      };
+      const tier1: TagLabel = {
+        tagFQN: 'Tier.Tier1',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      };
+      const tier2: TagLabel = {
+        tagFQN: 'Tier.Tier2',
+        source: TagSource.Classification,
+        labelType: LabelType.Manual,
+        state: State.Confirmed,
+      };
+      const tableEntity = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE,
+        tags: [tagA, tier1],
+      };
+
+      const CapturingSummaryPanel = jest.fn().mockImplementation((props) => (
+        <div data-testid="captured-tags-list">
+          {(props.dataAsset?.tags ?? []).map((t: { tagFQN: string }) => (
+            <span data-testid={`tag-${t.tagFQN}`} key={t.tagFQN}>
+              {t.tagFQN}
+            </span>
+          ))}
+        </div>
+      ));
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE]: CapturingSummaryPanel,
+      });
+      mockGetTableDetailsByFQN.mockResolvedValueOnce(tableEntity);
+      mockPatchTableDetails.mockResolvedValueOnce({
+        ...tableEntity,
+        tags: [tier1, tagA, newTag],
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: tableEntity }}
+          handleClosePanel={mockHandleClosePanel}
+          onEntityUpdate={mockOnEntityUpdate}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tag-Tag.A')).toBeInTheDocument();
+        expect(screen.getByTestId('tag-Tier.Tier1')).toBeInTheDocument();
+      });
+
+      // 1) Add a tag via the tags section: PATCH + sync entityData + notify.
+      await act(async () => {
+        await latestProps(CapturingSummaryPanel).onTagsUpdate([tagA, newTag]);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('tag-Tag.NEW')).toBeInTheDocument();
+      });
+
+      // 2) Change the tier via the tier section — a sibling save that refreshes
+      //    entityData. Before the fix, entityData was never synced by the tag
+      //    edit, so this rebuilt the tags from the stale pre-edit snapshot and
+      //    the new tag visibly rolled back.
+      act(() => {
+        latestProps(CapturingSummaryPanel).onTierUpdate(tier2);
+      });
+
+      // The previously-saved tag must NOT roll back.
+      expect(screen.getByTestId('tag-Tag.NEW')).toBeInTheDocument();
+      // And the new tier is present, the old tier is gone.
+      expect(screen.getByTestId('tag-Tier.Tier2')).toBeInTheDocument();
+      expect(screen.queryByTestId('tag-Tier.Tier1')).not.toBeInTheDocument();
+    });
+
+    it('handleTagsUpdate still patches the server and calls afterEntityUpdate when onEntityUpdate is not wired (Explore path)', async () => {
+      const mockAfterEntityUpdate = jest.fn();
+      const newTag = {
+        tagFQN: 'PII.Sensitive',
+        source: 'Classification',
+        labelType: 'Manual',
+        state: 'Confirmed',
+      };
+      const tableEntity = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE,
+        tags: [],
+      };
+
+      const CapturingSummaryPanel = capturePanel((props) => (
+        <div data-testid="captured-tags-count">
+          {props.dataAsset?.tags?.length ?? 0}
+        </div>
+      ));
+      mockGetTableDetailsByFQN.mockResolvedValueOnce(tableEntity);
+      mockPatchTableDetails.mockResolvedValueOnce({
+        ...tableEntity,
+        tags: [newTag],
+      });
+
+      render(
+        <EntitySummaryPanel
+          afterEntityUpdate={mockAfterEntityUpdate}
+          entityDetails={{ details: tableEntity }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
+          '0'
+        );
+      });
+
+      await act(async () => {
+        await latestProps(CapturingSummaryPanel).onTagsUpdate([newTag]);
+      });
+
+      expect(mockPatchTableDetails).toHaveBeenCalledWith(
+        tableEntity.id,
+        expect.any(Array)
+      );
+      // Explore path: afterEntityUpdate receives the full merged entity.
+      expect(mockAfterEntityUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: [newTag] })
+      );
+      expect(mockAfterEntityUpdate).not.toHaveBeenCalledWith(
+        expect.objectContaining({ tags: [] })
+      );
+
       await waitFor(() => {
         expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
           '1'
