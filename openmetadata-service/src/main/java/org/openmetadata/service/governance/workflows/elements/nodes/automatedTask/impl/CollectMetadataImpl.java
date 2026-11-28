@@ -50,11 +50,15 @@ public class CollectMetadataImpl implements JavaDelegate {
 
   private void collect(final DelegateExecution execution, final WorkflowVariableHandler variables) {
     final var namespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
+    // An omitted inputNamespaceMap is built into the BPMN as "{}", so fall back to the global
+    // namespace the event-based and periodic-batch triggers always supply (schema default). A bare
+    // namespaceFor returns null here and EntityLink.parse(null) NPEs, failing the stage every run.
     final var link =
         EntityLink.parse(
             (String)
                 variables.getNamespacedVariable(
-                    namespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
+                    namespaces.namespaceForOrDefault(RELATED_ENTITY_VARIABLE, GLOBAL_NAMESPACE),
+                    RELATED_ENTITY_VARIABLE));
     final var configuration =
         JsonUtils.readOrConvertValue(
             configurationExpr.getValue(execution), MetadataCollectionConfiguration.class);
