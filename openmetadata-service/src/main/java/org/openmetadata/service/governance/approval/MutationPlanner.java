@@ -153,7 +153,7 @@ public final class MutationPlanner {
    * {@code theirs} wins. Parts are compared by content, so an edit to an element's other fields,
    * such as a tag label's state, counts as a change to that element.
    */
-  static JsonNode threeWay(JsonNode base, JsonNode ours, JsonNode theirs) {
+  public static JsonNode threeWay(JsonNode base, JsonNode ours, JsonNode theirs) {
     JsonNode merged = theirs;
     if (sameContent(base, theirs)) {
       merged = ours;

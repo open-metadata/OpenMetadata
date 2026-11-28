@@ -252,9 +252,17 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
    * records that user as updatedBy, so the change is the user's.
    */
   public static boolean isBotChange(String userName, String impersonatedBy) {
+    return isBotChange(userName, impersonatedBy, Include.NON_DELETED);
+  }
+
+  public static boolean isHistoricalBotChange(String userName, String impersonatedBy) {
+    return isBotChange(userName, impersonatedBy, Include.ALL);
+  }
+
+  private static boolean isBotChange(String userName, String impersonatedBy, Include include) {
     boolean botChange = isWorkflowAutomation(userName, impersonatedBy);
     if (!botChange && userName != null) {
-      User actor = Entity.findByNameOrNull(Entity.USER, userName, Include.NON_DELETED);
+      User actor = Entity.findByNameOrNull(Entity.USER, userName, include);
       botChange = actor != null && Boolean.TRUE.equals(actor.getIsBot());
     }
     return botChange;

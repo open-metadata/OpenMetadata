@@ -6630,6 +6630,7 @@
     "profiler-timeout-seconds-message": "對於分析器，新增逾時的持續時間（秒）（選用）。分析器將等待任何待處理的查詢執行，或在達到逾時後終止它們。",
     "property-description-placeholder": "此屬性所記錄的內容。",
     "property-name-placeholder": "例如：到期日",
+    "proposed-changes-incomplete": "無法讀取此核准週期的部分歷程記錄，因此此清單中可能缺少較早的變更。",
     "put-your-data-operations-on-autopilot": "讓您的資料操作實現自動化",
     "quality-contract-description": "資料品質測試與斷言",
     "quality-rules-run-summary": "{{total}} 條品質規則中有 {{testCases}} 條以測試案例執行",

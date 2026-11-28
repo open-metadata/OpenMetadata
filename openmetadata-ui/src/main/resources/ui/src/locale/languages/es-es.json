@@ -6630,6 +6630,7 @@
     "profiler-timeout-seconds-message": "Para el perfilador, agrega la duración en segundos para el tiempo de espera (opcional).",
     "property-description-placeholder": "Lo que recoge esta propiedad.",
     "property-name-placeholder": "p. ej., Fecha de vencimiento",
+    "proposed-changes-incomplete": "No se pudo leer parte del historial de este ciclo de aprobación, por lo que es posible que falten cambios anteriores en esta lista.",
     "put-your-data-operations-on-autopilot": "Pon tus operaciones de datos en piloto automático",
     "quality-contract-description": "Pruebas de calidad de datos y aserciones",
     "quality-rules-run-summary": "{{testCases}} de {{total}} reglas de calidad se ejecutan como casos de prueba",

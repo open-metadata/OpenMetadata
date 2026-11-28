@@ -43,6 +43,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
@@ -57,6 +58,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
@@ -1236,6 +1238,59 @@ class CreateTaskTest {
     assertFalse(
         CreateTask.isSupersedablePriorApprovalTask(
             prior, workflowDefinitionId, UUID.randomUUID(), null));
+  }
+
+  // The new task continues the oldest open approval's cycle, whatever order the store lists them
+  // in.
+  @Test
+  void testPriorOpenApprovalsAreListedOldestFirst() {
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task newer = openApproval(workflowDefinitionId, 2_000L);
+    Task older = openApproval(workflowDefinitionId, 1_000L);
+    TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    when(taskRepository.listNonTerminalTasksByEntityAndCategory("glossary", TaskCategory.Approval))
+        .thenReturn(List.of(newer, older));
+
+    List<Task> priors =
+        CreateTask.findPriorOpenApprovals(
+            taskRepository,
+            new Glossary().withFullyQualifiedName("glossary"),
+            workflowDefinitionId,
+            UUID.randomUUID(),
+            null);
+
+    assertEquals(List.of(older.getId(), newer.getId()), priors.stream().map(Task::getId).toList());
+  }
+
+  @Test
+  void testAnApprovalWithNoCarriedPreviewMarksAFailedReadIncomplete() {
+    Map<String, Object> payload = Map.of("feedback", "keep me");
+
+    Object result =
+        CreateTask.approvalPayload(
+            TaskEntityType.GlossaryApproval,
+            new GlossaryTerm().withName("term").withFullyQualifiedName("glossary.term"),
+            payload,
+            null,
+            () ->
+                new CreateTask.PreviewChanges(
+                    null,
+                    () -> {
+                      throw EntityNotFoundException.byMessage("glossaryTerm was deleted");
+                    }));
+
+    assertEquals(
+        Map.of("feedback", "keep me", ChangePreviewUtils.PROPOSED_CHANGES_INCOMPLETE_KEY, true),
+        result);
+  }
+
+  private static Task openApproval(UUID workflowDefinitionId, long createdAt) {
+    return new Task()
+        .withId(UUID.randomUUID())
+        .withStatus(TaskEntityStatus.Open)
+        .withWorkflowDefinitionId(workflowDefinitionId)
+        .withWorkflowInstanceId(UUID.randomUUID())
+        .withCreatedAt(createdAt);
   }
 
   // ---- mergeManualGrantReason ----

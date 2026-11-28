@@ -32,6 +32,14 @@
       "type": "object",
       "existingJavaType": "java.util.Map<String, Object>",
       "additionalProperties": true
+    },
+    "proposedChangesBaseVersion": {
+      "description": "The entity version the approval cycle began from; proposedChanges lists the entity's changes since it. Set by the approval workflow.",
+      "type": "number"
+    },
+    "proposedChangesIncomplete": {
+      "description": "True when part of the entity's history since proposedChangesBaseVersion could not be read, so proposedChanges lists only the changes after that part. Absent when proposedChanges covers the whole cycle. Set by the approval workflow.",
+      "type": "boolean"
     }
   },
   "additionalProperties": false

@@ -6630,6 +6630,7 @@
     "profiler-timeout-seconds-message": "Per il Profiler, aggiungi la durata del timeout in secondi (facoltativo). Il profiler attenderà l'esecuzione delle query in sospeso, oppure le interromperà al raggiungimento del timeout.",
     "property-description-placeholder": "Cosa rappresenta questa proprietà.",
     "property-name-placeholder": "es. Data di scadenza",
+    "proposed-changes-incomplete": "Non è stato possibile leggere parte della cronologia di questo ciclo di approvazione, quindi in questo elenco potrebbero mancare modifiche precedenti.",
     "put-your-data-operations-on-autopilot": "Metti le tue operazioni sui dati in modalità pilota automatico",
     "quality-contract-description": "Test e asserzioni di Qualità dei dati",
     "quality-rules-run-summary": "{{testCases}} di {{total}} regole di qualità eseguite come test case",

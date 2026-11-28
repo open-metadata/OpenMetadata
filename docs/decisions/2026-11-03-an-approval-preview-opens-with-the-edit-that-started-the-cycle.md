@@ -1,6 +1,6 @@
 # An approval preview opens with the edit that started the cycle
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-26-an-approval-preview-lists-the-change-since-its-cycle-began
 - **Revisions:** v1 2026-11-03 (initial)
 - **Deciders:** yan-3005
 - **Guard:** `ChangePreviewUtilsTest#buildProposedChangesPayload_firstTask_previewsTheOpeningEditNotTheStatusWrite`,

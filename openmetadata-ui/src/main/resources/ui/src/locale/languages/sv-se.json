@@ -6630,6 +6630,7 @@
     "profiler-timeout-seconds-message": "För profileraren, lägg till varaktigheten i sekunder för timeout (valfritt). Profileraren väntar på att eventuella väntande frågor ska köras, eller avslutar dem när timeout uppnås.",
     "property-description-placeholder": "Vad den här egenskapen fångar.",
     "property-name-placeholder": "t.ex. Förfallodatum",
+    "proposed-changes-incomplete": "En del av historiken för den här godkännandecykeln kunde inte läsas, så tidigare ändringar kan saknas i den här listan.",
     "put-your-data-operations-on-autopilot": "Sätt dina dataoperationer på autopilot",
     "quality-contract-description": "Datakvalitetstester och påståenden",
     "quality-rules-run-summary": "{{testCases}} av {{total}} kvalitetsregler körs som testfall",

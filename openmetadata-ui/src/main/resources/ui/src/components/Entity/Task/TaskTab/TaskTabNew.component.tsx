@@ -195,6 +195,8 @@ const MetadataCompletionTask = withSuspenseFallback(
 
 type ProposedChanges = Record<string, { added: string[]; removed: string[] }>;
 
+const NO_PROPOSED_CHANGES: ProposedChanges = {};
+
 const FIELD_ROUTE_MAP: Record<string, (fqn: string) => string> = {
   tags: (fqn) => getClassificationTagPath(fqn),
   tier: (fqn) => getClassificationTagPath(fqn),
@@ -255,6 +257,11 @@ const extractProposedChanges = (payload: unknown): ProposedChanges | null => {
 
   return Object.keys(normalized).length > 0 ? normalized : null;
 };
+
+// A preview that could not read the whole approval cycle says so, so a reviewer does not take the
+// changes it lists for everything they approve.
+const isProposedChangesIncomplete = (payload: unknown): boolean =>
+  isPlainRecord(payload) && payload.proposedChangesIncomplete === true;
 
 // A task that reviews a change request names it in its payload.
 const changeRequestIdOf = (payload: unknown): string | undefined =>
@@ -493,6 +500,8 @@ export const TaskTabNew = ({
     () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
     [isTaskApprovalRequest, task.payload]
   );
+  const proposedChangesIncomplete =
+    isTaskApprovalRequest && isProposedChangesIncomplete(task.payload);
   // A lifecycle approval gates a stage move, so it shows the move instead of field edits.
   const lifecycleMove = isTaskApprovalRequest
     ? getLifecycleMove(task.payload)
@@ -1861,7 +1870,10 @@ export const TaskTabNew = ({
         </div>
       );
     }
-    if (isOntologyReviewTask(task) || proposedChanges === null) {
+    if (
+      isOntologyReviewTask(task) ||
+      (proposedChanges === null && !proposedChangesIncomplete)
+    ) {
       return null;
     }
 
@@ -1871,8 +1883,17 @@ export const TaskTabNew = ({
           <Typography className="task-proposed-changes-title">
             {t('label.proposed-change-plural')}
           </Typography>
+          {proposedChangesIncomplete && (
+            <Typography
+              className="tw:mb-2 tw:block"
+              color="warning"
+              data-testid="proposed-changes-incomplete"
+              size="text-xs">
+              {t('message.proposed-changes-incomplete')}
+            </Typography>
+          )}
           <div className="task-proposed-changes-fields">
-            {Object.entries(proposedChanges).map(
+            {Object.entries(proposedChanges ?? NO_PROPOSED_CHANGES).map(
               ([field, { added, removed }]) => {
                 const getUrl = FIELD_ROUTE_MAP[field];
 

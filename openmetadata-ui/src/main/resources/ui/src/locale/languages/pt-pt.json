@@ -6630,6 +6630,7 @@
     "profiler-timeout-seconds-message": "Para o Examinador, adicione a duração em segundos para o tempo limite (opcional). O examinador aguardará qualquer consulta pendente ser executada ou as encerrará assim que atingir o tempo limite.",
     "property-description-placeholder": "O que esta propriedade representa.",
     "property-name-placeholder": "p. ex. Data de vencimento",
+    "proposed-changes-incomplete": "Não foi possível ler parte do histórico deste ciclo de aprovação, pelo que podem faltar alterações anteriores nesta lista.",
     "put-your-data-operations-on-autopilot": "Coloque as suas operações de dados em piloto automático",
     "quality-contract-description": "Testes de qualidade de dados e afirmações",
     "quality-rules-run-summary": "{{testCases}} de {{total}} regras de qualidade são executadas como casos de teste",

@@ -13,35 +13,47 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityStatusAdapter;
+import org.openmetadata.service.governance.approval.ChangeRequestRun;
+import org.openmetadata.service.governance.approval.MutationPlanner;
+import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
+import org.openmetadata.service.governance.workflows.util.ApprovalCycle;
+import org.openmetadata.service.governance.workflows.util.ApprovalCycle.ReviewedRange;
+import org.openmetadata.service.governance.workflows.util.ApprovalCycleHistory;
+import org.openmetadata.service.governance.workflows.util.ApprovedBaseline;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.ChangeActor;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityETag;
 
 @Slf4j
 public class RollbackEntityImpl implements JavaDelegate {
@@ -82,13 +94,97 @@ public class RollbackEntityImpl implements JavaDelegate {
     try {
       RollbackContext context = createContext(execution);
       RejectionOutcome outcome =
-          applyRejection(context.repository(), context.currentEntity(), context.updatedBy());
+          applyRejection(context, reviewedRange(execution, context.currentEntity()));
       setOutcomeVariables(execution, context, outcome);
     } catch (RuntimeException exception) {
       LOG.error("[RollbackEntity] Entity rejection failed", exception);
       throw new IllegalStateException(
           "Failed to reject entity through rollback workflow", exception);
     }
+  }
+
+  private Optional<ReviewedRange> reviewedRange(
+      DelegateExecution execution, EntityInterface<?> entity) {
+    WorkflowVariableHandler variables = new WorkflowVariableHandler(execution);
+    InputNamespaces namespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
+    return ApprovalCycle.reviewedRange(
+            variables, namespaces.namespaceFor(UPDATED_BY_VARIABLE), entity.getId())
+        .or(() -> legacyReviewedRange(execution, variables, entity));
+  }
+
+  private Optional<ReviewedRange> legacyReviewedRange(
+      DelegateExecution execution, WorkflowVariableHandler variables, EntityInterface<?> entity) {
+    Object triggering =
+        variables.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE);
+    Object taskId = execution.getVariable("taskEntityId");
+    Optional<ReviewedRange> range = Optional.empty();
+    if (triggering instanceof Number version
+        && taskId instanceof String id
+        && ChangeRequestRun.from(variables).isEmpty()
+        && isPriorApprovalTask(id, entity.getId())) {
+      double base = TriggeringChange.baseVersion(entity, version).orElseThrow();
+      range = Optional.of(new ReviewedRange(entity.getId(), base, version.doubleValue(), null));
+    }
+    return range;
+  }
+
+  private boolean isPriorApprovalTask(String taskId, UUID entityId) {
+    TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task task = repository.hydrateStoredTask(repository.findCommittedTask(UUID.fromString(taskId)));
+    return task != null
+        && task.getAbout() != null
+        && entityId.equals(task.getAbout().getId())
+        && (task.getType() == TaskEntityType.GlossaryApproval
+            || task.getType() == TaskEntityType.RequestApproval)
+        && (task.getPayload() == null
+            || !JsonUtils.valueToTree(task.getPayload()).has("lifecycleMove"));
+  }
+
+  private RejectionOutcome applyRejection(RollbackContext context, Optional<ReviewedRange> range) {
+    return range
+        .map(review -> rejectReviewedChanges(context, review))
+        .orElseGet(
+            () ->
+                applyRejection(context.repository(), context.currentEntity(), context.updatedBy()));
+  }
+
+  private RejectionOutcome rejectReviewedChanges(RollbackContext context, ReviewedRange range) {
+    EntityInterface<?> current =
+        ApprovalCycleHistory.currentVersion(context.repository(), context.currentEntity().getId());
+    ApprovalCycleHistory history = ApprovalCycleHistory.forEntityType(context.entityType());
+    ObjectNode restored = history.undoReviewedChanges(current, range);
+    String status =
+        history.priorDecision(current, range.base()).orElse(EntityStatus.REJECTED.value());
+    restored.put(Entity.FIELD_ENTITY_STATUS, status);
+    patchReviewedChanges(context, current, restored);
+    return range.base() > 0
+        ? RejectionOutcome.rolledBack(current.getVersion(), range.base())
+        : RejectionOutcome.rejected(current.getVersion());
+  }
+
+  private void patchReviewedChanges(
+      RollbackContext context, EntityInterface<?> current, ObjectNode restored) {
+    EntityRepository<?> repository = context.repository();
+    EntityInterface<?> patchBase =
+        repository.get(
+            null, current.getId(), repository.getPatchFields(), Include.NON_DELETED, false);
+    if (!Objects.equals(current.getVersion(), patchBase.getVersion())
+        || !Objects.equals(current.getUpdatedAt(), patchBase.getUpdatedAt())) {
+      throw new PreconditionFailedException("The entity changed while preparing approval rollback");
+    }
+    ObjectNode original = (ObjectNode) JsonUtils.valueToTree(patchBase);
+    JsonPatch patch =
+        JsonUtils.getJsonPatch(
+            original.toString(),
+            MutationPlanner.threeWay(JsonUtils.valueToTree(current), restored, original)
+                .toString());
+    repository.patch(
+        null,
+        current.getId(),
+        ChangeActor.system(context.updatedBy(), GOVERNANCE_BOT),
+        patch,
+        null,
+        EntityETag.generateETag(patchBase));
   }
 
   RejectionOutcome applyRejection(
@@ -114,7 +210,7 @@ public class RollbackEntityImpl implements JavaDelegate {
     for (Double version : earlierVersions) {
       EntityInterface<?> versionEntity =
           repository.getVersion(currentEntity.getId(), version.toString());
-      if (isApprovedBaseline(versionEntity)) {
+      if (ApprovedBaseline.isApprovedBaseline(versionEntity)) {
         approvedVersion = Optional.of(new ApprovedVersion(version, versionEntity));
         break;
       }
@@ -175,66 +271,6 @@ public class RollbackEntityImpl implements JavaDelegate {
       version = Optional.empty();
     }
     return version;
-  }
-
-  private boolean isApprovedBaseline(EntityInterface<?> entity) {
-    // A non-reviewer edit inherits Approved until its asynchronous workflow marks it In Review.
-    // Only an actual approval event (or reviewer-authored change) is safe to restore later.
-    boolean isApproved =
-        EntityStatus.APPROVED
-            .value()
-            .equals(EntityStatusAdapter.forEntityType(entity.getClass()).read(entity));
-    boolean hasDurableApproval =
-        nullOrEmpty(entity.getReviewers())
-            || recordsApprovalTransition(entity)
-            || wasUpdatedByReviewer(entity);
-    return isApproved && hasDurableApproval;
-  }
-
-  private boolean recordsApprovalTransition(EntityInterface<?> entity) {
-    ChangeDescription change = entity.getIncrementalChangeDescription();
-    if (change == null) {
-      change = entity.getChangeDescription();
-    }
-    List<FieldChange> updatedFields = change == null ? List.of() : change.getFieldsUpdated();
-    return !nullOrEmpty(updatedFields) && updatedFields.stream().anyMatch(this::setsApprovedStatus);
-  }
-
-  private boolean setsApprovedStatus(FieldChange change) {
-    return Entity.FIELD_ENTITY_STATUS.equals(change.getName())
-        && EntityStatus.APPROVED.value().equals(String.valueOf(change.getNewValue()));
-  }
-
-  private boolean wasUpdatedByReviewer(EntityInterface<?> entity) {
-    List<EntityReference> reviewers = entity.getReviewers();
-    String updatedBy = entity.getUpdatedBy();
-    boolean isReviewer = false;
-    if (!nullOrEmpty(reviewers) && !nullOrEmpty(updatedBy)) {
-      isReviewer = reviewers.stream().anyMatch(reviewer -> matchesUser(reviewer, updatedBy));
-      if (!isReviewer && reviewers.stream().anyMatch(this::isTeam)) {
-        isReviewer = belongsToReviewerTeam(updatedBy, reviewers);
-      }
-    }
-    return isReviewer;
-  }
-
-  private boolean matchesUser(EntityReference reviewer, String user) {
-    return Entity.USER.equals(reviewer.getType())
-        && (user.equals(reviewer.getName()) || user.equals(reviewer.getFullyQualifiedName()));
-  }
-
-  private boolean isTeam(EntityReference reviewer) {
-    return Entity.TEAM.equals(reviewer.getType());
-  }
-
-  private boolean belongsToReviewerTeam(String user, List<EntityReference> reviewers) {
-    boolean isReviewer = false;
-    try {
-      isReviewer = SubjectContext.getSubjectContext(user).isReviewer(reviewers);
-    } catch (EntityNotFoundException exception) {
-      LOG.debug("[RollbackEntity] Historical reviewer '{}' no longer exists", user);
-    }
-    return isReviewer;
   }
 
   private void restoreToApprovedVersion(

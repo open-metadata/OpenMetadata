@@ -22,16 +22,21 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalDouble;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.secrets.masker.McpServerMasker;
 
 /**
@@ -46,6 +51,12 @@ public final class ChangePreviewUtils {
   public static final String PROPOSED_CHANGES_KEY = "proposedChanges";
   public static final String CHANGE_REQUEST_ID_KEY = "changeRequestId";
   public static final String CHANGE_REQUEST_REVISION_KEY = "changeRequestRevision";
+  public static final String PROPOSED_CHANGES_BASE_VERSION_KEY = "proposedChangesBaseVersion";
+  public static final String PROPOSED_CHANGES_INCOMPLETE_KEY = "proposedChangesIncomplete";
+
+  private static final List<String> PREVIEW_STATE_KEYS =
+      List.of(
+          PROPOSED_CHANGES_KEY, PROPOSED_CHANGES_BASE_VERSION_KEY, PROPOSED_CHANGES_INCOMPLETE_KEY);
 
   private static final List<String> ID_KEYS =
       List.of("tagFQN", "fullyQualifiedName", "displayName", "name");
@@ -54,6 +65,17 @@ public final class ChangePreviewUtils {
       new TypeReference<>() {};
 
   private ChangePreviewUtils() {}
+
+  /**
+   * The changes an approval cycle made since the version it began from, oldest first. A preview
+   * based on a partial history or a snapshot comparison may omit changes.
+   */
+  public record CyclePreview(
+      double baseVersion, List<ChangeDescription> changes, boolean complete) {
+    public CyclePreview {
+      changes = List.copyOf(changes);
+    }
+  }
 
   public record FieldDiff(List<String> added, List<String> removed) {
     public FieldDiff {
@@ -209,125 +231,133 @@ public final class ChangePreviewUtils {
   }
 
   /**
-   * Build a new task payload that carries the merged proposed-changes map under {@link
-   * #PROPOSED_CHANGES_KEY}. Returns {@code existingPayload} unchanged when the entity has no
-   * change description; returns a payload with the {@code proposedChanges} key removed when the
-   * merged map is empty (e.g. all changes cancelled out across re-edits).
-   */
-  public static Object buildProposedChangesPayload(
-      EntityInterface<?> entity, Object existingPayload) {
-    return buildProposedChangesPayload(entity, existingPayload, null);
-  }
-
-  /**
-   * Same as {@link #buildProposedChangesPayload(EntityInterface, Object)} for a task that reviews a
-   * change request: the request's pending revision is what the reviewer approves, so it wins over
-   * the entity's persisted diffs, which never contain it.
+   * The payload of a task that reviews a change request. The request's pending revision is what
+   * the reviewer approves and is already cumulative, so it replaces any preview carried from an
+   * earlier revision's task. The payload is returned unchanged when the revision has no changes.
    */
   public static Object buildProposedChangesPayload(
       EntityInterface<?> entity, Object existingPayload, ChangeDescription pending) {
-    return buildProposedChangesPayload(entity, existingPayload, pending, null);
+    Object payload = existingPayload;
+    if (entity != null && !hasNoChanges(pending)) {
+      payload =
+          previewOrFallback(
+              entity,
+              () ->
+                  withPreview(entity, existingPayload, buildChangeMap(maskedFor(entity, pending))),
+              () -> existingPayload);
+    }
+    return payload;
   }
 
   /**
-   * Same as {@link #buildProposedChangesPayload(EntityInterface, Object, ChangeDescription)} for a
-   * task that opens an approval cycle: {@code openingChange} is the change of the edit that started
-   * it, and the preview starts from it instead of the entity's latest hop, which is the workflow's
-   * own status write. A task that continues a cycle passes none and folds in the latest hop.
+   * The payload of a task in an approval cycle: its preview is the fold of every change since the
+   * cycle began, replacing whatever preview the payload carried, and the payload records where the
+   * cycle began so the task that supersedes it continues from there. If reading the history fails,
+   * keep any carried preview and mark it incomplete.
    */
-  public static Object buildProposedChangesPayload(
-      EntityInterface<?> entity,
-      Object existingPayload,
-      ChangeDescription pending,
-      ChangeDescription openingChange) {
-    if (entity == null) return existingPayload;
-    ChangeDescription changeDescription = changeToPreview(entity, pending, openingChange);
-    if (hasNoChanges(changeDescription)) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(
-            "[ChangePreview] entity='{}' v={} changeDescription is empty/null; carrying existing payload",
-            entity.getFullyQualifiedName(),
-            entity.getVersion());
-      }
-      return existingPayload;
+  public static Object withCyclePreview(
+      EntityInterface<?> entity, Object existingPayload, Supplier<CyclePreview> cycle) {
+    return previewOrFallback(
+        entity,
+        () -> withCycle(entity, existingPayload, cycle.get()),
+        () -> markPreviewIncomplete(existingPayload));
+  }
+
+  private static Map<String, Object> withCycle(
+      EntityInterface<?> entity, Object existingPayload, CyclePreview cycle) {
+    Map<String, Object> updated =
+        withPreview(entity, existingPayload, foldChanges(entity, cycle.changes()));
+    updated.put(PROPOSED_CHANGES_BASE_VERSION_KEY, cycle.baseVersion());
+    if (cycle.complete()) {
+      updated.remove(PROPOSED_CHANGES_INCOMPLETE_KEY);
+    } else {
+      updated.put(PROPOSED_CHANGES_INCOMPLETE_KEY, true);
     }
+    return updated;
+  }
+
+  /**
+   * The net change of {@code oldestFirst}, each change folded into the ones before it so an edit
+   * taken back cancels out. The status is left out: an approval workflow moves it itself, for
+   * example to In Review right before it opens the task.
+   */
+  public static Map<String, FieldDiff> foldChanges(
+      EntityInterface<?> entity, List<ChangeDescription> oldestFirst) {
+    Map<String, FieldDiff> folded = new LinkedHashMap<>();
+    for (ChangeDescription change : oldestFirst) {
+      folded = mergeChangeMaps(folded, buildChangeMap(maskedFor(entity, change)));
+    }
+    folded.remove(Entity.FIELD_ENTITY_STATUS);
+    return folded;
+  }
+
+  /** The version the approval cycle of a task's payload began from, when it records one. */
+  public static OptionalDouble cycleBaseOf(Object payload) {
+    Object base =
+        payload instanceof Map<?, ?> payloadMap
+            ? payloadMap.get(PROPOSED_CHANGES_BASE_VERSION_KEY)
+            : null;
+    return base instanceof Number version && isVersion(version.doubleValue())
+        ? OptionalDouble.of(version.doubleValue())
+        : OptionalDouble.empty();
+  }
+
+  private static boolean isVersion(double value) {
+    return Double.isFinite(value) && value >= 0;
+  }
+
+  private static ChangeDescription maskedFor(EntityInterface<?> entity, ChangeDescription change) {
+    ChangeDescription masked = change;
+    if (entity instanceof McpServer) {
+      masked = JsonUtils.deepCopy(change, ChangeDescription.class);
+      McpServerMasker.maskChangeDescription(masked);
+    }
+    return masked;
+  }
+
+  // A preview the task cannot show must not keep the approval task from being created. Reading the
+  // history behind it can fail on an entity deleted meanwhile, an entity type the status adapter
+  // cannot read, an unreadable stored version, or the database itself.
+  private static Object previewOrFallback(
+      EntityInterface<?> entity, Supplier<Object> build, Supplier<Object> fallback) {
+    Object payload;
     try {
-      // A change-request revision is already cumulative, so it replaces rather than merges any
-      // proposedChanges carried over from a prior revision's task.
-      Map<String, FieldDiff> priorMap =
-          hasNoChanges(pending) ? extractProposedChanges(existingPayload) : new LinkedHashMap<>();
-      if (entity instanceof McpServer) {
-        changeDescription = JsonUtils.deepCopy(changeDescription, ChangeDescription.class);
-        McpServerMasker.maskChangeDescription(changeDescription);
-      }
-      Map<String, FieldDiff> newMap = buildChangeMap(changeDescription);
-      Map<String, FieldDiff> merged = mergeChangeMaps(priorMap, newMap);
-      if (hasNoChanges(pending)) {
-        // An approval workflow moves the entity's status itself (e.g. to In Review right before it
-        // opens the task), so a status change read off the entity is the workflow's own write.
-        merged.remove(Entity.FIELD_ENTITY_STATUS);
-      }
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(
-            "[ChangePreview] entity='{}' v={} cdAdded={} cdDeleted={} cdUpdated={} priorPayload={} newDiff={} merged={}",
-            entity.getFullyQualifiedName(),
-            entity.getVersion(),
-            listOrEmpty(changeDescription.getFieldsAdded()),
-            listOrEmpty(changeDescription.getFieldsDeleted()),
-            listOrEmpty(changeDescription.getFieldsUpdated()),
-            priorMap,
-            newMap,
-            merged);
-      }
-      Map<String, Object> updated = cloneAsMutableMap(existingPayload);
-      if (merged.isEmpty()) {
-        updated.remove(PROPOSED_CHANGES_KEY);
-      } else {
-        updated.put(PROPOSED_CHANGES_KEY, merged);
-      }
-      return updated;
-    } catch (Exception e) {
+      payload = build.get();
+    } catch (JsonParsingException
+        | EntityNotFoundException
+        | IllegalArgumentException
+        | JdbiException unreadable) {
       LOG.warn(
-          "Failed to build proposed-changes payload for approval task on {}",
+          "Failed to build proposed changes for approval task on {}",
           entity.getFullyQualifiedName(),
-          e);
-      return existingPayload;
+          unreadable);
+      payload = fallback.get();
     }
+    return payload;
   }
 
-  private static ChangeDescription changeToPreview(
-      EntityInterface<?> entity, ChangeDescription pending, ChangeDescription openingChange) {
-    ChangeDescription change = pending;
-    if (hasNoChanges(pending)) {
-      change = hasNoChanges(openingChange) ? pickIncrementalOrFull(entity) : openingChange;
-    }
-    return change;
+  private static Map<String, Object> markPreviewIncomplete(Object existingPayload) {
+    Map<String, Object> updated = cloneAsMutableMap(existingPayload);
+    updated.put(PROPOSED_CHANGES_INCOMPLETE_KEY, true);
+    return updated;
   }
 
-  /**
-   * Prefer {@code incrementalChangeDescription} (per-edit hop diff) over {@code changeDescription}
-   * (cumulative-between-versions diff). The cumulative form double-counts when prior task payload
-   * has already merged an intermediate state: e.g. a tag added in v0.3 then removed in v0.4 is
-   * already cancelled out in the prior task payload, but v0.4's cumulative changeDescription
-   * still reports the removal, which would re-introduce it on the {@code removed} side.
-   * Incremental change description always reflects just the latest patch, which is the right
-   * unit of work to fold into the running merge.
-   */
-  private static ChangeDescription pickIncrementalOrFull(EntityInterface<?> entity) {
-    ChangeDescription incremental = entity.getIncrementalChangeDescription();
-    if (!hasNoChanges(incremental)) {
-      return incremental;
+  private static Map<String, Object> withPreview(
+      EntityInterface<?> entity, Object existingPayload, Map<String, FieldDiff> preview) {
+    Map<String, Object> updated = cloneAsMutableMap(existingPayload);
+    if (preview.isEmpty()) {
+      updated.remove(PROPOSED_CHANGES_KEY);
+    } else {
+      updated.put(PROPOSED_CHANGES_KEY, preview);
     }
-    return entity.getChangeDescription();
+    LOG.debug(
+        "[ChangePreview] entity='{}' v={} preview={}",
+        entity.getFullyQualifiedName(),
+        entity.getVersion(),
+        preview);
+    return updated;
   }
 
-  /**
-   * When a workflow-driven update replaces the entire task payload via a {@code requestedPayload}
-   * variable, any accumulated {@code proposedChanges} on the prior payload would be lost. If the
-   * replacement payload does not carry its own {@code proposedChanges}, copy the key over from
-   * the prior payload so the running merge base is preserved. Returns {@code requestedPayload}
-   * unchanged when there is nothing to preserve.
-   */
   /**
    * Stamps the change request and the exact revision a review task decides, so the resolver echoes
    * the revision back and a decision can never be recorded against a different one.
@@ -339,15 +369,22 @@ public final class ChangePreviewUtils {
     return linked;
   }
 
-  public static Object preserveProposedChanges(Object requestedPayload, Object priorPayload) {
-    if (!(requestedPayload instanceof Map<?, ?> requestedMap)) return requestedPayload;
-    if (requestedMap.get(PROPOSED_CHANGES_KEY) != null) return requestedPayload;
-    if (!(priorPayload instanceof Map<?, ?> priorMap)) return requestedPayload;
-    Object priorProposed = priorMap.get(PROPOSED_CHANGES_KEY);
-    if (priorProposed == null) return requestedPayload;
-    Map<String, Object> merged = cloneAsMutableMap(requestedPayload);
-    merged.put(PROPOSED_CHANGES_KEY, priorProposed);
-    return merged;
+  /**
+   * When a workflow replaces the whole task payload through a {@code requestedPayload} variable,
+   * the preview state of the prior payload would be lost. Each preview key the replacement does not
+   * carry is copied over from the prior payload.
+   */
+  public static Object preservePreviewState(Object requestedPayload, Object priorPayload) {
+    Object preserved = requestedPayload;
+    if (requestedPayload instanceof Map<?, ?> requested
+        && priorPayload instanceof Map<?, ?> prior) {
+      Map<String, Object> merged = cloneAsMutableMap(requested);
+      PREVIEW_STATE_KEYS.stream()
+          .filter(key -> requested.get(key) == null && prior.get(key) != null)
+          .forEach(key -> merged.put(key, prior.get(key)));
+      preserved = merged;
+    }
+    return preserved;
   }
 
   private static Map<String, Object> cloneAsMutableMap(Object payload) {

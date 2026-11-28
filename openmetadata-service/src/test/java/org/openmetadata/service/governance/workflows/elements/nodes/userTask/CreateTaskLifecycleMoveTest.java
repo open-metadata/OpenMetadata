@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils.CyclePreview;
 
 /** A lifecycle approval names the stage move it gates instead of the entity's latest changes. */
 class CreateTaskLifecycleMoveTest {
@@ -39,28 +40,56 @@ class CreateTaskLifecycleMoveTest {
             CreateTask.approvalPayload(
                 TaskEntityType.RequestApproval,
                 stageChangedDomain(),
-                Map.of("proposedChanges", Map.of("entityStatus", Map.of())),
+                Map.of(
+                    "proposedChanges",
+                    Map.of("entityStatus", Map.of()),
+                    "proposedChangesBaseVersion",
+                    0.1,
+                    "proposedChangesIncomplete",
+                    true),
                 IN_REVIEW_TO_APPROVED,
-                CreateTask.PreviewChanges.NONE));
+                () -> CreateTask.PreviewChanges.NONE));
 
     assertFalse(payload.containsKey("proposedChanges"));
+    assertFalse(payload.containsKey("proposedChangesBaseVersion"));
+    assertFalse(payload.containsKey("proposedChangesIncomplete"));
     assertEquals(
         Map.of("stage", "In Review", "targetStage", "Approved"), payload.get("lifecycleMove"));
   }
 
   @Test
   void anApprovalWithoutAMoveStillListsTheProposedChanges() {
+    final Domain domain = changedDomain("description", "Old", "New");
     final Map<String, Object> payload =
         JsonUtils.getMap(
             CreateTask.approvalPayload(
-                TaskEntityType.RequestApproval,
-                changedDomain("description", "Old", "New"),
-                null,
-                null,
-                CreateTask.PreviewChanges.NONE));
+                TaskEntityType.RequestApproval, domain, null, null, () -> cycleOf(domain)));
 
     assertEquals(
         List.of("description"), List.copyOf(((Map<?, ?>) payload.get("proposedChanges")).keySet()));
+    assertEquals(0.1, payload.get("proposedChangesBaseVersion"));
+  }
+
+  @Test
+  void aTaskThatIsNotAnApprovalReadsNoChanges() {
+    final Map<String, Object> payload = Map.of("feedback", "keep");
+
+    final Object result =
+        CreateTask.approvalPayload(
+            TaskEntityType.CustomTask,
+            changedDomain("description", "Old", "New"),
+            payload,
+            null,
+            () -> {
+              throw new AssertionError("a task that is not an approval reads no changes");
+            });
+
+    assertEquals(payload, result);
+  }
+
+  private static CreateTask.PreviewChanges cycleOf(Domain domain) {
+    return new CreateTask.PreviewChanges(
+        null, () -> new CyclePreview(0.1, List.of(domain.getChangeDescription()), true));
   }
 
   private static Domain stageChangedDomain() {

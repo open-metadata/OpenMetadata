@@ -6630,6 +6630,7 @@
     "profiler-timeout-seconds-message": "Profilleyici için, saniye cinsinden zaman aşımı süresini ekleyin (isteğe bağlı). Profilleyici, bekleyen sorguların yürütülmesini bekleyecek veya zaman aşımına ulaştığında bunları sonlandıracaktır.",
     "property-description-placeholder": "Bu özelliğin neyi ifade ettiği.",
     "property-name-placeholder": "ör. Vade tarihi",
+    "proposed-changes-incomplete": "Bu onay döngüsünün geçmişinin bir kısmı okunamadı, bu nedenle bu listede önceki değişiklikler eksik olabilir.",
     "put-your-data-operations-on-autopilot": "Veri operasyonlarınızı otomatik pilota alın",
     "quality-contract-description": "Veri kalitesi testleri ve onaylar",
     "quality-rules-run-summary": "{{total}} kalite kuralından {{testCases}} tanesi test senaryosu olarak çalışır",

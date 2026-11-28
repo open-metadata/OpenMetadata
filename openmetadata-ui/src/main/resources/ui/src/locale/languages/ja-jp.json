@@ -6630,6 +6630,7 @@
     "profiler-timeout-seconds-message": "プロファイラーでのタイムアウト時間（秒）を指定します（オプション）。指定時間を超えると保留中のクエリを終了します。",
     "property-description-placeholder": "このプロパティが表す内容。",
     "property-name-placeholder": "例: 満期日",
+    "proposed-changes-incomplete": "この承認サイクルの履歴の一部を読み取れなかったため、この一覧には以前の変更が含まれていない可能性があります。",
     "put-your-data-operations-on-autopilot": "データ操作を自動運転に",
     "quality-contract-description": "データ品質テストとアサーション",
     "quality-rules-run-summary": "{{total}} 件中 {{testCases}} 件の品質ルールがテストケースとして実行されます",
