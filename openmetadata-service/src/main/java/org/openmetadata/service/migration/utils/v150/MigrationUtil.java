@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
@@ -113,7 +114,7 @@ public class MigrationUtil {
   }
 
   public static void deleteLegacyDataInsightPipelines(
-      PipelineServiceClientInterface pipelineServiceClient) {
+      Supplier<PipelineServiceClientInterface> pipelineServiceClientSupplier) {
     // Delete Data Insights Pipeline
     String dataInsightsPipelineNameFqn = "OpenMetadata.OpenMetadata_dataInsight";
 
@@ -131,6 +132,9 @@ public class MigrationUtil {
     }
 
     if (oDataInsightsPipeline.isPresent()) {
+      // Build the client only when there is actually something to remove from the orchestrator.
+      // An eager build fails new installs when the client config is absent or misconfigured.
+      PipelineServiceClientInterface pipelineServiceClient = pipelineServiceClientSupplier.get();
       IngestionPipeline dataInsightsPipeline = oDataInsightsPipeline.get();
 
       IngestionPipelineRepository entityRepository =
