@@ -1,6 +1,7 @@
 package org.openmetadata.service.llm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -228,5 +229,40 @@ class LLMCompletionClientTest {
   @Test
   void supportsTemperatureWhenModelIdIsUnset() {
     assertTrue(LLMCompletionClient.supportsTemperature(null));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "o1, true",
+    "o1-mini, true",
+    "o1-preview, true",
+    "o3, true",
+    "o3-mini, true",
+    "o4-mini, true",
+    "O3-MINI, true",
+    "gpt-5, true",
+    "gpt-5-mini, true",
+    "gpt-5-nano, true",
+    "gpt-5.2, true",
+    "openai.gpt-5.6, true",
+    "gpt-6, true",
+    "gpt-4o, false",
+    "gpt-4o-mini, false",
+    "gpt-4o1, false",
+    "o10, false",
+    "pro3-chat, false",
+    "gpt-4.1, false",
+    "gpt-4-turbo, false",
+    "gpt-3.5-turbo, false",
+    "claude-opus-4-5, false",
+    "gemini-2.5-flash, false"
+  })
+  void usesMaxCompletionTokensFollowsModelId(String modelId, boolean expected) {
+    assertEquals(expected, LLMCompletionClient.usesMaxCompletionTokens(modelId));
+  }
+
+  @Test
+  void usesMaxTokensWhenModelIdIsUnset() {
+    assertFalse(LLMCompletionClient.usesMaxCompletionTokens(null));
   }
 }
