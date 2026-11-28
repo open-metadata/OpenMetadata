@@ -61,7 +61,20 @@ export const useQuickFiltersWithComponent = (
   }>();
 
   useEffect(() => {
-    const isSingleSelect = config.mode === SelectMode.SINGLE;
+    // An explicit mode overrides per-filter singleSelect for every filter
+    // (SINGLE → all single, MULTI → all multi). When mode is unset, each
+    // filter's own singleSelect flag is honoured so a filter list can mix
+    // single- and multi-select dropdowns.
+    const resolveSingleSelect = (filter: ExploreQuickFilterField) => {
+      if (config.mode === SelectMode.SINGLE) {
+        return true;
+      }
+      if (config.mode === SelectMode.MULTI) {
+        return false;
+      }
+
+      return filter.singleSelect ?? false;
+    };
 
     const currentConfig = {
       parsedFilters: config.parsedFilters,
@@ -85,7 +98,7 @@ export const useQuickFiltersWithComponent = (
         return {
           ...defaultFilter,
           value: parsedFilter?.value || defaultFilter.value,
-          singleSelect: isSingleSelect,
+          singleSelect: resolveSingleSelect(defaultFilter),
         };
       });
       setSelectedQuickFilters(mergedFilters);
@@ -93,7 +106,7 @@ export const useQuickFiltersWithComponent = (
       setSelectedQuickFilters(
         config.defaultFilters.map((filter) => ({
           ...filter,
-          singleSelect: isSingleSelect,
+          singleSelect: resolveSingleSelect(filter),
         }))
       );
     }

@@ -124,13 +124,17 @@ export const useColumnGridListingData = (
   }, [searchParams, currentPage, pageSize]);
 
   const parsedFilters: ExploreQuickFilterField[] = useMemo(() => {
-    return COLUMN_GRID_FILTERS.map((filter) => ({
-      ...filter,
-      value: convertFilterValuesToOptions(
-        filter.key,
-        urlState.filters[filter.key] || []
-      ),
-    }));
+    return COLUMN_GRID_FILTERS.map((filter) => {
+      const values = urlState.filters[filter.key] || [];
+
+      return {
+        ...filter,
+        value: convertFilterValuesToOptions(
+          filter.key,
+          filter.singleSelect ? values.slice(0, 1) : values
+        ),
+      };
+    });
   }, [urlState.filters]);
 
   // Selection state
