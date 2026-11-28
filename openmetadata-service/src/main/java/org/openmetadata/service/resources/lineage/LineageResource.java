@@ -52,10 +52,8 @@ import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
@@ -73,7 +71,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
@@ -88,7 +85,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.CSVExportResponse;
 
@@ -102,7 +98,6 @@ import org.openmetadata.service.util.CSVExportResponse;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "lineage")
 public class LineageResource {
-  static final String LINEAGE_FIELD = "lineage";
   private final LineageRepository dao;
   private final Authorizer authorizer;
   private final LineageHydrator hydrator;
@@ -183,6 +178,12 @@ public class LineageResource {
       EntityReference focus = getLineageReferenceByName(entityType, focusFqn, include);
       authorizeLineageReference(securityContext, focus, MetadataOperation.VIEW_BASIC);
     }
+  }
+
+  private void authorizeLineageReference(
+      SecurityContext securityContext, String entityType, UUID entityId, Include include) {
+    authorizeLineageReference(
+        securityContext, Entity.getEntityReferenceById(entityType, entityId, include));
   }
 
   private void authorizeLineageReference(
@@ -1480,10 +1481,7 @@ public class LineageResource {
               schema = @Schema(type = "string", example = "ViewLineage"))
           @PathParam("lineageSource")
           String lineageSource) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+    authorizeLineageReference(securityContext, entityType, entityId, Include.ALL);
     dao.deleteLineageBySource(
         entityId, entityType, lineageSource, securityContext.getUserPrincipal().getName());
     return Response.status(Status.OK).build();
@@ -1530,33 +1528,5 @@ public class LineageResource {
     Entity.withHref(uriInfo, lineage.getEntity());
     Entity.withHref(uriInfo, lineage.getNodes());
     return lineage;
-  }
-
-  static class LineageResourceContext implements ResourceContextInterface {
-
-    @Override
-    public String getResource() {
-      return LINEAGE_FIELD;
-    }
-
-    @Override
-    public List<EntityReference> getOwners() {
-      return null;
-    }
-
-    @Override
-    public List<TagLabel> getTags() {
-      return null;
-    }
-
-    @Override
-    public EntityInterface<?> getEntity() {
-      return null;
-    }
-
-    @Override
-    public List<EntityReference> getDomains() {
-      return null;
-    }
   }
 }
