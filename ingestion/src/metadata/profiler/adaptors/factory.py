@@ -42,8 +42,8 @@ class NoSQLAdaptorFactory(Factory):
         Register a client type with its constructor.
 
         Args:
-            source_class_name (str): The class of the source client.
-            target_class (NoSQLClientConstructor): The constructor for the target client.
+            interface_type (str): The type of the source connection.
+            interface_class (NoSQLAdaptorConstructor): The constructor for the adaptor.
 
         Returns:
             None
