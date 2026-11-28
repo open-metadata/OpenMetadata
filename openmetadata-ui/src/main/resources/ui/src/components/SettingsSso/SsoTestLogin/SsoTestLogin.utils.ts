@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEqual, isNil, isPlainObject, union } from 'lodash';
+import {
+  get,
+  isEqual,
+  isNil,
+  isPlainObject,
+  isString,
+  startCase,
+  union,
+} from 'lodash';
 import { AuthProvider, ClientType } from '../../../generated/settings/settings';
 import {
   Stage,
@@ -148,3 +156,22 @@ export const toConnectionStepState = (
 
 export const isTestLoginSettled = (result?: TestLoginResult): boolean =>
   !!result && result.status !== Status.Pending;
+
+const CONFIGURATION_FIELD_PATH =
+  /\b(?:authenticationConfiguration|authorizerConfiguration)(?:\.\w+)+/g;
+
+/**
+ * Replaces configuration paths in a server message (e.g. "authenticationConfiguration.
+ * oidcConfiguration.id must not be null") with the field's label in the form, falling back to
+ * the readable last segment when the form has no title for it.
+ */
+export const labelConfigurationPaths = (
+  message: string,
+  uiSchema: Record<string, unknown>
+): string =>
+  message.replace(CONFIGURATION_FIELD_PATH, (path) => {
+    const segments = path.split('.');
+    const title = get(uiSchema, [...segments, 'ui:title']);
+
+    return isString(title) ? title : startCase(segments[segments.length - 1]);
+  });

@@ -132,6 +132,7 @@ import org.openmetadata.service.search.IndexMappingVersionTracker.MappingDriftSt
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
@@ -1375,8 +1376,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
         return embeddingResult;
       }
 
-      return validateHybridSearchPipeline(
-          searchRepository, embeddingResult, description, configMessage);
+      return embeddingsWorking(embeddingResult, description, configMessage);
     } catch (Exception e) {
       LOG.error("Error during embedding generation validation", e);
       return embeddingsValidation
@@ -1404,8 +1404,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
         if (Boolean.FALSE.equals(embeddingResult.getPassed())) {
           return embeddingResult;
         }
-        return validateHybridSearchPipeline(
-            searchRepository, embeddingResult, description, configMessage);
+        return embeddingsWorking(embeddingResult, description, configMessage);
       } catch (Exception e) {
         LOG.error("Error during embedding generation validation after retry", e);
         return embeddingsValidation
@@ -1439,36 +1438,12 @@ public class SystemRepository implements DeploymentSettingPreparer {
         .withPassed(false);
   }
 
-  private StepValidation validateHybridSearchPipeline(
-      SearchRepository searchRepository,
-      StepValidation embeddingsValidation,
-      String description,
-      String configMessage) {
-    boolean usesPipeline = searchRepository.usesHybridSearchPipeline();
-    Optional<String> pipelineError =
-        usesPipeline ? searchRepository.checkHybridSearchPipeline() : Optional.empty();
-    String message =
-        pipelineError
-            .map(
-                error ->
-                    "Embeddings are working but the hybrid search pipeline check failed: "
-                        + error
-                        + " "
-                        + configMessage)
-            .orElseGet(() -> workingMessage(usesPipeline, configMessage));
+  private static StepValidation embeddingsWorking(
+      StepValidation embeddingsValidation, String description, String configMessage) {
     return embeddingsValidation
         .withDescription(description)
-        .withMessage(message)
-        .withPassed(pipelineError.isEmpty());
-  }
-
-  /** An engine without the hybrid RRF pipeline has nothing to say about one. */
-  private static String workingMessage(boolean usesPipeline, String configMessage) {
-    String working =
-        usesPipeline
-            ? "Embeddings and hybrid search pipeline are working correctly. %s"
-            : "Embeddings are working correctly. %s";
-    return String.format(working, configMessage);
+        .withMessage("Embeddings are working correctly. " + configMessage)
+        .withPassed(true);
   }
 
   private StepValidation validateEmbeddingGeneration(
@@ -1576,21 +1551,25 @@ public class SystemRepository implements DeploymentSettingPreparer {
     String message = "OpenAI provider selected but openai configuration block is missing";
     if (embeddings.getOpenai() != null) {
       LLMOpenAIConfig openaiCreds = llmConfig.getOpenai();
-      String openaiEndpoint =
-          openaiCreds == null || nullOrEmpty(openaiCreds.getEndpoint())
-              ? "api.openai.com"
-              : openaiCreds.getEndpoint();
-      String deploymentInfo =
-          openaiCreds == null || nullOrEmpty(openaiCreds.getDeploymentName())
-              ? ""
-              : String.format(", deploymentName: %s", openaiCreds.getDeploymentName());
-      message =
-          String.format(
-              "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",
-              openaiEndpoint,
-              embeddings.getOpenai().getEmbeddingModelId(),
-              embeddings.getOpenai().getEmbeddingDimension(),
-              deploymentInfo);
+      try {
+        String deploymentName =
+            OpenAIEmbeddingClient.azureDeploymentName(openaiCreds, embeddings.getOpenai());
+        String openaiEndpoint =
+            openaiCreds == null || nullOrEmpty(openaiCreds.getEndpoint())
+                ? "api.openai.com"
+                : openaiCreds.getEndpoint();
+        String deploymentInfo =
+            deploymentName == null ? "" : String.format(", deploymentName: %s", deploymentName);
+        message =
+            String.format(
+                "OpenAI configuration: endpoint: %s, embeddingModelId: %s, embeddingDimension: %s%s",
+                openaiEndpoint,
+                embeddings.getOpenai().getEmbeddingModelId(),
+                embeddings.getOpenai().getEmbeddingDimension(),
+                deploymentInfo);
+      } catch (IllegalArgumentException invalidConfiguration) {
+        message = invalidConfiguration.getMessage();
+      }
     }
     return message;
   }

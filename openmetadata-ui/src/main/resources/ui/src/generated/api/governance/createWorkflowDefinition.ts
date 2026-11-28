@@ -706,6 +706,12 @@ export interface TriggerConfiguration {
      */
     include?: string[];
     /**
+     * Names of the bots whose changes start this workflow. A change made by any other bot never
+     * starts it. Only bots an admin created can be listed: system bots and application bots
+     * cannot.
+     */
+    triggeringBots?: string[];
+    /**
      * Number of Entities to process at once.
      */
     batchSize?: number;

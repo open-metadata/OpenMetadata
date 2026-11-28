@@ -15,43 +15,47 @@ import { SuggestionDataByTypes } from '../../components/Suggestions/SuggestionsP
 import { EntityReference } from '../../generated/type/entityReference';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 
+export const getSuggestionUserKey = (user?: EntityReference) =>
+  user?.id ?? user?.name ?? '';
+
 export const getSuggestionByType = (suggestion: Suggestion[]) => {
-  return suggestion.reduce(
-    (acc, cv: Suggestion) => {
-      const createdBy = cv.createdBy as EntityReference;
-      const createdByName = createdBy?.name;
+  const usersById = new Map<string, EntityReference>();
+  const groupedSuggestions = new Map<string, SuggestionDataByTypes>();
 
-      if (!createdByName) {
-        return acc;
-      }
+  suggestion.forEach((cv) => {
+    const createdBy = cv.createdBy as EntityReference | undefined;
+    const userKey = getSuggestionUserKey(createdBy);
 
-      if (createdBy.id) {
-        acc.allUsersList.push(createdBy);
-      }
-
-      // Group suggestions by createdBy name
-      if (!acc.groupedSuggestions.has(createdByName)) {
-        acc.groupedSuggestions.set(createdByName, {
-          tags: [],
-          description: [],
-          combinedData: [],
-        });
-      }
-
-      acc.groupedSuggestions.get(createdByName)?.combinedData.push(cv);
-      if (cv.type === SuggestionType.SuggestTagLabel) {
-        acc.groupedSuggestions.get(createdByName)?.tags.push(cv);
-      } else {
-        acc.groupedSuggestions.get(createdByName)?.description.push(cv);
-      }
-
-      return acc;
-    },
-    {
-      allUsersList: [] as EntityReference[],
-      groupedSuggestions: new Map<string, SuggestionDataByTypes>(),
+    if (!createdBy || !userKey) {
+      return;
     }
-  );
+
+    // The same user can arrive as an expanded ref or as a minimal ref built from
+    // createdById; keep the expanded one so the chip shows the real name.
+    const knownUser = usersById.get(userKey);
+    if (
+      createdBy.id &&
+      (!knownUser ||
+        (!knownUser.fullyQualifiedName && createdBy.fullyQualifiedName))
+    ) {
+      usersById.set(userKey, createdBy);
+    }
+
+    const group = groupedSuggestions.get(userKey) ?? {
+      tags: [],
+      description: [],
+      combinedData: [],
+    };
+    group.combinedData.push(cv);
+    if (cv.type === SuggestionType.SuggestTagLabel) {
+      group.tags.push(cv);
+    } else {
+      group.description.push(cv);
+    }
+    groupedSuggestions.set(userKey, group);
+  });
+
+  return { allUsersList: [...usersById.values()], groupedSuggestions };
 };
 
 // Helper function to get unique suggestions

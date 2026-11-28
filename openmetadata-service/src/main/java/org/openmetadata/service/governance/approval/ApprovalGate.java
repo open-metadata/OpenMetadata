@@ -16,6 +16,7 @@ package org.openmetadata.service.governance.approval;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isBotChange;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isWorkflowAutomation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -59,7 +60,8 @@ import org.openmetadata.service.util.RestUtil;
 /**
  * Admission for approval-gated edits. A human request that changes a gated field is diverted, whole,
  * into a change request and nothing is published; a request touching only ungated fields, or made by
- * a bot on its own behalf, proceeds as a normal write. Impersonated requests are gated as the human.
+ * a bot on its own behalf that no gating workflow lists in {@code triggeringBots}, proceeds as a
+ * normal write. Impersonated requests are gated as the human.
  */
 @Slf4j
 public final class ApprovalGate {
@@ -157,9 +159,13 @@ public final class ApprovalGate {
       final JsonNode proposed,
       final ChangeActor actor) {
     final String entityType = Entity.getEntityTypeFromObject(entity);
-    final List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
+    final List<GatingRule> rules =
+        rulesForActor(
+            GovernanceApprovalRegistry.gatingRules(entityType),
+            actor.userName(),
+            actor.impersonatedBy());
     Optional<StagedChange> staged = Optional.empty();
-    if (!rules.isEmpty() && !isBotChange(actor.userName(), actor.impersonatedBy())) {
+    if (!rules.isEmpty()) {
       final Timer.Sample sample = ChangeRequestMetrics.startAdmission();
       staged =
           stage(
@@ -176,8 +182,24 @@ public final class ApprovalGate {
   /** Whether an edit of {@code entityType} by {@code user} can be held at all. */
   public static boolean mayHold(String entityType, String user) {
     return !RELEASE_GOVERNED_TYPES.contains(entityType)
-        && !GovernanceApprovalRegistry.gatingRules(entityType).isEmpty()
-        && !isBotChange(user, null);
+        && !rulesForActor(GovernanceApprovalRegistry.gatingRules(entityType), user, null).isEmpty();
+  }
+
+  /**
+   * The rules that gate an edit by this actor. A bot's edit is gated only by the workflows that list
+   * it in {@code triggeringBots}, and workflow automation's own writes by none. The bot check reads
+   * the acting user, so it runs only once a workflow gates the edit.
+   */
+  private static List<GatingRule> rulesForActor(
+      List<GatingRule> rules, String user, String impersonatedBy) {
+    List<GatingRule> actorRules = rules;
+    if (!rules.isEmpty() && isBotChange(user, impersonatedBy)) {
+      actorRules =
+          isWorkflowAutomation(user, impersonatedBy)
+              ? List.of()
+              : rules.stream().filter(rule -> rule.triggeringBotUsers().contains(user)).toList();
+    }
+    return actorRules;
   }
 
   /** What {@link #admit} would decide for this edit, without recording metrics. */
@@ -311,14 +333,16 @@ public final class ApprovalGate {
     byType.forEach(
         (type, refs) -> {
           List<GatingRule> rules =
-              GovernanceApprovalRegistry.gatingRules(type).stream()
-                  .filter(
-                      rule ->
-                          WorkflowTriggerFilters.fieldTriggers(
-                              type, field, rule.includedFields(), rule.excludedFields()))
-                  .toList();
-          // The bot check reads the acting user, so it runs only once a workflow gates the field.
-          if (!rules.isEmpty() && !isBotChange(user, null)) {
+              rulesForActor(
+                  GovernanceApprovalRegistry.gatingRules(type).stream()
+                      .filter(
+                          rule ->
+                              WorkflowTriggerFilters.fieldTriggers(
+                                  type, field, rule.includedFields(), rule.excludedFields()))
+                      .toList(),
+                  user,
+                  null);
+          if (!rules.isEmpty()) {
             List<EntityInterface> entities = Entity.getEntities(refs, field, Include.ALL);
             for (EntityInterface entity : entities) {
               if (rules.stream()
@@ -346,10 +370,10 @@ public final class ApprovalGate {
       Edit edit,
       boolean record) {
     String entityType = Entity.getEntityTypeFromObject(updated);
-    List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
+    List<GatingRule> rules =
+        rulesForActor(GovernanceApprovalRegistry.gatingRules(entityType), user, impersonatedBy);
     Optional<StagedChange> staged = Optional.empty();
-    // The bot check reads the acting user, so it runs only for an entity type a workflow gates.
-    if (!rules.isEmpty() && !isBotChange(user, impersonatedBy)) {
+    if (!rules.isEmpty()) {
       Timer.Sample sample = ChangeRequestMetrics.startAdmission();
       staged = planStage(rules, entityType, original, updated, user, impersonatedBy, edit);
       if (record) {

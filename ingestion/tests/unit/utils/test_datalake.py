@@ -899,6 +899,315 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
         self.assertTrue(JSONDataFrameReader._is_json_lines(io.BytesIO(jsonl)))
 
 
+class TestIcebergDeltaTypeMapping:
+    """Iceberg/Delta/Spark schema JSON type names must map to the correct OpenMetadata
+    DataType instead of silently falling back to STRING.
+
+    Regression coverage for ea54b6b where ``DataType(type_str.upper())`` + STRING
+    fallback collapsed ``integer``, ``timestamptz``, ``timestamp_ntz``, ``byte``,
+    ``decimal(p,s)``, and dict-shaped ``list``/``map`` to STRING.
+    """
+
+    @staticmethod
+    def _parse(fields):
+        raw = json.dumps({"schema": {"fields": fields}})
+        return JsonDataFrameColumnParser(pd.DataFrame(), raw_data=raw).get_columns()
+
+    @pytest.mark.parametrize(
+        "type_name,expected",
+        [
+            ("integer", DataType.INT),
+            ("int", DataType.INT),
+            ("long", DataType.LONG),
+            ("short", DataType.SMALLINT),
+            ("byte", DataType.TINYINT),
+            ("boolean", DataType.BOOLEAN),
+            ("string", DataType.STRING),
+            ("double", DataType.DOUBLE),
+            ("float", DataType.FLOAT),
+            ("date", DataType.DATE),
+            ("timestamp", DataType.TIMESTAMP),
+            ("timestamptz", DataType.TIMESTAMP),
+            ("timestamp_ntz", DataType.TIMESTAMP),
+            ("timestamp_ltz", DataType.TIMESTAMP),
+            ("uuid", DataType.UUID),
+            ("binary", DataType.BINARY),
+            ("time", DataType.TIME),
+            ("variant", DataType.VARIANT),
+        ],
+    )
+    def test_primitive_type_mapping(self, type_name, expected):
+        """Primitive Iceberg/Delta/Spark names map to the correct DataType, not STRING."""
+        columns = self._parse([{"name": "col", "type": type_name}])
+        assert columns[0].dataType == expected
+        assert columns[0].dataTypeDisplay == type_name
+
+    def test_decimal_with_precision_and_scale(self):
+        columns = self._parse([{"name": "amount", "type": "decimal(10,2)"}])
+        col = columns[0]
+        assert col.dataType == DataType.DECIMAL
+        assert col.precision == 10
+        assert col.scale == 2
+        assert col.dataTypeDisplay == "decimal(10,2)"
+
+    def test_decimal_with_precision_only(self):
+        columns = self._parse([{"name": "amount", "type": "decimal(5)"}])
+        col = columns[0]
+        assert col.dataType == DataType.DECIMAL
+        assert col.precision == 5
+        assert col.scale is None
+
+    def test_decimal_without_precision(self):
+        columns = self._parse([{"name": "amount", "type": "decimal"}])
+        col = columns[0]
+        assert col.dataType == DataType.DECIMAL
+        assert col.precision is None
+        assert col.scale is None
+
+    def test_fixed_length_binary(self):
+        columns = self._parse([{"name": "id", "type": "fixed[16]"}])
+        col = columns[0]
+        assert col.dataType == DataType.FIXED
+        assert col.dataLength == 16
+
+    def test_list_dict_maps_to_array_with_element_type(self):
+        columns = self._parse([{"name": "tags", "type": {"type": "list", "element": "int"}}])
+        col = columns[0]
+        assert col.dataType == DataType.ARRAY
+        assert col.arrayDataType == DataType.INT
+        assert col.children is None
+
+    def test_spark_array_dict_maps_to_array_with_element_type(self):
+        columns = self._parse(
+            [{"name": "tags", "type": {"type": "array", "elementType": "double", "containsNull": True}}]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.ARRAY
+        assert col.arrayDataType == DataType.DOUBLE
+
+    def test_list_of_struct_preserves_struct_children(self):
+        columns = self._parse(
+            [
+                {
+                    "name": "items",
+                    "type": {
+                        "type": "list",
+                        "element": {
+                            "type": "struct",
+                            "fields": [
+                                {"name": "id", "type": "integer"},
+                                {"name": "price", "type": "decimal(10,2)"},
+                            ],
+                        },
+                    },
+                }
+            ]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.ARRAY
+        assert col.arrayDataType == DataType.STRUCT
+        assert col.children is not None
+        children = {c["displayName"]: c for c in col.children}
+        assert children["id"]["dataType"] == DataType.INT.value
+        assert children["price"]["dataType"] == DataType.DECIMAL.value
+        assert children["price"]["precision"] == 10
+        assert children["price"]["scale"] == 2
+
+    def test_map_dict_preserves_key_and_value_types(self):
+        columns = self._parse([{"name": "props", "type": {"type": "map", "key": "string", "value": "int"}}])
+        col = columns[0]
+        assert col.dataType == DataType.MAP
+        assert col.children is not None
+        assert len(col.children) == 2
+        key_child, value_child = col.children
+        assert key_child["name"] == "key"
+        assert key_child["dataType"] == DataType.STRING.value
+        assert value_child["name"] == "value"
+        assert value_child["dataType"] == DataType.INT.value
+
+    def test_spark_map_dict_preserves_key_and_value_types(self):
+        columns = self._parse(
+            [
+                {
+                    "name": "props",
+                    "type": {
+                        "type": "map",
+                        "keyType": "string",
+                        "valueType": "timestamp_ntz",
+                        "valueContainsNull": True,
+                    },
+                }
+            ]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.MAP
+        assert col.children is not None
+        key_child, value_child = col.children
+        assert key_child["dataType"] == DataType.STRING.value
+        assert value_child["dataType"] == DataType.TIMESTAMP.value
+
+    def test_map_with_struct_value_preserves_value_children(self):
+        columns = self._parse(
+            [
+                {
+                    "name": "props",
+                    "type": {
+                        "type": "map",
+                        "key": "string",
+                        "value": {
+                            "type": "struct",
+                            "fields": [
+                                {"name": "id", "type": "integer"},
+                                {"name": "amount", "type": "decimal(10,2)"},
+                            ],
+                        },
+                    },
+                }
+            ]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.MAP
+        _, value_child = col.children
+        assert value_child["dataType"] == DataType.STRUCT.value
+        assert value_child["children"] is not None
+        fields = {c["displayName"]: c for c in value_child["children"]}
+        assert fields["id"]["dataType"] == DataType.INT.value
+        assert fields["amount"]["dataType"] == DataType.DECIMAL.value
+        assert fields["amount"]["precision"] == 10
+        assert fields["amount"]["scale"] == 2
+
+    def test_map_with_array_value_preserves_array_data_type(self):
+        columns = self._parse(
+            [{"name": "props", "type": {"type": "map", "key": "string", "value": {"type": "list", "element": "int"}}}]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.MAP
+        _, value_child = col.children
+        assert value_child["dataType"] == DataType.ARRAY.value
+        assert value_child["arrayDataType"] == DataType.INT.value
+
+    def test_map_with_decimal_value_preserves_precision_and_scale(self):
+        columns = self._parse([{"name": "props", "type": {"type": "map", "key": "string", "value": "decimal(8,3)"}}])
+        col = columns[0]
+        _, value_child = col.children
+        assert value_child["dataType"] == DataType.DECIMAL.value
+        assert value_child["precision"] == 8
+        assert value_child["scale"] == 3
+
+    def test_array_of_map_preserves_map_children(self):
+        columns = self._parse(
+            [
+                {
+                    "name": "entries",
+                    "type": {
+                        "type": "array",
+                        "elementType": {"type": "map", "key": "string", "value": "long"},
+                    },
+                }
+            ]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.ARRAY
+        assert col.arrayDataType == DataType.MAP
+        assert col.children is not None
+        key_child, value_child = col.children
+        assert key_child["dataType"] == DataType.STRING.value
+        assert value_child["dataType"] == DataType.LONG.value
+
+    def test_nested_struct_fields_are_correctly_typed(self):
+        """Regression: nested struct fields used the same lossy lookup and dropped to STRING."""
+        columns = self._parse(
+            [
+                {
+                    "name": "metadata",
+                    "type": {
+                        "type": "struct",
+                        "fields": [
+                            {"name": "count", "type": "integer"},
+                            {"name": "ts", "type": "timestamptz"},
+                            {"name": "amount", "type": "decimal(10,2)"},
+                            {"name": "tags", "type": {"type": "list", "element": "string"}},
+                        ],
+                    },
+                }
+            ]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.STRUCT
+        assert col.children is not None
+        children = {c["displayName"]: c for c in col.children}
+        assert children["count"]["dataType"] == DataType.INT.value
+        assert children["ts"]["dataType"] == DataType.TIMESTAMP.value
+        assert children["amount"]["dataType"] == DataType.DECIMAL.value
+        assert children["amount"]["precision"] == 10
+        assert children["amount"]["scale"] == 2
+        assert children["tags"]["dataType"] == DataType.ARRAY.value
+        assert children["tags"]["arrayDataType"] == DataType.STRING.value
+
+    def test_deeply_nested_struct_in_struct(self):
+        columns = self._parse(
+            [
+                {
+                    "name": "outer",
+                    "type": {
+                        "type": "struct",
+                        "fields": [
+                            {
+                                "name": "inner",
+                                "type": {
+                                    "type": "struct",
+                                    "fields": [{"name": "deep", "type": "integer"}],
+                                },
+                            }
+                        ],
+                    },
+                }
+            ]
+        )
+        outer = columns[0]
+        assert outer.dataType == DataType.STRUCT
+        inner = outer.children[0]
+        assert inner["dataType"] == DataType.STRUCT.value
+        assert inner["children"][0]["dataType"] == DataType.INT.value
+
+    def test_unknown_type_falls_back_to_string(self):
+        """Unknown / exotic types still degrade gracefully to STRING (no crash)."""
+        columns = self._parse([{"name": "col", "type": "not-a-real-type"}])
+        assert columns[0].dataType == DataType.STRING
+
+    def test_pandas_orient_table_field_types(self):
+        """pandas ``to_json(orient='table')`` writes ``integer``/``number``/``datetime``
+        field types; ``integer`` is not a DataType enum member and previously became STRING."""
+        columns = self._parse(
+            [
+                {"name": "id", "type": "integer"},
+                {"name": "price", "type": "number"},
+                {"name": "created", "type": "datetime"},
+                {"name": "active", "type": "boolean"},
+            ]
+        )
+        types = {c.displayName: c.dataType for c in columns}
+        assert types["id"] == DataType.INT
+        assert types["price"] == DataType.NUMBER
+        assert types["created"] == DataType.DATETIME
+        assert types["active"] == DataType.BOOLEAN
+
+    def test_re_ingestion_corrects_type_for_previously_string_column(self):
+        """Re-ingestion of a field previously cataloged as STRING (here ``count``
+        declared as ``string``) must produce the corrected type (``INT``) when the
+        field is re-declared as ``integer``. The parser yields a fresh ``Column``
+        with the same name and the new ``dataType``; the OpenMetadata server merges
+        columns by name, so lineage mappings and column custom properties attached
+        to the prior column are retained across the type change."""
+        first = self._parse([{"name": "count", "type": "string"}])
+        assert first[0].dataType == DataType.STRING
+        assert first[0].displayName == "count"
+
+        second = self._parse([{"name": "count", "type": "integer"}])
+        assert second[0].dataType == DataType.INT
+        assert second[0].displayName == "count"
+
+
 class TestFetchColTypesWithParsedObjects:
     """fetch_col_types must correctly type object-dtype columns whose values are already
     parsed Python dicts or lists, including falsy containers ({}, [])."""

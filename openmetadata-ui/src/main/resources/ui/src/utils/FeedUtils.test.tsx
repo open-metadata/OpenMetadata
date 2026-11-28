@@ -101,8 +101,7 @@ describe('Feed Utils', () => {
     const message = `<#E::user::"admin"|[@admin](http://localhost:3000/users/admin)> test`;
     const result = getBackendFormat(message);
 
-    // eslint-disable-next-line no-useless-escape
-    const expectedResult = `<#E::user::\"admin\"|<#E::user::admin|[@admin](http://localhost:3000/users/admin)>> test`;
+    const expectedResult = `<#E::user::"admin"|<#E::user::admin|[@admin](http://localhost:3000/users/admin)>> test`;
 
     expect(result).toStrictEqual(expectedResult);
   });

@@ -18,13 +18,13 @@ import {
   Glossary,
   GlossaryFilled,
   GovernanceFilled,
+  LayersThree01,
   Metric,
   MetricFilled,
   Workflow,
   WorkflowsFilled,
 } from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
-import { OntologyStudioIcon } from '../../../utils/IconUtils';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
@@ -65,7 +65,7 @@ export const governModule: AppModule = {
           },
           {
             key: 'ontology-explorer',
-            icon: OntologyStudioIcon,
+            icon: LayersThree01,
             labelKey: 'label.ontology-explorer',
             path: ROUTES.ONTOLOGY_EXPLORER,
           },

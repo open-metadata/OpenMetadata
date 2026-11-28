@@ -40,6 +40,8 @@ export const UN_AUTHORIZED_EXCLUDED_PATHS = [
   // For Okta
   '/auth/refresh',
   '/users/login',
+  // The login servlet: a rejected sign-in is not an expired session.
+  '/auth/login',
 ];
 
 // 401 messages on the polled `/users/loggedInUser` that a silent token refresh

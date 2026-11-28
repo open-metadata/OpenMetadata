@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Define Median function
+Define Date, Datetime and Timestamp add functions
 """
 
 # Keep SQA docs style defining custom constructs

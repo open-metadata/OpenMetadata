@@ -19,5 +19,31 @@
     "python",
     "typescript"
   ],
-  "hooks": "./hooks/hooks.json"
+  "skills": [
+    "./code-review",
+    "./connector-audit",
+    "./connector-building",
+    "./connector-review",
+    "./connector-standards",
+    "./dev-setup",
+    "./java-affected-tests",
+    "./java-checkstyle",
+    "./openmetadata-pr-review",
+    "./openmetadata-workflow",
+    "./planning",
+    "./playwright",
+    "./playwright-validation",
+    "./pr-checklist",
+    "./systematic-debugging",
+    "./tdd",
+    "./test-enforcement",
+    "./test-locally",
+    "./ui-checkstyle",
+    "./ui-core-components",
+    "./ui-pr-recording",
+    "./vendor",
+    "./verification",
+    "./writing-playwright-tests"
+  ],
+  "commands": []
 }

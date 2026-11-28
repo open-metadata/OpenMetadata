@@ -28,7 +28,7 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 import { page } from 'vitest/browser';
 import { DATA_CONSUMER } from '../fixtures/personas';
-import { suiteTimeout } from '../timeouts';
+import { scaled, suiteTimeout } from '../timeouts';
 import {
   addUpdateRemoveChildDescription,
   addUpdateRemoveGlossaryTerms,
@@ -60,7 +60,7 @@ export const describeDataConsumerFlows = (label: EntityLabel) => {
 
     beforeEach(async () => {
       entity = await mountEntityPage(config, DATA_CONSUMER);
-    });
+    }, scaled(90_000));
 
     test('user owners: add two to an unowned entity', async () => {
       await setUserOwners([USERS[0], USERS[2]]);

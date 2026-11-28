@@ -54,7 +54,12 @@ def _make_dbt_test(manifest_node):
 
 def _make_dbt_source(existing_entity=None, update_descriptions=False):
     source = MagicMock(spec=DbtSource)
-    for method_name in ("create_dbt_test_case", "create_dbt_tests_definition", "patch_dbt_test_case_description"):
+    for method_name in (
+        "create_dbt_test_case",
+        "create_dbt_tests_definition",
+        "patch_dbt_test_case_description",
+        "_missing_test_column",
+    ):
         setattr(source, method_name, getattr(DbtSource, method_name).__get__(source, DbtSource))
     source.metadata = MagicMock()
     source.metadata.get_by_name.return_value = existing_entity

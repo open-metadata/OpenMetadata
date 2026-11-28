@@ -38,7 +38,7 @@ import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -247,7 +247,7 @@ class VectorChunkIndexIT {
     refresh(service, staged);
     assertEquals(ids(seeded), parentsFound(service), "Reads keep the old chunks until the swap");
 
-    AvailableEntityTypes.SET.forEach(type -> service.markEntityTypeReindexed(type, true, staged));
+    EmbeddedEntityTypes.ALL.forEach(type -> service.markEntityTypeReindexed(type, true, staged));
 
     assertEquals(ids(List.of(embeddedAgain, unchanged)), parentsFound(service));
     assertOnePassage(service, embeddedAgain, "Orders placed online");
@@ -278,7 +278,7 @@ class VectorChunkIndexIT {
           service.writeEntityChunks(id(invoices), unindexableChunks(service, invoices), staged),
           "The caller is told about the miss");
       refresh(service, staged);
-      AvailableEntityTypes.SET.forEach(type -> service.markEntityTypeReindexed(type, true, staged));
+      EmbeddedEntityTypes.ALL.forEach(type -> service.markEntityTypeReindexed(type, true, staged));
 
       assertEquals(
           Set.of(service.getChunkIndexName(), service.getIndexAlias()), aliasesOf(service, staged));
@@ -310,7 +310,7 @@ class VectorChunkIndexIT {
       assertFalse(service.backfillEntityChunks(shipments, staged), "The miss is reported");
       provider.failing(false);
       refresh(service, staged);
-      AvailableEntityTypes.SET.forEach(type -> service.markEntityTypeReindexed(type, true, staged));
+      EmbeddedEntityTypes.ALL.forEach(type -> service.markEntityTypeReindexed(type, true, staged));
 
       assertEquals(
           Set.of(service.getChunkIndexName(), service.getIndexAlias()), aliasesOf(service, staged));
@@ -348,7 +348,7 @@ class VectorChunkIndexIT {
       service.deleteEntityChunks(id(refunds));
       refresh(service, service.getChunkIndexName());
       String generation = staged;
-      AvailableEntityTypes.SET.forEach(
+      EmbeddedEntityTypes.ALL.forEach(
           type -> service.markEntityTypeReindexed(type, true, generation));
 
       assertEquals(Set.of(), aliasesOf(service, staged), "The generation is not promoted");

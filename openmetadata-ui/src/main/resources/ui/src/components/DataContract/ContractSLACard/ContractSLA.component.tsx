@@ -28,7 +28,10 @@ import { isEmpty, lowerCase } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  DataContract,
+  RefreshFrequencyUnit,
+} from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import {
   DataContractResult,
@@ -67,7 +70,7 @@ const ContractSLA: React.FC<{
   latestContractResults?: DataContractResult;
   contractStatus?: string;
 }> = ({ contract, latestContractResults, contractStatus }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data: tableData } = useGenericContext();
   const slaValidation = latestContractResults?.slaValidation;
 
@@ -96,7 +99,17 @@ const ContractSLA: React.FC<{
 
     const slaList = [];
 
-    if (contract.sla?.refreshFrequency) {
+    const frequency = contract.sla?.refreshFrequency;
+    if (frequency) {
+      const { interval, unit } = frequency;
+      const minuteLabel =
+        interval === 1 ? 'label.minute-lowercase' : 'label.minute-plural';
+      const description =
+        unit === RefreshFrequencyUnit.Minute
+          ? `${new Intl.NumberFormat(i18n.language).format(interval)} ${t(
+              minuteLabel
+            )}`
+          : `${interval} ${lowerCase(unit)}`;
       slaList.push({
         key: DATA_CONTRACT_SLA.REFRESH_FREQUENCY,
         label: (
@@ -105,9 +118,7 @@ const ContractSLA: React.FC<{
             renderElement={<strong />}
             values={{
               label: t('label.freshness'),
-              data: `${contract.sla?.refreshFrequency.interval} ${lowerCase(
-                contract.sla?.refreshFrequency.unit
-              )}`,
+              data: description,
             }}
           />
         ),
@@ -183,7 +194,7 @@ const ContractSLA: React.FC<{
     }
 
     return slaList;
-  }, [contract.sla, tableColumnNameMap]);
+  }, [contract.sla, i18n.language, t, tableColumnNameMap]);
 
   const renderOutcomeIcon = (key: string): ReactNode => {
     const outcomeOf = SLA_CHECK_OUTCOME[key];

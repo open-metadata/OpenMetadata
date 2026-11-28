@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.MaxLatency;
@@ -107,6 +108,33 @@ class ContractSlaValidatorTest {
     assertEquals(NOW.minus(Duration.ofHours(20)).toEpochMilli(), validation.getLastRefreshedAt());
     assertEquals(RefreshedAtSource.SYSTEM_PROFILE, validation.getRefreshedAtSource());
     assertNull(validation.getMessage());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"899999, true", "900000, true", "900001, false"})
+  void fifteenMinuteFrequencyUsesAnInclusiveElapsedTimeCutoff(long ageMillis, boolean meets) {
+    Instant refreshedAt = NOW.minusMillis(ageMillis);
+    history = columnProfile(NOW, refreshedAt);
+    ContractSLA freshness =
+        sla(new RefreshFrequency().withInterval(15).withUnit(RefreshFrequency.Unit.MINUTE))
+            .withTimezone(ContractSLA.Timezone.GMT_05_00_AMERICA_NEW_YORK);
+
+    SlaValidation validation = validator.validate(contract(freshness));
+
+    assertEquals(meets, validation.getRefreshFrequencyMet());
+    assertEquals(refreshedAt.toEpochMilli(), validation.getLastRefreshedAt());
+    assertEquals(RefreshedAtSource.SLA_COLUMN_PROFILE, validation.getRefreshedAtSource());
+  }
+
+  @Test
+  void minuteFrequencyWithoutObservedRefreshLeavesTheVerdictUnset() {
+    ContractSLA freshness =
+        sla(new RefreshFrequency().withInterval(15).withUnit(RefreshFrequency.Unit.MINUTE));
+
+    SlaValidation validation = validator.validate(contract(freshness));
+
+    assertNull(validation.getRefreshFrequencyMet());
+    assertEquals(ContractSlaValidator.NO_REFRESH_TIME, validation.getMessage());
   }
 
   @Test
