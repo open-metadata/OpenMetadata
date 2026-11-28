@@ -25,6 +25,7 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Builder;
@@ -962,6 +963,46 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation,
         @Bind("relationType") String relationType,
         @BindJson("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship "
+                + "(fromId, toId, fromEntity, toEntity, relation, json) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO entity_relationship "
+                + "(fromId, toId, fromEntity, toEntity, relation, json) "
+                + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, (:json :: jsonb)) "
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO NOTHING",
+        connectionType = POSTGRES)
+    int insertLineageIfAbsent(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation,
+        @BindJson("json") String json);
+
+    @SqlQuery(
+        "SELECT 1 FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
+            + "AND toId = :toId AND toEntity = :toEntity AND relation = :relation "
+            + "AND deleted = FALSE FOR UPDATE")
+    List<Integer> lockActiveMembership(
+        @BindUUID("fromId") UUID fromId,
+        @Bind("fromEntity") String fromEntity,
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT json FROM entity_relationship WHERE fromId = :fromId AND toId = :toId "
+            + "AND relation = :relation AND relationType = '' AND deleted = FALSE FOR UPDATE")
+    Optional<String> lockRelationshipDetails(
+        @BindUUID("fromId") UUID fromId,
+        @BindUUID("toId") UUID toId,
+        @Bind("relation") int relation);
 
     @ConnectionAwareSqlUpdate(
         value =

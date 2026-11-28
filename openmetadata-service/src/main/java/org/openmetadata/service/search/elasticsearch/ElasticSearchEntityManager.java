@@ -948,11 +948,28 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   @SneakyThrows
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData) {
-    if (!isClientAvailable) {
+    if (isClientAvailable) {
+      executeLineageUpdate(indexName, fieldAndValue, lineageData);
+      LOG.info("Successfully updated lineage in ElasticSearch for index: {}", indexName);
+    } else {
       LOG.error("ElasticSearch client is not available. Cannot update lineage.");
-      return;
     }
+  }
 
+  @Override
+  public void updateLineageChecked(
+      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch is unavailable for lineage projection");
+    }
+    EntityManagementClient.requireCompleteLineageUpdate(
+        executeLineageUpdate(indexName, fieldAndValue, lineageData));
+  }
+
+  private UpdateByQueryOutcome executeLineageUpdate(
+      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData)
+      throws IOException {
     Map<String, JsonData> params =
         Collections.singletonMap("lineageData", JsonData.of(JsonUtils.getMap(lineageData)));
     Query lineageQuery = buildLineageUpdateQuery(fieldAndValue);
@@ -970,9 +987,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                 .params(params))
                     .refresh(true));
 
-    runReconciled("updateLineage", request, true);
-
-    LOG.info("Successfully updated lineage in ElasticSearch for index: {}", indexName);
+    return runReconciled("updateLineage", request, true);
   }
 
   @Override

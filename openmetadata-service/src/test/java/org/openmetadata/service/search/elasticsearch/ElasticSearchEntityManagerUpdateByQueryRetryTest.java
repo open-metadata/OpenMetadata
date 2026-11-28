@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -22,6 +23,7 @@ import es.co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import es.co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
 import es.co.elastic.clients.json.JsonData;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
@@ -69,6 +72,25 @@ class ElasticSearchEntityManagerUpdateByQueryRetryTest {
 
     verify(client, times(2)).updateByQuery(any(UpdateByQueryRequest.class));
     verify(indices).refresh(any(Function.class));
+  }
+
+  @Test
+  void aCheckedLineageUpdateFailsWhenTheDestinationIsMissing() throws Exception {
+    UpdateByQueryResponse missing = response(0, 0);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(missing);
+    ElasticSearchEntityManager manager = new ElasticSearchEntityManager(client);
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                manager.updateLineageChecked(
+                    "chart_search_index",
+                    Pair.of("_id", "missing-chart"),
+                    new EsLineageData().withDocUniqueId("dashboard-chart")));
+
+    assertEquals("Lineage projection did not update a destination document", failure.getMessage());
+    verify(client).updateByQuery(any(UpdateByQueryRequest.class));
   }
 
   @Test

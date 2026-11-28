@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/dashboardChartLineagePair.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DashboardChartLineagePair",
+  "javaType": "org.openmetadata.schema.api.lineage.DashboardChartLineagePair",
+  "description": "A dashboard and a chart whose persisted membership identifies a structural lineage edge.",
+  "type": "object",
+  "properties": {
+    "dashboardId": {"$ref": "../../type/basic.json#/definitions/uuid"},
+    "chartId": {"$ref": "../../type/basic.json#/definitions/uuid"}
+  },
+  "required": ["dashboardId", "chartId"],
+  "additionalProperties": false
+}

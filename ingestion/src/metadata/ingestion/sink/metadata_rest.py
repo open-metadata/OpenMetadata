@@ -46,6 +46,18 @@ from metadata.generated.schema.api.domains.createDataProduct import (
 )
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.api.lineage.dashboardChartLineageBatchRequest import (
+    DashboardChartLineageBatchRequest,
+)
+from metadata.generated.schema.api.lineage.dashboardChartLineageBatchResult import (
+    DashboardChartLineageBatchResult,
+)
+from metadata.generated.schema.api.lineage.dashboardChartLineageBatchResult import (
+    Status as ChartLineageStatus,
+)
+from metadata.generated.schema.api.lineage.dashboardChartLineagePair import (
+    DashboardChartLineagePair,
+)
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
@@ -100,6 +112,8 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import (
+    OMetaDashboardChartLineageDrain,
+    OMetaDashboardChartLineageRequest,
     OMetaDeleteLineageBySource,
     OMetaFQNLineageRequest,
     OMetaLineageRequest,
@@ -146,6 +160,9 @@ logger = ingestion_logger()
 # Allow types from the generated pydantic models
 T = TypeVar("T", bound=BaseModel)
 
+DASHBOARD_CHART_LINEAGE_DASHBOARD_LIMIT = 100
+DASHBOARD_CHART_LINEAGE_PAIR_LIMIT = 100
+
 # TODO: remove the duplicate-conflict-to-warning downgrade below once #25890 (the server-side
 # bulk-query idempotency fix, shipped in 1.13.0) has rolled out to all deployments. The
 # checksum dedup in write_query is permanent and stays - only this downgrade is temporary.
@@ -191,6 +208,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         self.wrote_something = False
         self.charts_dict = {}
         self.metadata = metadata
+        self.metadata.accepts_dashboard_chart_lineage_intents = True
         self.role_entities = {}
         self.team_entities = {}
         self.limit_reached = set()
@@ -205,6 +223,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         # of the generic entity bulk path.
         self.query_buffer: list[CreateQueryRequest] = []
         self.buffered_query_checksums: set[str] = set()
+        self.dashboard_chart_lineage_buffer: dict[str, None] = {}
 
     @classmethod
     def create(
@@ -576,6 +595,90 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             created_lineage["entity"]["fullyQualifiedName"] or f"{from_reference.type}:{model_str(from_reference.id)}"
         )
         return Either(right=source_label)  # pyright: ignore[reportCallIssue]
+
+    @_run_dispatch.register
+    def write_dashboard_chart_lineage(self, request: OMetaDashboardChartLineageRequest) -> Either[None]:
+        self.dashboard_chart_lineage_buffer[request.dashboard_fqn] = None
+        if len(self.dashboard_chart_lineage_buffer) >= DASHBOARD_CHART_LINEAGE_DASHBOARD_LIMIT:
+            self._drain_dashboard_chart_lineage()
+        return Either(left=None, right=None)
+
+    @_run_dispatch.register
+    def drain_dashboard_chart_lineage(self, _: OMetaDashboardChartLineageDrain) -> Either[None]:
+        self._drain_dashboard_chart_lineage()
+        return Either(left=None, right=None)
+
+    def _read_dashboard_for_chart_lineage(self, dashboard_fqn: str) -> Dashboard | None:
+        try:
+            return self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn, fields=["charts"])
+        except Exception as exc:
+            self.status.failed(
+                StackTraceError(
+                    name=dashboard_fqn,
+                    error=f"Could not read dashboard chart membership: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return None
+
+    def _drain_dashboard_chart_lineage(self) -> None:
+        pending = self.dashboard_chart_lineage_buffer
+        self.dashboard_chart_lineage_buffer = {}
+        if not pending:
+            return
+
+        if self.buffer and (flush_error := self._flush_buffer().left):
+            self.status.failed(flush_error)
+
+        pairs: dict[tuple[str, str], tuple[DashboardChartLineagePair, str]] = {}
+        for dashboard_fqn in pending:
+            dashboard = self._read_dashboard_for_chart_lineage(dashboard_fqn)
+            if not dashboard or not dashboard.charts:
+                continue
+            for chart in dashboard.charts.root:
+                key = (model_str(dashboard.id), model_str(chart.id))
+                if key not in pairs:
+                    label = f"{dashboard_fqn} -> {model_str(chart.fullyQualifiedName or chart.id)}"
+                    pairs[key] = (DashboardChartLineagePair(dashboardId=dashboard.id, chartId=chart.id), label)
+                if len(pairs) >= DASHBOARD_CHART_LINEAGE_PAIR_LIMIT:
+                    self._write_dashboard_chart_lineage_batch(pairs)
+                    pairs.clear()
+
+        if pairs:
+            self._write_dashboard_chart_lineage_batch(pairs)
+
+    def _write_dashboard_chart_lineage_batch(
+        self, pairs: dict[tuple[str, str], tuple[DashboardChartLineagePair, str]]
+    ) -> None:
+        try:
+            response = self.metadata.add_dashboard_chart_lineage_batch(
+                DashboardChartLineageBatchRequest(pairs=[pair for pair, _ in pairs.values()])
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            error = f"Dashboard chart lineage batch failed: {str(exc) or type(exc).__name__}"
+            for _, label in pairs.values():
+                self.status.failed(StackTraceError(name=label, error=error))
+            return
+
+        results: dict[tuple[str, str], DashboardChartLineageBatchResult | None] = {}
+        for result in response.results:
+            key = (model_str(result.dashboardId), model_str(result.chartId))
+            results[key] = None if key in results else result
+
+        for key, (_, label) in pairs.items():
+            outcome = results.get(key)
+            if outcome is None:
+                self.status.failed(
+                    StackTraceError(name=label, error="Server did not acknowledge this dashboard chart lineage pair")
+                )
+            elif outcome.status is ChartLineageStatus.failed:
+                reason = outcome.errorCode.value if outcome.errorCode else "unknown error"
+                self.status.failed(
+                    StackTraceError(name=label, error=f"Could not add dashboard chart lineage: {reason}")
+                )
+            else:
+                self.status.scanned(label)
 
     @_run_dispatch.register
     def write_fqn_lineage(self, add_lineage: OMetaFQNLineageRequest) -> Either[str]:
@@ -1298,6 +1401,10 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Flush any remaining buffered tables and stop worker threads
         """
+        # A completed dashboard node already drained its intents. Closing an
+        # interrupted node must not create structural edges from a partial run.
+        self.dashboard_chart_lineage_buffer.clear()
+
         # Flush all thread-local buffers
         if self.buffer:
             logger.info(f"Flushing {len(self.buffer)} remaining entities on close")

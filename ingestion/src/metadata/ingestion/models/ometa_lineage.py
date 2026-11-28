@@ -47,6 +47,14 @@ class OMetaLineageRequest(BaseModel):
     entity: type[T] | None = None
 
 
+class OMetaDashboardChartLineageRequest(BaseModel):
+    dashboard_fqn: str
+
+
+class OMetaDashboardChartLineageDrain(BaseModel):
+    """Drain pending structural lineage at the end of dashboard processing."""
+
+
 class OMetaDeleteLineageBySource(BaseModel):
     """
     Drops the upstream lineage one source drew into an entity. An override otherwise only clears old

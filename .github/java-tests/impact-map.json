@@ -507,6 +507,7 @@
       "sources": [
         "openmetadata-service/src/main/java/org/openmetadata/service/lineage/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/lineage/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/CoreRelationshipDAOs.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Lineage*",
         "openmetadata-service/src/main/java/org/openmetadata/service/openlineage/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/Lineage*",

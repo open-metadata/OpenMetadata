@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.opensearch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
@@ -68,6 +71,27 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
 
     verify(client, times(2)).updateByQuery(any(UpdateByQueryRequest.class));
     verify(indices).refresh(any(Function.class));
+  }
+
+  @Test
+  void aCheckedLineageUpdateFailsWhenTheDestinationRemainsConflicted() throws Exception {
+    UpdateByQueryResponse conflicted = response(0, 1);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(conflicted);
+    OpenSearchEntityManager manager = new OpenSearchEntityManager(client);
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                manager.updateLineageChecked(
+                    "chart_search_index",
+                    Pair.of("_id", "chart"),
+                    new EsLineageData().withDocUniqueId("dashboard-chart")));
+
+    assertEquals(
+        "Lineage projection left 1 version conflicts and 0 failures", failure.getMessage());
+    verify(client, times(3)).updateByQuery(any(UpdateByQueryRequest.class));
+    verify(indices, times(2)).refresh(any(Function.class));
   }
 
   @Test

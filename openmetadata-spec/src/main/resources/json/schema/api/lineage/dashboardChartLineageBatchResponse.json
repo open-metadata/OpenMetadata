@@ -1,0 +1,18 @@
+{
+  "$id": "https://open-metadata.org/schema/api/lineage/dashboardChartLineageBatchResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DashboardChartLineageBatchResponse",
+  "javaType": "org.openmetadata.schema.api.lineage.DashboardChartLineageBatchResponse",
+  "description": "Per-pair outcomes in the same order as the submitted batch.",
+  "type": "object",
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {"$ref": "dashboardChartLineageBatchResult.json"},
+      "minItems": 1,
+      "maxItems": 100
+    }
+  },
+  "required": ["results"],
+  "additionalProperties": false
+}
