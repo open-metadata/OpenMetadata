@@ -23,6 +23,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.utils.entity_link import get_entity_link
 
 TABLE_FQN = "service.database.schema.users"
 
@@ -135,6 +136,52 @@ def test_filter_keeps_a_dotted_literal_column_name():
         columns=[Column(name="a.b", dataType=DataType.INT)],
     )
     kept, test_case, status = _filter(_make_test_definition([DataType.INT]), table=table, column="a.b")
+
+    assert kept == [test_case]
+    status.failed.assert_not_called()
+
+
+def test_filter_keeps_columns_with_plus_and_percent_hex_sequences():
+    """Regression test for #38351: '+' and '%XX' in column names must round-trip verbatim."""
+    special_columns = ["total+sales", "discount%20rate", "tax%2Bfee", "ratio%FF"]
+    table = Table(
+        id=uuid.uuid4(),
+        name="orders",
+        fullyQualifiedName=TABLE_FQN,
+        columns=[Column(name=col, dataType=DataType.INT) for col in special_columns],
+    )
+    test_definition = _make_test_definition([DataType.INT])
+
+    for column_name in special_columns:
+        runner = TestCaseRunner.__new__(TestCaseRunner)
+        runner.metadata = MagicMock()
+        runner.metadata.get_by_id.return_value = test_definition
+        runner.status = MagicMock()
+
+        test_case = _make_test_case(test_definition, column=column_name)
+        test_case.entityLink.root = get_entity_link(Table, fqn=TABLE_FQN, column_name=column_name)
+
+        kept = runner.filter_incompatible_test_cases(table, [test_case])
+        assert kept == [test_case]
+        runner.status.failed.assert_not_called()
+
+
+def test_filter_does_not_mistarget_space_column_when_plus_column_exists():
+    """A test targeting 'total+sales' (INT) must not resolve to 'total sales' (VARCHAR)."""
+    table = Table(
+        id=uuid.uuid4(),
+        name="orders",
+        fullyQualifiedName=TABLE_FQN,
+        columns=[
+            Column(name="total sales", dataType=DataType.VARCHAR),
+            Column(name="total+sales", dataType=DataType.INT),
+        ],
+    )
+    kept, test_case, status = _filter(
+        _make_test_definition([DataType.INT]),
+        table=table,
+        column="total+sales",
+    )
 
     assert kept == [test_case]
     status.failed.assert_not_called()
