@@ -394,6 +394,7 @@ public class GetEntityTool implements McpTool {
     }
     AIContext context =
         new AIContextBuilder(ctx.entityType(), ctx.fqn())
+            .withMetricSemantics(ctx.options().asJson())
             .withQuery(ctx.options().query())
             .withSecurity(ctx.authorizer(), ctx.securityContext())
             .build();

@@ -2432,6 +2432,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       String fqn, SecurityContext securityContext, String format, String query) {
     AIContext context =
         new AIContextBuilder(entityType, fqn)
+            .withMetricSemantics(AIContextMarkdown.FORMAT_JSON.equalsIgnoreCase(format))
             .withQuery(query)
             .withSecurity(authorizer, securityContext)
             .build();

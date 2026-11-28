@@ -15,10 +15,12 @@ package org.openmetadata.service.aicontext;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.google.common.collect.Iterators;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +28,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
@@ -78,6 +82,7 @@ import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
@@ -87,6 +92,7 @@ import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -149,6 +155,7 @@ public class AIContextBuilder {
   private final String entityType;
   private final String fqn;
   private Authorizer authorizer;
+  private boolean includeMetricSemantics;
   private SecurityContext securityContext;
   private int knowledgeBudgetChars = DEFAULT_KNOWLEDGE_BUDGET_CHARS;
   private String query;
@@ -184,6 +191,12 @@ public class AIContextBuilder {
     return this;
   }
 
+  /** Structured JSON opts into metric semantics; legacy Markdown keeps its full knowledge budget. */
+  public AIContextBuilder withMetricSemantics(final boolean include) {
+    this.includeMetricSemantics = include;
+    return this;
+  }
+
   /**
    * Supply the caller's security context so the (permission-masked) latest profile can be loaded
    * into the observability section. When absent, observability still includes data-quality
@@ -214,6 +227,7 @@ public class AIContextBuilder {
     this.assetDataQuality = dataQuality;
     this.lineage = lineage;
     this.upstreamEdgeList = lineage == null ? null : lineage.getUpstreamEdges();
+    final ResolvedMetrics resolvedMetrics = resolveMetrics(entity);
     AIContext context =
         new AIContext()
             .withId(entity.getId())
@@ -228,22 +242,22 @@ public class AIContextBuilder {
             .withTags(extractClassificationTags(entity))
             .withGlossaryTerms(resolveGlossaryTerms(entity))
             .withArticles(resolveArticles(entity))
-            .withMetrics(resolveMetrics(entity))
+            .withMetrics(resolvedMetrics.items())
             .withUpstream(edgeFqns(upstreamEdges))
             .withUpstreamEdges(upstreamEdges)
             .withDownstream(edgeFqns(downstreamEdges))
             .withDownstreamEdges(downstreamEdges)
             .withObservability(resolveObservability(entity, dataQuality))
             .withGeneratedAt(System.currentTimeMillis());
-    context.withAssetContext(
-        buildAssetContext(entity, context.getMetrics(), context.getArticles()));
+    context.withAssetContext(buildAssetContext(entity, resolvedMetrics, context.getArticles()));
     applyKnowledgeBudget(context);
     return context;
   }
 
   /**
    * Bounds the total knowledge-item content so a bundle can't overwhelm an LLM context window.
-   * Definitions come first (glossary, metrics — short and high-value), then attached articles and
+   * Structured metric semantics draw from the same budget first when requested. Knowledge
+   * definitions come next (glossary, metrics — short and high-value), then attached articles and
    * pills (potentially long). Each item is kept in full when it fits under the per-item ceiling and
    * the remaining budget, degraded to a lead excerpt when it doesn't, and finally reduced to a
    * reference (content omitted) once the budget is exhausted. Truncated items carry
@@ -251,7 +265,7 @@ public class AIContextBuilder {
    * {@code get_entity_details(include=["content"])}.
    */
   void applyKnowledgeBudget(AIContext context) {
-    int remaining = knowledgeBudgetChars;
+    int remaining = knowledgeBudgetChars - fitMetricSemantics(context);
     remaining = fitItems(context.getGlossaryTerms(), remaining);
     if (context.getAssetContext() != null && context.getAssetContext().getTable() != null) {
       for (FieldContext field : listOrEmpty(context.getAssetContext().getTable().getColumns())) {
@@ -261,6 +275,76 @@ public class AIContextBuilder {
     remaining = fitItems(context.getMetrics(), remaining);
     remaining = fitItems(context.getArticles(), remaining);
     logDegradation(context);
+  }
+
+  private int fitMetricSemantics(final AIContext context) {
+    final GenericAssetContext generic =
+        context.getAssetContext() == null ? null : context.getAssetContext().getGeneric();
+    if (generic == null) {
+      return 0;
+    }
+    if (!includeMetricSemantics) {
+      generic
+          .withDimensions(null)
+          .withMeasures(null)
+          .withFilters(null)
+          .withRelatedMetrics(null)
+          .withSemanticFieldsTruncated(null);
+      return 0;
+    }
+    final boolean inheritedTruncation = Boolean.TRUE.equals(generic.getSemanticFieldsTruncated());
+    final GenericAssetContext fitted = fitMetricProjection(generic, inheritedTruncation);
+    generic
+        .withFilters(fitted.getFilters())
+        .withRelatedMetrics(fitted.getRelatedMetrics())
+        .withDimensions(fitted.getDimensions())
+        .withMeasures(fitted.getMeasures())
+        .withSemanticFieldsTruncated(fitted.getSemanticFieldsTruncated());
+    return metricSemanticChars(generic);
+  }
+
+  private GenericAssetContext fitMetricProjection(
+      final GenericAssetContext input, final boolean includeMarker) {
+    final MetricContextBudget budget =
+        new MetricContextBudget(knowledgeBudgetChars, MAX_KNOWLEDGE_ITEMS, includeMarker);
+    final GenericAssetContext result =
+        new GenericAssetContext()
+            .withFilters(
+                budget.takeAll("filters", listOrEmpty(input.getFilters()), JsonUtils::pojoToJson))
+            .withRelatedMetrics(
+                budget.take(
+                    "relatedMetrics",
+                    listOrEmpty(input.getRelatedMetrics()),
+                    JsonUtils::pojoToJson))
+            .withDimensions(
+                budget.take(
+                    "dimensions", listOrEmpty(input.getDimensions()), JsonUtils::pojoToJson))
+            .withMeasures(
+                budget.take("measures", listOrEmpty(input.getMeasures()), JsonUtils::pojoToJson));
+    if (budget.truncated() && !includeMarker) {
+      return fitMetricProjection(input, true);
+    }
+    return result.withSemanticFieldsTruncated(budget.markerFits() ? Boolean.TRUE : null);
+  }
+
+  static int metricSemanticChars(final GenericAssetContext generic) {
+    if (generic.getDimensions() == null
+        && generic.getMeasures() == null
+        && generic.getFilters() == null
+        && generic.getRelatedMetrics() == null
+        && generic.getSemanticFieldsTruncated() == null) {
+      return 0;
+    }
+    return JsonUtils.pojoToJson(
+            new GenericAssetContext()
+                .withFields(null)
+                .withSourceAssets(null)
+                .withDimensions(generic.getDimensions())
+                .withMeasures(generic.getMeasures())
+                .withFilters(generic.getFilters())
+                .withRelatedMetrics(generic.getRelatedMetrics())
+                .withSemanticFieldsTruncated(generic.getSemanticFieldsTruncated()))
+        .length();
   }
 
   private int fitItems(List<KnowledgeItem> items, int remaining) {
@@ -1068,17 +1152,89 @@ public class AIContextBuilder {
     return PromptText.forContentRead(content);
   }
 
-  private List<KnowledgeItem> resolveMetrics(EntityInterface<?> entity) {
-    List<KnowledgeItem> items = new ArrayList<>();
-    List<EntityReference> references = new ArrayList<>(findAttachedMetrics(entity));
-    if (entity instanceof Metric metric) {
-      references.addAll(listOrEmpty(metric.getRelatedMetrics()));
+  record ResolvedMetrics(List<KnowledgeItem> items, boolean omittedVisibleRelation) {}
+
+  private ResolvedMetrics resolveMetrics(final EntityInterface<?> entity) {
+    final List<EntityReference> related =
+        entity instanceof Metric metric ? listOrEmpty(metric.getRelatedMetrics()) : List.of();
+    final List<EntityReference> references = new ArrayList<>(findAttachedMetrics(entity));
+    references.addAll(related);
+    return resolveBoundedMetrics(
+        references,
+        includeMetricSemantics ? related : List.of(),
+        this::toMetricKnowledgeItem,
+        this::containsEligibleRelatedMetric);
+  }
+
+  static ResolvedMetrics resolveBoundedMetrics(
+      final List<EntityReference> references,
+      final List<EntityReference> related,
+      final Function<EntityReference, KnowledgeItem> mapper,
+      final Predicate<List<EntityReference>> containsEligibleMetric) {
+    final List<EntityReference> candidates =
+        references.stream().distinct().limit(MAX_KNOWLEDGE_ITEMS).toList();
+    final List<KnowledgeItem> items =
+        candidates.stream().map(mapper).filter(Objects::nonNull).toList();
+    final boolean omittedVisibleRelation =
+        !related.isEmpty()
+            && candidates.size() == MAX_KNOWLEDGE_ITEMS
+            && hasVisibleOmittedRelation(candidates, related, containsEligibleMetric);
+    return new ResolvedMetrics(items, omittedVisibleRelation);
+  }
+
+  private static boolean hasVisibleOmittedRelation(
+      final List<EntityReference> candidates,
+      final List<EntityReference> related,
+      final Predicate<List<EntityReference>> containsEligibleMetric) {
+    final Set<String> inspected =
+        candidates.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toSet());
+    final Iterator<EntityReference> omitted =
+        related.stream()
+            .filter(ref -> ref.getFullyQualifiedName() != null)
+            .filter(ref -> !inspected.contains(ref.getFullyQualifiedName()))
+            .iterator();
+    final Iterator<List<EntityReference>> batches =
+        Iterators.partition(omitted, MAX_KNOWLEDGE_ITEMS);
+    boolean eligible = false;
+    while (!eligible && batches.hasNext()) {
+      eligible = containsEligibleMetric.test(batches.next());
     }
-    addItems(
-        items,
-        capList(references.stream().distinct().toList(), MAX_KNOWLEDGE_ITEMS),
-        this::toMetricKnowledgeItem);
-    return items;
+    return eligible;
+  }
+
+  private boolean containsEligibleRelatedMetric(final List<EntityReference> references) {
+    boolean eligible = false;
+    try {
+      final MetricRepository repository =
+          (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+      final List<UUID> ids =
+          references.stream()
+              .map(EntityReference::getId)
+              .filter(Objects::nonNull)
+              .distinct()
+              .toList();
+      final List<Metric> approved =
+          repository
+              .get(null, ids, ResourceContext.authorizationFields(repository), Include.NON_DELETED)
+              .stream()
+              .filter(AIContextBuilder::isGovernedDefinition)
+              .toList();
+      final List<Metric> permitted =
+          authorizer == null || securityContext == null
+              ? approved
+              : new ViewPermissionFilter(authorizer)
+                  .retainPermitted(
+                      securityContext,
+                      Entity.METRIC,
+                      repository,
+                      approved,
+                      List.of(MetadataOperation.VIEW_BASIC));
+      eligible = !permitted.isEmpty();
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "AIContext: failed to check omitted related metrics for {}: {}", fqn, e.getMessage());
+    }
+    return eligible;
   }
 
   private List<EntityReference> findAttachedMetrics(EntityInterface<?> entity) {
@@ -1184,7 +1340,9 @@ public class AIContextBuilder {
   }
 
   private AssetContext buildAssetContext(
-      EntityInterface<?> entity, List<KnowledgeItem> metrics, List<KnowledgeItem> articles) {
+      final EntityInterface<?> entity,
+      final ResolvedMetrics metrics,
+      final List<KnowledgeItem> articles) {
     AssetContext context = new AssetContext();
     if (entity instanceof Table table) {
       TableContext tableContext = buildTableContext(table).withSampleData(resolveSampleData(table));
@@ -1199,10 +1357,12 @@ public class AIContextBuilder {
                       securityContext,
                       table -> resolveObservability(table, null),
                       this::resolveSampleData))
-              .build(entity, metrics, articles);
+              .build(entity, metrics.items(), articles);
       context.withConceptContext(concept);
       if (entity instanceof Metric metric) {
-        context.withGeneric(buildMetricContext(metric, concept));
+        context.withGeneric(
+            buildMetricContext(
+                metric, concept, includeMetricSemantics, metrics.omittedVisibleRelation()));
       }
     }
     return context;
@@ -1271,22 +1431,57 @@ public class AIContextBuilder {
     return new TableData().withColumns(columns).withRows(rows);
   }
 
-  /**
-   * A metric's structural context is its expression — the query that defines it. Without this, asking
-   * get_asset_context about a metric returned only its description, while the same expression was
-   * already reachable through {@code get_entity_details(include=["content"])} and as attached
-   * knowledge of a table.
-   */
-  private static GenericAssetContext buildMetricContext(Metric metric, ConceptContext concept) {
-    MetricExpression expression = metric.getMetricExpression();
-    return new GenericAssetContext()
-        .withDefinition(expression == null ? null : expression.getCode())
-        .withSourceAssets(
-            listOrEmpty(concept.getBindings()).stream()
-                .filter(binding -> Entity.TABLE.equals(binding.getAssetType()))
-                .map(binding -> binding.getAssetFqn())
-                .distinct()
-                .toList());
+  static GenericAssetContext buildMetricContext(
+      final Metric metric,
+      final ConceptContext concept,
+      final boolean includeSemantics,
+      final boolean omittedVisibleRelation) {
+    final MetricExpression expression = metric.getMetricExpression();
+    final GenericAssetContext context =
+        new GenericAssetContext()
+            .withDefinition(expression == null ? null : expression.getCode())
+            .withSourceAssets(
+                listOrEmpty(concept.getBindings()).stream()
+                    .filter(binding -> Entity.TABLE.equals(binding.getAssetType()))
+                    .map(binding -> binding.getAssetFqn())
+                    .distinct()
+                    .toList());
+    if (includeSemantics) {
+      addMetricProjection(metric, concept, context, omittedVisibleRelation);
+    } else {
+      context.withDimensions(null).withMeasures(null).withFilters(null).withRelatedMetrics(null);
+    }
+    return context;
+  }
+
+  private static void addMetricProjection(
+      final Metric metric,
+      final ConceptContext concept,
+      final GenericAssetContext context,
+      final boolean omittedVisibleRelation) {
+    final List<String> related = relatedMetricFqns(metric, concept);
+    context
+        .withDimensions(nullOrEmpty(metric.getDimensions()) ? null : metric.getDimensions())
+        .withMeasures(nullOrEmpty(metric.getMeasures()) ? null : metric.getMeasures())
+        .withFilters(nullOrEmpty(concept.getFilters()) ? null : concept.getFilters())
+        .withRelatedMetrics(related)
+        .withSemanticFieldsTruncated(omittedVisibleRelation ? Boolean.TRUE : null);
+  }
+
+  private static List<String> relatedMetricFqns(final Metric metric, final ConceptContext concept) {
+    final Set<String> visible =
+        listOrEmpty(concept.getMetrics()).stream()
+            .map(KnowledgeItem::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    final List<String> related =
+        listOrEmpty(metric.getRelatedMetrics()).stream()
+            .map(EntityReference::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .filter(visible::contains)
+            .distinct()
+            .toList();
+    return related.isEmpty() ? null : related;
   }
 
   /**

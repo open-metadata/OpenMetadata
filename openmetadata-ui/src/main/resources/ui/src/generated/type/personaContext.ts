@@ -286,9 +286,9 @@ export enum Type {
 /**
  * Type-specific structural context for the asset.
  *
- * Type-specific structural context, selected by the asset's entity type. Metrics carry both
- * their generic expression/source-assets context and conceptContext. New asset types are
- * added as optional sub-contexts without breaking existing consumers.
+ * Type-specific structural context, selected by the asset's entity type. Metrics carry
+ * their generic expression, semantic fields and source assets alongside conceptContext. New
+ * asset types are added as optional sub-contexts without breaking existing consumers.
  */
 export interface AssetContext {
     conceptContext?: ConceptContext;
@@ -558,11 +558,71 @@ export interface GenericAssetContext {
      * DDL, stored-procedure code, or query text backing this asset, when available.
      */
     definition?: string;
+    /**
+     * Dimensions available when slicing a metric. Omitted when the metric declares none.
+     */
+    dimensions?: MetricDimension[];
     fields?:     FieldContext[];
+    /**
+     * Non-blank SQL conditions defining a metric. Every condition applies together with the
+     * definition; render as one AND conjunction.
+     */
+    filters?: string[];
+    /**
+     * Measures and their aggregations used by a metric. Omitted when the metric declares none.
+     */
+    measures?: MetricMeasure[];
+    /**
+     * Distinct related metric FQNs already admitted to the visible, bounded concept metrics
+     * list. References only, without duplicating their content.
+     */
+    relatedMetrics?: string[];
+    /**
+     * True when metric dimensions, measures, related FQNs or the complete filter group were
+     * omitted to fit the shared knowledge budget or the existing 50-item limit. Retained
+     * entries are complete; a filter group is kept in full or omitted in full. Fetch the metric
+     * entity for complete semantic declarations. The conceptContext contract and default
+     * concept Markdown are unchanged.
+     */
+    semanticFieldsTruncated?: boolean;
     /**
      * Fully qualified names of upstream assets, when known.
      */
     sourceAssets?: string[];
+}
+
+/**
+ * A dimension associated with a metric from a semantic layer.
+ */
+export interface MetricDimension {
+    /**
+     * Description of the dimension.
+     */
+    description?: string;
+    /**
+     * Expression used to compute the dimension.
+     */
+    expression?: string;
+    /**
+     * Fully qualified name of the dimension, in the format 'metricFQN.dimension.<name>'.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Name of the dimension.
+     */
+    name: string;
+    /**
+     * Type of the dimension.
+     */
+    type?: DimensionType;
+}
+
+/**
+ * Type of the dimension.
+ */
+export enum DimensionType {
+    Categorical = "CATEGORICAL",
+    Time = "TIME",
 }
 
 /**
@@ -589,6 +649,32 @@ export interface FieldContext {
      */
     glossaryTerms?: KnowledgeItem[];
     name?:          string;
+}
+
+/**
+ * A measure associated with a metric from a semantic layer.
+ */
+export interface MetricMeasure {
+    /**
+     * Aggregation function for the measure (e.g., sum, count, average).
+     */
+    aggregation?: string;
+    /**
+     * Description of the measure.
+     */
+    description?: string;
+    /**
+     * Expression used to compute the measure.
+     */
+    expression?: string;
+    /**
+     * Fully qualified name of the measure, in the format 'metricFQN.measure.<name>'.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Name of the measure.
+     */
+    name: string;
 }
 
 /**

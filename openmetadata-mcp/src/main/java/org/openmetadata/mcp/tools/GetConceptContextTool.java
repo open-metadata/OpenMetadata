@@ -58,6 +58,7 @@ public class GetConceptContextTool implements TypedMcpTool<Object> {
         new ResourceContext<>(params.entityType(), null, params.fqn()));
     AIContext context =
         new AIContextBuilder(params.entityType(), params.fqn())
+            .withMetricSemantics(AIContextMarkdown.FORMAT_JSON.equals(params.format()))
             .withSecurity(authorizer, securityContext)
             .withQuery(params.query())
             .build();

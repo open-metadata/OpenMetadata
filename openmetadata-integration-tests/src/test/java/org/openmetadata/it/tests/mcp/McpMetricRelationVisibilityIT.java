@@ -3,6 +3,8 @@ package org.openmetadata.it.tests.mcp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.http.HttpResponse;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,6 +36,7 @@ import org.openmetadata.service.Entity;
 class McpMetricRelationVisibilityIT extends McpTestBase {
 
   private static final String RESTRICTED_TAG = "PII.Sensitive";
+  private static final String GET_ENTITY_DETAILS = "get_entity_details";
 
   private static Metric hiddenParent;
   private static Metric hiddenRelated;
@@ -45,6 +48,7 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
   private static MetricGroup hiddenGroup;
   private static MetricGroup visibleGroup;
   private static String restrictedToken;
+  private static String viewBasicOnlyDeniedToken;
   private static String suffix;
 
   @BeforeAll
@@ -88,6 +92,8 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
                         visibleMember.getFullyQualifiedName())),
             MetricGroup.class);
     restrictedToken = bearerFor(createRestrictedUser(suffix));
+    viewBasicOnlyDeniedToken =
+        bearerFor(createRestrictedUser("basic_" + suffix, List.of(MetadataOperation.VIEW_BASIC)));
   }
 
   @Test
@@ -111,6 +117,69 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
     assertThat(restricted.path("childrenCount").asInt()).isEqualTo(1);
     assertThat(restricted.toString())
         .doesNotContain(hiddenParent.getName(), hiddenChild.getName(), hiddenRelated.getName());
+  }
+
+  @Test
+  void metricContextOnlyNamesRelatedMetricsTheCallerCanView() throws Exception {
+    final String path = "metrics/name/" + current.getFullyQualifiedName() + "/context?format=json";
+    final HttpResponse<String> unrestrictedResponse = getResponse(path, authToken);
+    assertThat(unrestrictedResponse.statusCode()).isEqualTo(200);
+    final JsonNode unrestricted = OBJECT_MAPPER.readTree(unrestrictedResponse.body());
+    assertThat(unrestricted.at("/assetContext/generic/relatedMetrics/0").asText())
+        .isEqualTo(hiddenRelated.getFullyQualifiedName());
+
+    final HttpResponse<String> restrictedResponse = getResponse(path, restrictedToken);
+    assertThat(restrictedResponse.statusCode()).isEqualTo(200);
+    final JsonNode restricted = OBJECT_MAPPER.readTree(restrictedResponse.body());
+    assertThat(restricted.at("/assetContext/generic/relatedMetrics").isMissingNode()).isTrue();
+    assertThat(restricted.toString()).doesNotContain(hiddenRelated.getFullyQualifiedName());
+    assertThat(
+            getResponse(
+                    "metrics/name/"
+                        + hiddenRelated.getFullyQualifiedName()
+                        + "/context?format=json",
+                    restrictedToken)
+                .statusCode())
+        .isEqualTo(403);
+  }
+
+  @Test
+  void metricContextChecksRelatedViewBasicOnBothMcpRoutes() throws Exception {
+    assertThat(
+            getResponse(
+                    "metrics/name/"
+                        + hiddenRelated.getFullyQualifiedName()
+                        + "/context?format=json",
+                    viewBasicOnlyDeniedToken)
+                .statusCode())
+        .as("the fixture permits ViewAll while denying ViewBasic on the related metric")
+        .isEqualTo(200);
+    for (final String tool : List.of("get_concept_context", GET_ENTITY_DETAILS)) {
+      final Map<String, Object> arguments =
+          new HashMap<>(
+              Map.of(
+                  "entityType",
+                  Entity.METRIC,
+                  "fqn",
+                  current.getFullyQualifiedName(),
+                  "format",
+                  "json"));
+      if (GET_ENTITY_DETAILS.equals(tool)) {
+        arguments.put("include", List.of("context"));
+      }
+      final Map<String, Object> request = McpTestUtils.createToolCallRequest(tool, arguments);
+      JsonNode unrestricted = callTool(request, authToken);
+      JsonNode restricted = callTool(request, viewBasicOnlyDeniedToken);
+      if (GET_ENTITY_DETAILS.equals(tool)) {
+        unrestricted = unrestricted.path("context");
+        restricted = restricted.path("context");
+      }
+      assertThat(unrestricted.at("/assetContext/generic/relatedMetrics/0").asText())
+          .isEqualTo(hiddenRelated.getFullyQualifiedName());
+      assertThat(restricted.path("assetContext").isObject()).isTrue();
+      assertThat(restricted.at("/assetContext/generic/relatedMetrics").isMissingNode()).isTrue();
+      assertThat(restricted.toString()).doesNotContain(hiddenRelated.getFullyQualifiedName());
+    }
   }
 
   @Test
@@ -244,8 +313,12 @@ class McpMetricRelationVisibilityIT extends McpTestBase {
    * metric groups tagged as restricted are hidden from it.
    */
   private static User createRestrictedUser(String suffix) throws Exception {
-    List<MetadataOperation> viewOperations =
-        List.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL);
+    return createRestrictedUser(
+        suffix, List.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL));
+  }
+
+  private static User createRestrictedUser(
+      final String suffix, final List<MetadataOperation> viewOperations) throws Exception {
     Rule allowCatalog =
         new Rule()
             .withName("AllowCatalog")
