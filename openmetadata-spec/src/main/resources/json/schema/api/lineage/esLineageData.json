@@ -104,6 +104,19 @@
         "$ref": "../../type/entityLineage.json#/definitions/tempLineageTable"
       },
       "default": null
+    },
+    "dependencyType": {
+      "description": "Whether this lineage edge represents a DIRECT data-flow dependency or an INDIRECT dependency. Unset/null is treated as DIRECT.",
+      "$ref": "../../type/entityLineage.json#/definitions/dependencyType",
+      "default": null
+    },
+    "indirectColumns": {
+      "description": "Dataset-level upstream columns that indirectly influence the downstream entity without targeting a single output column.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityLineage.json#/definitions/indirectColumn"
+      },
+      "default": null
     }
   },
   "additionalProperties": false

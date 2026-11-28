@@ -49,7 +49,9 @@ import org.openmetadata.schema.configuration.OpenLineageEventType;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.DependencyType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.IndirectColumn;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.utils.JsonUtils;
 
@@ -462,25 +464,30 @@ class OpenLineageMapperTest {
 
     when(entityResolver.resolvePipeline("ns", "totals")).thenReturn(pipeline(null));
 
-    List<ColumnLineage> mappings =
+    LineageDetails details =
         mapper
             .mapRunEvent(event, UPDATED_BY)
             .lineageRequests()
             .getFirst()
             .getEdge()
-            .getLineageDetails()
-            .getColumnsLineage();
+            .getLineageDetails();
+    List<ColumnLineage> mappings = details.getColumnsLineage();
 
+    assertEquals(DependencyType.DIRECT, details.getDependencyType());
     assertEquals(
         List.of(
             new ColumnLineage()
                 .withToColumn(OUTPUT_FQN + ".total")
                 .withFromColumns(List.of(INPUT_FQN + ".amount", INPUT_FQN + ".tax"))
-                .withFunction("DIRECT/AGGREGATION"),
+                .withFunction("DIRECT/AGGREGATION")
+                .withTransformationType("DIRECT")
+                .withTransformationSubtype("AGGREGATION"),
             new ColumnLineage()
                 .withToColumn(OUTPUT_FQN + ".total")
                 .withFromColumns(List.of(INPUT_FQN + ".customer"))
-                .withFunction("INDIRECT/FILTER (active only) [masked], INDIRECT/JOIN"),
+                .withFunction("INDIRECT/FILTER (active only) [masked], INDIRECT/JOIN")
+                .withTransformationType("INDIRECT")
+                .withTransformationSubtype("FILTER"),
             new ColumnLineage()
                 .withToColumn(OUTPUT_FQN + ".total")
                 .withFromColumns(List.of(INPUT_FQN + ".legacy"))
@@ -932,6 +939,201 @@ class OpenLineageMapperTest {
 
     assertEquals(1, result.size());
     assertNull(result.get(0).getEdge().getLineageDetails().getColumnsLineage());
+    assertNull(result.get(0).getEdge().getLineageDetails().getIndirectColumns());
+    assertNull(result.get(0).getEdge().getLineageDetails().getDependencyType());
+  }
+
+  @Test
+  void mapRunEvent_withDatasetIndirectColumns_classifiesDirectAndIndirectEdgesPerInput() {
+    OpenLineageRunEvent event =
+        JsonUtils.readValue(
+            """
+        {
+          "eventType":"COMPLETE","eventTime":"2026-11-27T10:00:00Z",
+          "producer":"https://example.org/producer","schemaURL":"https://openlineage.io/spec/2-0-2/OpenLineage.json",
+          "run":{"runId":"4ae4c65c-60b3-4ce5-80ac-c68e5fa0fe52"},"job":{"namespace":"ns","name":"dim_user_job"},
+          "inputs":[
+            {"namespace":"ns","name":"sat_user"},
+            {"namespace":"ns","name":"xref_team"}
+          ],
+          "outputs":[{
+            "namespace":"ns","name":"dim_user",
+            "facets":{
+              "columnLineage":{
+                "fields":{
+                  "user_id":{
+                    "inputFields":[
+                      {"namespace":"ns","name":"sat_user","field":"id","transformations":[{"type":"DIRECT","subtype":"IDENTITY"}]}
+                    ]
+                  }
+                },
+                "dataset":[
+                  {
+                    "namespace":"ns","name":"xref_team","field":"team_id",
+                    "transformations":[
+                      {"type":"INDIRECT","subtype":"JOIN","description":"join on team_id"},
+                      {"type":"INDIRECT","subtype":"FILTER","description":"active teams"}
+                    ]
+                  },
+                  {
+                    "namespace":"ns","name":"sat_user","field":"is_active",
+                    "transformations":[{"type":"INDIRECT","subtype":"FILTER"}]
+                  }
+                ]
+              }
+            }
+          }]
+        }
+        """,
+            OpenLineageRunEvent.class);
+
+    EntityReference satUserRef = createEntityReference("sat-user", "svc.db.schema.sat_user");
+    EntityReference xrefTeamRef = createEntityReference("xref-team", "svc.db.schema.xref_team");
+    EntityReference dimUserRef = createEntityReference("dim-user", "svc.db.schema.dim_user");
+    when(entityResolver.resolveDataset(event.getInputs().get(0), UPDATED_BY))
+        .thenReturn(dataset(satUserRef));
+    when(entityResolver.resolveDataset(event.getInputs().get(1), UPDATED_BY))
+        .thenReturn(dataset(xrefTeamRef));
+    when(entityResolver.resolveDataset(event.getOutputs().getFirst(), UPDATED_BY))
+        .thenReturn(dataset(dimUserRef));
+    when(entityResolver.resolvePipeline("ns", "dim_user_job")).thenReturn(pipeline(null));
+
+    List<AddLineage> edges = mapper.mapRunEvent(event, UPDATED_BY).lineageRequests();
+
+    assertEquals(2, edges.size());
+    LineageDetails satUserEdge =
+        edges.stream()
+            .filter(e -> e.getEdge().getFromEntity().equals(satUserRef))
+            .findFirst()
+            .orElseThrow()
+            .getEdge()
+            .getLineageDetails();
+    LineageDetails xrefTeamEdge =
+        edges.stream()
+            .filter(e -> e.getEdge().getFromEntity().equals(xrefTeamRef))
+            .findFirst()
+            .orElseThrow()
+            .getEdge()
+            .getLineageDetails();
+
+    assertEquals(DependencyType.DIRECT, satUserEdge.getDependencyType());
+    assertEquals(1, satUserEdge.getColumnsLineage().size());
+    assertEquals(
+        List.of(
+            new IndirectColumn()
+                .withFromColumn("svc.db.schema.sat_user.is_active")
+                .withTransformationType("INDIRECT")
+                .withTransformationSubtype("FILTER")),
+        satUserEdge.getIndirectColumns());
+
+    assertEquals(DependencyType.INDIRECT, xrefTeamEdge.getDependencyType());
+    assertNull(xrefTeamEdge.getColumnsLineage());
+    assertEquals(
+        List.of(
+            new IndirectColumn()
+                .withFromColumn("svc.db.schema.xref_team.team_id")
+                .withTransformationType("INDIRECT")
+                .withTransformationSubtype("JOIN")
+                .withDescription("join on team_id"),
+            new IndirectColumn()
+                .withFromColumn("svc.db.schema.xref_team.team_id")
+                .withTransformationType("INDIRECT")
+                .withTransformationSubtype("FILTER")
+                .withDescription("active teams")),
+        xrefTeamEdge.getIndirectColumns());
+  }
+
+  @Test
+  void mapRunEvent_withOnlyIndirectFieldTransformations_setsIndirectDependencyType() {
+    OpenLineageRunEvent event =
+        JsonUtils.readValue(
+            """
+        {
+          "eventType":"COMPLETE","eventTime":"2026-11-27T10:00:00Z",
+          "producer":"https://example.org/producer","schemaURL":"https://openlineage.io/spec/2-0-2/OpenLineage.json",
+          "run":{"runId":"4ae4c65c-60b3-4ce5-80ac-c68e5fa0fe53"},"job":{"namespace":"ns","name":"filter_job"},
+          "inputs":[{"namespace":"ns","name":"filter_tbl"}],
+          "outputs":[{
+            "namespace":"ns","name":"out_tbl",
+            "outputFacets":{
+              "columnLineage":{
+                "fields":{
+                  "total":{
+                    "inputFields":[
+                      {"namespace":"ns","name":"filter_tbl","field":"flag","transformations":[{"type":"INDIRECT","subtype":"FILTER"}]}
+                    ]
+                  }
+                }
+              }
+            }
+          }]
+        }
+        """,
+            OpenLineageRunEvent.class);
+
+    EntityReference inputRef = createEntityReference("filter", "svc.db.schema.filter_tbl");
+    EntityReference outputRef = createEntityReference("out", "svc.db.schema.out_tbl");
+    when(entityResolver.resolveDataset(event.getInputs().getFirst(), UPDATED_BY))
+        .thenReturn(dataset(inputRef));
+    when(entityResolver.resolveDataset(event.getOutputs().getFirst(), UPDATED_BY))
+        .thenReturn(dataset(outputRef));
+    when(entityResolver.resolvePipeline("ns", "filter_job")).thenReturn(pipeline(null));
+
+    LineageDetails details =
+        mapper
+            .mapRunEvent(event, UPDATED_BY)
+            .lineageRequests()
+            .getFirst()
+            .getEdge()
+            .getLineageDetails();
+
+    assertEquals(DependencyType.INDIRECT, details.getDependencyType());
+    assertEquals(1, details.getColumnsLineage().size());
+    assertEquals("INDIRECT", details.getColumnsLineage().getFirst().getTransformationType());
+    assertEquals("FILTER", details.getColumnsLineage().getFirst().getTransformationSubtype());
+    assertEquals("INDIRECT/FILTER", details.getColumnsLineage().getFirst().getFunction());
+  }
+
+  @Test
+  void mapRunEvent_withDatasetOnlyNoFields_extractsIndirectColumns() {
+    OpenLineageRunEvent event = createBaseEvent(EventType.COMPLETE);
+    OpenLineageInputDataset input = createInputDataset("ns", "filter_tbl");
+    OpenLineageOutputDataset output = createOutputDataset("ns", "out_tbl");
+    output.setOutputFacets(
+        new OutputDatasetFacets()
+            .withColumnLineage(
+                new ColumnLineageFacet()
+                    .withDataset(
+                        List.of(
+                            new InputField()
+                                .withNamespace("ns")
+                                .withName("filter_tbl")
+                                .withField("status")))));
+    event.setInputs(List.of(input));
+    event.setOutputs(List.of(output));
+
+    EntityReference inputRef = createEntityReference("filter", "svc.db.schema.filter_tbl");
+    EntityReference outputRef = createEntityReference("out", "svc.db.schema.out_tbl");
+    when(entityResolver.resolveDataset(eq(input), eq(UPDATED_BY))).thenReturn(dataset(inputRef));
+    when(entityResolver.resolveDataset(eq(output), eq(UPDATED_BY))).thenReturn(dataset(outputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
+
+    LineageDetails details =
+        mapper
+            .mapRunEvent(event, UPDATED_BY)
+            .lineageRequests()
+            .getFirst()
+            .getEdge()
+            .getLineageDetails();
+
+    assertEquals(DependencyType.INDIRECT, details.getDependencyType());
+    assertNull(details.getColumnsLineage());
+    assertEquals(
+        List.of(
+            new IndirectColumn()
+                .withFromColumn("svc.db.schema.filter_tbl.status")
+                .withTransformationType("INDIRECT")),
+        details.getIndirectColumns());
   }
 
   // Helper methods

@@ -143,6 +143,11 @@
     "graphPerformanceConfig": {
       "description": "Performance configuration for lineage graph builder.",
       "$ref": "#/definitions/graphPerformanceConfig"
+    },
+    "showIndirectEdges": {
+      "description": "Whether indirect lineage edges (e.g., JOIN, WHERE/FILTER, GROUP BY, ORDER BY, QUALIFY, WINDOW) are shown by default in lineage views.",
+      "type": "boolean",
+      "default": true
     }
   },
   "required": [

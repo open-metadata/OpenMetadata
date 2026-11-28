@@ -28,7 +28,9 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
+    DependencyType,
     EntitiesEdge,
+    IndirectColumn,
     LineageDetails,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -206,32 +208,43 @@ class OMetaLineageMixin(Generic[T]):
     ) -> list[dict[str, Any]]:
         """Union of the stored and incoming column lineage, keyed by (fromColumns, toColumn).
 
-        The incoming ``function`` wins for a pair both sides carry; an incoming pair without one
-        keeps the stored ``function``. A stored line without a ``function`` is dropped when every
-        one of its (fromColumn, toColumn) pairs arrives in an incoming line that has one: a source
-        that now splits a column's inputs by function would otherwise leave the old unlabelled
-        line first on the edge, and readers that take the first matching line never see the labels.
+        The incoming ``function``, ``transformationType``, and ``transformationSubtype`` win for
+        a pair both sides carry; an incoming pair without one keeps the stored value. A stored
+        line without a ``function`` or transformation metadata is dropped when every one of its
+        (fromColumn, toColumn) pairs arrives in an incoming line that has one: a source that now
+        splits a column's inputs by function would otherwise leave the old unlabelled line first
+        on the edge, and readers that take the first matching line never see the labels.
         """
         original_data: list[dict[str, Any]] = [
             column.model_dump() if isinstance(column, ColumnLineage) else column for column in original or []
         ]
-        original_result: dict[tuple, Any] = {}
-        merged_result: dict[tuple, Any] = {}
+        original_result: dict[tuple, tuple[Any, Any, Any]] = {}
+        merged_result: dict[tuple, tuple[Any, Any, Any]] = {}
         try:
             for column in original_data:
                 if column.get("toColumn") and column.get("fromColumns"):
-                    original_result[(*column.get("fromColumns", []), column.get("toColumn"))] = column.get("function")
+                    original_result[(*column.get("fromColumns", []), column.get("toColumn"))] = (
+                        column.get("function"),
+                        column.get("transformationType"),
+                        column.get("transformationSubtype"),
+                    )
             merged_result.update(original_result)
             labelled_pairs: set[tuple] = set()
             for column in updated or []:
                 data = column.model_dump() if isinstance(column, ColumnLineage) else column
                 if data.get("toColumn") and data.get("fromColumns"):
                     key = (*data.get("fromColumns", []), data.get("toColumn"))
-                    merged_result[key] = data.get("function") or merged_result.get(key)
-                    if data.get("function"):
+                    prev = merged_result.get(key, (None, None, None))
+                    merged_meta = (
+                        data.get("function") or prev[0],
+                        data.get("transformationType") or prev[1],
+                        data.get("transformationSubtype") or prev[2],
+                    )
+                    merged_result[key] = merged_meta
+                    if any(merged_meta):
                         labelled_pairs.update((from_column, key[-1]) for from_column in key[:-1])
             for key in original_result:
-                if not merged_result.get(key) and all(
+                if not any(merged_result.get(key, (None, None, None))) and all(
                     (from_column, key[-1]) in labelled_pairs for from_column in key[:-1]
                 ):
                     merged_result.pop(key, None)
@@ -241,9 +254,100 @@ class OMetaLineageMixin(Generic[T]):
         if merged_result == original_result:
             return original_data
         return [
-            {"fromColumns": list(key[:-1]), "toColumn": key[-1], **({"function": function} if function else {})}
-            for key, function in merged_result.items()
+            {
+                "fromColumns": list(key[:-1]),
+                "toColumn": key[-1],
+                **({"function": meta[0]} if meta[0] else {}),
+                **({"transformationType": meta[1]} if meta[1] else {}),
+                **({"transformationSubtype": meta[2]} if meta[2] else {}),
+            }
+            for key, meta in merged_result.items()
         ]
+
+    @staticmethod
+    def _as_dependency_type(value: DependencyType | str | None) -> DependencyType | None:
+        if value is None or isinstance(value, DependencyType):
+            return value
+        try:
+            return DependencyType(value)
+        except ValueError:
+            return None
+
+    @classmethod
+    def _merge_dependency_type(
+        cls,
+        original: DependencyType | str | None,
+        updated: DependencyType | str | None,
+        incoming_columns: Sequence[dict[str, Any] | ColumnLineage] | None = None,
+    ) -> DependencyType | None:
+        """Merge dependencyType conservatively so DIRECT beats INDIRECT."""
+        orig_type = cls._as_dependency_type(original)
+        upd_type = cls._as_dependency_type(updated)
+        if orig_type is None and upd_type is None:
+            return None
+        if DependencyType.DIRECT in {orig_type, upd_type}:
+            return DependencyType.DIRECT
+        has_direct_column = False
+        for column in incoming_columns or []:
+            data = column.model_dump() if isinstance(column, ColumnLineage) else column
+            t_type = data.get("transformationType")
+            if not t_type or str(t_type).upper() != DependencyType.INDIRECT.value:
+                has_direct_column = True
+                break
+        if orig_type == DependencyType.INDIRECT and upd_type == DependencyType.INDIRECT:
+            return DependencyType.DIRECT if has_direct_column else DependencyType.INDIRECT
+        if orig_type == DependencyType.INDIRECT:
+            return DependencyType.DIRECT if has_direct_column else DependencyType.INDIRECT
+        return DependencyType.DIRECT
+
+    @staticmethod
+    def _merge_indirect_columns(
+        original: Sequence[dict[str, Any] | IndirectColumn] | None,
+        updated: Sequence[dict[str, Any] | IndirectColumn] | None,
+    ) -> list[dict[str, Any]] | None:
+        """Union stored and incoming indirectColumns without duplicates, preserving order."""
+        original_data: list[dict[str, Any]] = [
+            col.model_dump() if isinstance(col, IndirectColumn) else col for col in original or []
+        ]
+        if updated is None:
+            return original_data or None
+        updated_data: list[dict[str, Any]] = [
+            col.model_dump() if isinstance(col, IndirectColumn) else col for col in updated
+        ]
+        if not updated_data:
+            return []
+        merged: list[dict[str, Any]] = []
+        seen: set[tuple[str, Any, Any, Any]] = set()
+        for entry in (*original_data, *updated_data):
+            from_col = entry.get("fromColumn")
+            if not from_col:
+                continue
+            from_col_str = model_str(from_col)
+            key = (
+                from_col_str,
+                entry.get("transformationType"),
+                entry.get("transformationSubtype"),
+                entry.get("description"),
+            )
+            if key not in seen:
+                seen.add(key)
+                merged.append(
+                    {
+                        "fromColumn": from_col_str,
+                        **(
+                            {"transformationType": entry["transformationType"]}
+                            if entry.get("transformationType")
+                            else {}
+                        ),
+                        **(
+                            {"transformationSubtype": entry["transformationSubtype"]}
+                            if entry.get("transformationSubtype")
+                            else {}
+                        ),
+                        **({"description": entry["description"]} if entry.get("description") else {}),
+                    }
+                )
+        return merged
 
     def _update_cache(self, request: AddLineageRequest, response: dict[str, Any]):
         try:
@@ -286,41 +390,60 @@ class OMetaLineageMixin(Generic[T]):
                 edge = self._get_lineage_edge_for_references(data.edge.fromEntity, data.edge.toEntity)
                 if edge:
                     original: AddLineageRequest = deepcopy(data)
-                    original.edge.lineageDetails.columnsLineage = edge["edge"].get("columnsLineage", [])
-                    original.edge.lineageDetails.pipeline = (
-                        EntityReference(
-                            id=edge["edge"]["pipeline"]["id"],
-                            type=edge["edge"]["pipeline"]["type"],
+                    original_details = original.edge.lineageDetails
+                    if original_details is not None:
+                        original_columns = cast("list[dict[str, Any]]", edge["edge"].get("columnsLineage") or [])
+                        original_details.dependencyType = self._as_dependency_type(edge["edge"].get("dependencyType"))
+                        original_indirect = edge["edge"].get("indirectColumns")
+                        original_details.indirectColumns = (
+                            [IndirectColumn.model_validate(col) for col in original_indirect]
+                            if original_indirect is not None
+                            else None
                         )
-                        if edge["edge"].get("pipeline")
-                        else None
-                    )
-                    # `original` mirrors `data`, so build_patch would see no sqlQuery diff. Null it so
-                    # the incoming query is added/updated, while a missing one keeps the stored value.
-                    original.edge.lineageDetails.sqlQuery = None  # pyright: ignore[reportOptionalMemberAccess]
-                    # merge the original and new column level lineage
-                    data.edge.lineageDetails.columnsLineage = self._merge_column_lineage(
-                        original.edge.lineageDetails.columnsLineage,
-                        data.edge.lineageDetails.columnsLineage,
-                    )
+                        original_details.pipeline = (
+                            EntityReference(
+                                id=edge["edge"]["pipeline"]["id"],
+                                type=edge["edge"]["pipeline"]["type"],
+                            )
+                            if edge["edge"].get("pipeline")
+                            else None
+                        )
+                        # `original` mirrors `data`, so build_patch would see no sqlQuery diff. Null it so
+                        # the incoming query is added/updated, while a missing one keeps the stored value.
+                        original_details.sqlQuery = None
+                        data.edge.lineageDetails.dependencyType = self._merge_dependency_type(
+                            original_details.dependencyType,
+                            data.edge.lineageDetails.dependencyType,
+                            data.edge.lineageDetails.columnsLineage,
+                        )
+                        merged_indirect = self._merge_indirect_columns(
+                            original_indirect,
+                            data.edge.lineageDetails.indirectColumns,
+                        )
+                        data.edge.lineageDetails.indirectColumns = (
+                            [IndirectColumn.model_validate(col) for col in merged_indirect]
+                            if merged_indirect is not None
+                            else None
+                        )
+                        # merge the original and new column level lineage
+                        merged_columns = self._merge_column_lineage(
+                            original_columns,
+                            data.edge.lineageDetails.columnsLineage,
+                        )
+                        data.edge.lineageDetails.columnsLineage = [
+                            ColumnLineage.model_validate(col_lin) for col_lin in merged_columns
+                        ]
+                        original_details.columnsLineage = [
+                            ColumnLineage.model_validate(col_lin) for col_lin in original_columns
+                        ]
 
-                    serialized_col_details = []
-                    for col_lin in data.edge.lineageDetails.columnsLineage or []:
-                        serialized_col_details.append(ColumnLineage(**col_lin))  # noqa: PERF401
-                    data.edge.lineageDetails.columnsLineage = serialized_col_details
-
-                    serialized_col_details_og = []
-                    for col_lin in original.edge.lineageDetails.columnsLineage or []:
-                        serialized_col_details_og.append(ColumnLineage(**col_lin))  # noqa: PERF401
-                    original.edge.lineageDetails.columnsLineage = serialized_col_details_og
-
-                    # Keep the pipeline information from the original
-                    # lineage if available
-                    if original.edge.lineageDetails.pipeline and not data.edge.lineageDetails.pipeline:
-                        data.edge.lineageDetails.pipeline = original.edge.lineageDetails.pipeline
-                    patch = self.patch_lineage_edge(original=original, updated=data)
-                    if patch:
-                        patch_op_success = True
+                        # Keep the pipeline information from the original
+                        # lineage if available
+                        if original_details.pipeline and not data.edge.lineageDetails.pipeline:
+                            data.edge.lineageDetails.pipeline = original_details.pipeline
+                        patch = self.patch_lineage_edge(original=original, updated=data)
+                        if patch:
+                            patch_op_success = True
 
             if patch_op_success is False:
                 self.client.put(self.get_suffix(AddLineageRequest), data=data.model_dump_json())
@@ -365,6 +488,8 @@ class OMetaLineageMixin(Generic[T]):
                 )
                 if edge:
                     original_columns = cast("list[dict[str, Any]]", edge["edge"].get("columnsLineage") or [])
+                    original_dependency_type = self._as_dependency_type(edge["edge"].get("dependencyType"))
+                    original_indirect = edge["edge"].get("indirectColumns")
                     original_pipeline = (
                         EntityReference.model_validate(edge["edge"]["pipeline"])
                         if edge["edge"].get("pipeline")
@@ -378,11 +503,31 @@ class OMetaLineageMixin(Generic[T]):
                                 ColumnLineage.model_validate(column_lineage) for column_lineage in original_columns
                             ],
                             "pipeline": original_pipeline,
+                            "dependencyType": original_dependency_type,
+                            "indirectColumns": (
+                                [IndirectColumn.model_validate(col) for col in original_indirect]
+                                if original_indirect is not None
+                                else None
+                            ),
                         }
                     )
                     updated_columns = [
                         column_lineage.model_dump() for column_lineage in lineage_details.columnsLineage or []
                     ]
+                    lineage_details.dependencyType = self._merge_dependency_type(
+                        original_dependency_type,
+                        lineage_details.dependencyType,
+                        updated_columns,
+                    )
+                    merged_indirect = self._merge_indirect_columns(
+                        original_indirect,
+                        lineage_details.indirectColumns,
+                    )
+                    lineage_details.indirectColumns = (
+                        [IndirectColumn.model_validate(col) for col in merged_indirect]
+                        if merged_indirect is not None
+                        else None
+                    )
                     lineage_details.columnsLineage = [
                         ColumnLineage.model_validate(column_lineage)
                         for column_lineage in self._merge_column_lineage(
@@ -473,7 +618,13 @@ class OMetaLineageMixin(Generic[T]):
             bool: True if the patch operation is successful, False otherwise.
         """
         try:
-            allowed_fields = {"columnsLineage": True, "pipeline": True, "sqlQuery": True}
+            allowed_fields = {
+                "columnsLineage": True,
+                "pipeline": True,
+                "sqlQuery": True,
+                "dependencyType": True,
+                "indirectColumns": True,
+            }
             patch = build_patch(
                 source=original.edge.lineageDetails,
                 destination=updated.edge.lineageDetails,
@@ -506,7 +657,13 @@ class OMetaLineageMixin(Generic[T]):
         updated: LineageDetails,
     ) -> bool | None:
         try:
-            allowed_fields = {"columnsLineage": True, "pipeline": True, "sqlQuery": True}
+            allowed_fields = {
+                "columnsLineage": True,
+                "pipeline": True,
+                "sqlQuery": True,
+                "dependencyType": True,
+                "indirectColumns": True,
+            }
             patch = build_patch(
                 source=original,
                 destination=updated,

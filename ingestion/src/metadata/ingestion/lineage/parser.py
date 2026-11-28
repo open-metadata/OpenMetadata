@@ -12,6 +12,7 @@
 Lineage Parser configuration
 """
 
+import functools
 import hashlib
 import time
 import traceback
@@ -20,6 +21,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
 from logging.config import DictConfigurator
+from typing import cast
 
 import sqlglot
 import sqlparse
@@ -42,7 +44,15 @@ from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
 )
+from metadata.generated.schema.type.entityLineage import DependencyType
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
+from metadata.ingestion.lineage.indirect_lineage import (
+    EMPTY_INDIRECT_LINEAGE,
+    IndirectColumnRef,
+    IndirectLineageResult,
+    analyze_indirect_lineage,
+    normalize_table_parts,
+)
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.tsql import rewrite_switch_statements
@@ -354,6 +364,67 @@ class LineageParser:
         body = statement.expression if isinstance(statement, (exp.Create, exp.Insert)) else statement
         items = _items(body)
         return NOTHING_COPIED if items is None else _copied_columns(items)
+
+    @functools.cached_property
+    def indirect_lineage(self) -> IndirectLineageResult:
+        """
+        Classify referenced tables as DIRECT vs INDIRECT and extract indirect column
+        references (JOIN, FILTER, GROUP_BY, SORT, WINDOW, CONDITIONAL) using sqlglot
+        AST scope analysis. Conservatively falls back on parse failure or ambiguity.
+        """
+        if not self._clean_query:
+            return EMPTY_INDIRECT_LINEAGE
+        return analyze_indirect_lineage(
+            self._clean_query,
+            dialect=self.dialect,
+            timeout_seconds=self.timeout_seconds,
+        )
+
+    def get_table_dependency_type(
+        self,
+        table_name: str,
+        *,
+        target_table: str | None = None,
+    ) -> DependencyType | None:
+        """Return DIRECT, INDIRECT, or None (conservative fallback) for a referenced table."""
+        return self.indirect_lineage.classify_table(table_name, target_table=target_table)
+
+    def get_indirect_column_refs(
+        self,
+        table_name: str,
+        *,
+        target_table: str | None = None,
+    ) -> tuple[IndirectColumnRef, ...]:
+        """Return indirect column references for a referenced table."""
+        return self.indirect_lineage.get_indirect_columns(table_name, target_table=target_table)
+
+    def get_indirect_only_tables(self, *, target_table: str | None = None) -> list[str]:
+        """
+        Return INDIRECT source tables discovered by sqlglot (e.g. `WHERE EXISTS` / `IN`
+        subqueries or `SEMI`/`ANTI` joins) that are absent from `source_tables`,
+        `intermediate_tables`, and `target_tables`.
+        """
+        source_tables = cast("list[Table | DataFunction | Location]", self.source_tables)
+        intermediate_tables = cast("list[Table]", self.intermediate_tables)
+        target_tables = cast("list[Table | Location]", self.target_tables)
+        known_parts = {
+            parts
+            for table in (*source_tables, *intermediate_tables, *target_tables)
+            if (parts := normalize_table_parts(str(table)))
+        }
+        if target_table:
+            target_parts = normalize_table_parts(target_table)
+            if target_parts:
+                known_parts.add(target_parts)
+        extra: list[str] = []
+        seen_parts: set[tuple[str, ...]] = set()
+        for raw_name in self.indirect_lineage.indirect_tables(target_table=target_table):
+            parts = normalize_table_parts(raw_name)
+            if not parts or parts in seen_parts or parts in known_parts:
+                continue
+            seen_parts.add(parts)
+            extra.append(raw_name)
+        return extra
 
     @cached_property
     def target_tables(self) -> list[Table | Location]:

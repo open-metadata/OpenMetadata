@@ -78,15 +78,27 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
+    DependencyType,
     EntitiesEdge,
+    IndirectColumn,
     LineageDetails,
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
+from metadata.ingestion.lineage.indirect_lineage import (
+    EMPTY_INDIRECT_LINEAGE,
+    IndirectLineageResult,
+    analyze_indirect_lineage,
+)
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
+from metadata.ingestion.lineage.sql_lineage import (
+    build_indirect_columns,
+    get_column_fqn,
+    get_lineage_by_query,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import (
     LineageRequest,
@@ -1006,6 +1018,8 @@ class DbtSource(DbtServiceSource):
         # Misses are not kept: _get_table_entity returns None for a failed lookup as well.
         if table_entity:
             self.resolved_tables.put(key, table_entity)
+            if table_entity.fullyQualifiedName is not None:
+                self.resolved_tables_by_fqn.put(model_str(table_entity.fullyQualifiedName), table_entity)
         return table_entity
 
     # pylint: disable=too-many-locals, too-many-branches
@@ -1015,6 +1029,7 @@ class DbtSource(DbtServiceSource):
         """
         self.reported_unresolved_upstreams.clear()
         self.resolved_tables.clear()
+        self.resolved_tables_by_fqn.clear()
         self.wildcard_expansions.clear()
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
@@ -1462,6 +1477,11 @@ class DbtSource(DbtServiceSource):
         return entity
 
     @cached_property
+    def resolved_tables_by_fqn(self) -> LRUCache[Table]:
+        """Tables resolved in this run indexed by FQN, for resolving indirectColumns without extra API calls."""
+        return LRUCache(RESOLVED_TABLES_CACHE_SIZE)
+
+    @cached_property
     def wildcard_expansions(self) -> LRUCache[tuple[Table, ...] | None]:
         """A run's wildcard expansions, shared by the lineage stages of every model reading them."""
         return LRUCache(RESOLVED_TABLES_CACHE_SIZE)
@@ -1544,6 +1564,73 @@ class DbtSource(DbtServiceSource):
                 break
         return matches
 
+    def _dbt_sql_dialect(self) -> Dialect:
+        service_conn = getattr(self.config, "serviceConnection", None)
+        conn_root = getattr(service_conn, "root", None)
+        conn_config = getattr(conn_root, "config", None)
+        conn_type = getattr(conn_config, "type", None)
+        if conn_type is None:
+            return Dialect.ANSI
+        type_value = getattr(conn_type, "value", conn_type)
+        if not isinstance(type_value, str):
+            return Dialect.ANSI
+        return ConnectionTypeDialectMapper.dialect_of(type_value)
+
+    def _analyze_dbt_model_indirect_lineage(self, data_model_link: DataModelLink) -> IndirectLineageResult:
+        """
+        Classify upstream dependencies of a dbt SQL model using sqlglot AST analysis.
+        Prefers compiled SQL and falls back to raw SQL only when compiled SQL is absent.
+        Python models, missing SQL, or unparseable Jinja/SQL conservatively return empty.
+        """
+        if not data_model_link.parse_query_lineage:
+            return EMPTY_INDIRECT_LINEAGE
+        sql_model = data_model_link.datamodel.sql or data_model_link.datamodel.rawSql
+        if not isinstance(sql_model, (SqlQuery, str)):
+            return EMPTY_INDIRECT_LINEAGE
+        sql_text = model_str(sql_model)
+        if not isinstance(sql_text, str) or not sql_text.strip():
+            return EMPTY_INDIRECT_LINEAGE
+        mapped_sql = DbtSource._map_catalogs_in_sql(self, sql_text) if isinstance(self, DbtSource) else sql_text
+        raw_timeout = getattr(self.source_config, "parsingTimeoutLimit", None)
+        timeout_limit = raw_timeout if isinstance(raw_timeout, int) else LINEAGE_PARSING_TIMEOUT
+        return analyze_indirect_lineage(
+            mapped_sql,
+            dialect=DbtSource._dbt_sql_dialect(self),
+            timeout_seconds=timeout_limit,
+        )
+
+    def _get_cached_table_by_fqn(self, table_fqn: str) -> Table | None:
+        cache = self.__dict__.get("resolved_tables_by_fqn")
+        if isinstance(cache, LRUCache) and table_fqn in cache:
+            return cache.get(table_fqn)
+        return None
+
+    def _classify_dbt_upstream(
+        self,
+        indirect_result: IndirectLineageResult,
+        upstream_fqn: str,
+        upstream_table: Table | None = None,
+    ) -> tuple[DependencyType | None, list[IndirectColumn] | None]:
+        """
+        Look up DIRECT vs INDIRECT dependency classification and resolved IndirectColumn
+        entries for an upstream dbt manifest table FQN.
+        """
+        if indirect_result.conservative_fallback or not indirect_result.table_dependencies:
+            return None, None
+        parts = fqn.split(upstream_fqn)
+        table_parts = tuple(fqn.unquote_name(part).lower() for part in parts[1:] if part)
+        if not table_parts:
+            return None, None
+        dep_type = indirect_result.classify_table_parts(table_parts)
+        col_refs = indirect_result.get_indirect_columns_for_parts(table_parts)
+        if not col_refs:
+            return dep_type, None
+        table_entity = upstream_table or DbtSource._get_cached_table_by_fqn(self, upstream_fqn)
+        if table_entity is None and dep_type == DependencyType.INDIRECT:
+            table_entity = self._get_table_entity(table_fqn=upstream_fqn)
+        indirect_cols = build_indirect_columns(table_entity, col_refs) if table_entity is not None else []
+        return dep_type, (indirect_cols or None)
+
     def create_dbt_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[AddLineageRequest]]:
         """
         Method to process DBT lineage from upstream nodes
@@ -1557,12 +1644,31 @@ class DbtSource(DbtServiceSource):
             upstream: self._wildcard_upstream_tables(upstream) for upstream in self._wildcard_upstreams(data_model_link)
         }
         override_lineage = self._overrides_lineage(data_model_link)
+        indirect_result = DbtSource._analyze_dbt_model_indirect_lineage(self, data_model_link)
 
         resolved = data_model_link.upstream_table_ids
         for upstream_node in data_model_link.datamodel.upstream or []:
             try:
                 if upstream_node in wildcard_targets:
                     for upstream_table in wildcard_targets[upstream_node] or ():
+                        wildcard_fqn = (
+                            model_str(upstream_table.fullyQualifiedName)
+                            if upstream_table.fullyQualifiedName is not None
+                            else upstream_node
+                        )
+                        dep_type, indirect_cols = DbtSource._classify_dbt_upstream(
+                            self,
+                            indirect_result,
+                            wildcard_fqn,
+                            upstream_table=upstream_table,
+                        )
+                        if dep_type is None:
+                            dep_type, indirect_cols = DbtSource._classify_dbt_upstream(
+                                self,
+                                indirect_result,
+                                upstream_node,
+                                upstream_table=upstream_table,
+                            )
                         yield Either(
                             right=OMetaLineageRequest(
                                 lineage_request=AddLineageRequest(
@@ -1574,6 +1680,8 @@ class DbtSource(DbtServiceSource):
                                             sqlQuery=SqlQuery(data_model_link.datamodel.sql.root)
                                             if data_model_link.datamodel.sql
                                             else None,
+                                            dependencyType=dep_type,
+                                            indirectColumns=indirect_cols,
                                         ),
                                     )
                                 ),
@@ -1581,11 +1689,18 @@ class DbtSource(DbtServiceSource):
                             )
                         )
                     continue
+                from_entity: Table | None = None
                 from_id = resolved.get(upstream_node)
                 if from_id is None:
                     from_entity = self._get_table_entity(table_fqn=upstream_node)
                     from_id = from_entity.id.root if from_entity else None
                 if from_id and to_entity:
+                    dep_type, indirect_cols = DbtSource._classify_dbt_upstream(
+                        self,
+                        indirect_result,
+                        upstream_node,
+                        upstream_table=from_entity,
+                    )
                     lineage_request = AddLineageRequest(
                         edge=EntitiesEdge(
                             fromEntity=EntityReference(
@@ -1601,6 +1716,8 @@ class DbtSource(DbtServiceSource):
                                 sqlQuery=SqlQuery(data_model_link.datamodel.sql.root)
                                 if data_model_link.datamodel.sql
                                 else None,
+                                dependencyType=dep_type,
+                                indirectColumns=indirect_cols,
                             ),
                         )
                     )

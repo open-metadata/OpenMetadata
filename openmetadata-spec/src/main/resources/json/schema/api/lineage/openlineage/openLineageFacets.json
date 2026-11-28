@@ -165,6 +165,13 @@
           "additionalProperties": {
             "$ref": "#/definitions/columnLineageField"
           }
+        },
+        "dataset": {
+          "description": "Dataset-level column dependencies (OpenLineage 1-2-0) that affect the entire output dataset (e.g., FILTER, JOIN, GROUP_BY, SORT, WINDOW) rather than a specific output field.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/inputField"
+          }
         }
       },
       "required": ["fields"]

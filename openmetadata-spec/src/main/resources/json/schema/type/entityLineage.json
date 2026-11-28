@@ -6,6 +6,36 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.type.EntityLineage",
   "definitions": {
+    "dependencyType": {
+      "javaType": "org.openmetadata.schema.type.DependencyType",
+      "description": "Whether the upstream entity contributes values directly to the downstream entity or only influences it indirectly (e.g., via JOIN, WHERE/FILTER, GROUP BY, ORDER BY, QUALIFY, or WINDOW).",
+      "type": "string",
+      "enum": ["DIRECT", "INDIRECT"]
+    },
+    "indirectColumn": {
+      "javaType": "org.openmetadata.schema.type.IndirectColumn",
+      "description": "An upstream column that influences the downstream dataset indirectly (e.g., via WHERE/FILTER, JOIN, GROUP BY, ORDER BY, QUALIFY, or WINDOW) without targeting a single output column.",
+      "type": "object",
+      "properties": {
+        "fromColumn": {
+          "description": "Source column identified by fully qualified column name that indirectly influences the downstream entity.",
+          "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "transformationType": {
+          "description": "Structured transformation type (e.g., INDIRECT).",
+          "type": "string"
+        },
+        "transformationSubtype": {
+          "description": "Structured indirect transformation subtype (e.g., FILTER, JOIN, GROUP_BY, SORT, WINDOW, CONDITIONAL).",
+          "type": "string"
+        },
+        "description": {
+          "description": "Optional human-readable description of the indirect column dependency.",
+          "type": "string"
+        }
+      },
+      "required": ["fromColumn"]
+    },
     "tempLineageTable": {
       "description": "A single hop in a temporary table lineage path.",
       "type": "object",
@@ -38,6 +68,14 @@
         "function" : {
           "description": "Transformation function applied to source columns to create destination column. That is `function(fromColumns) -> toColumn`.",
           "$ref" : "../type/basic.json#/definitions/sqlFunction"
+        },
+        "transformationType": {
+          "description": "Structured transformation type (e.g., DIRECT, INDIRECT).",
+          "type": "string"
+        },
+        "transformationSubtype": {
+          "description": "Structured transformation subtype (e.g., IDENTITY, TRANSFORMATION, AGGREGATION, FILTER, JOIN, GROUP_BY, SORT, WINDOW, CONDITIONAL).",
+          "type": "string"
         }
       }
     },
@@ -96,6 +134,19 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/tempLineageTable"
+          },
+          "default": null
+        },
+        "dependencyType": {
+          "description": "Whether this lineage edge represents a DIRECT data-flow dependency or an INDIRECT dependency. Unset/null is treated as DIRECT for backward compatibility.",
+          "$ref": "#/definitions/dependencyType",
+          "default": null
+        },
+        "indirectColumns": {
+          "description": "Dataset-level upstream columns that indirectly influence the downstream entity without targeting a single output column.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/indirectColumn"
           },
           "default": null
         }

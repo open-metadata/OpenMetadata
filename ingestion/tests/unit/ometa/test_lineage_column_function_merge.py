@@ -17,7 +17,12 @@ dropped whenever the edge already existed and never reached the server on a re-r
 
 import pytest
 
-from metadata.generated.schema.type.entityLineage import ColumnLineage
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    DependencyType,
+    IndirectColumn,
+)
 from metadata.ingestion.ometa.mixins.lineage_mixin import OMetaLineageMixin
 
 SRC = "svc.model.pub.col"
@@ -129,3 +134,71 @@ def test_merge_keeps_stored_labelled_line_covered_by_new_lines():
     merged = OMetaLineageMixin._merge_column_lineage(None, original, incoming)
 
     assert functions(merged)[(AMOUNT, FLAG, TOTAL)] == "SUM"
+
+
+def test_merge_preserves_structured_transformation_fields():
+    original = [
+        ColumnLineage(
+            fromColumns=[AMOUNT],
+            toColumn=TOTAL,
+            function="DIRECT/AGGREGATION",
+            transformationType="DIRECT",
+            transformationSubtype="AGGREGATION",
+        ).model_dump()
+    ]
+    incoming = [ColumnLineage(fromColumns=[AMOUNT], toColumn=TOTAL)]
+
+    merged = OMetaLineageMixin._merge_column_lineage(None, original, incoming)
+
+    assert merged == original
+
+
+def test_merge_dependency_type_prefers_direct_conservatively():
+    assert (
+        OMetaLineageMixin._merge_dependency_type(DependencyType.DIRECT, DependencyType.INDIRECT)
+        == DependencyType.DIRECT
+    )
+    assert (
+        OMetaLineageMixin._merge_dependency_type(DependencyType.INDIRECT, DependencyType.DIRECT)
+        == DependencyType.DIRECT
+    )
+    assert (
+        OMetaLineageMixin._merge_dependency_type(DependencyType.INDIRECT, DependencyType.INDIRECT)
+        == DependencyType.INDIRECT
+    )
+    assert OMetaLineageMixin._merge_dependency_type(None, DependencyType.INDIRECT) == DependencyType.DIRECT
+    assert OMetaLineageMixin._merge_dependency_type(DependencyType.INDIRECT, None, []) == DependencyType.INDIRECT
+    assert (
+        OMetaLineageMixin._merge_dependency_type(
+            DependencyType.INDIRECT,
+            None,
+            [ColumnLineage(fromColumns=[AMOUNT], toColumn=TOTAL)],
+        )
+        == DependencyType.DIRECT
+    )
+    assert OMetaLineageMixin._merge_dependency_type(None, None) is None
+
+
+def test_merge_indirect_columns_unions_without_duplicates():
+    filter_col = IndirectColumn(
+        fromColumn=FullyQualifiedEntityName(FLAG),
+        transformationType="INDIRECT",
+        transformationSubtype="FILTER",
+    )
+    join_col = IndirectColumn(
+        fromColumn=FullyQualifiedEntityName(AMOUNT),
+        transformationType="INDIRECT",
+        transformationSubtype="JOIN",
+    )
+
+    merged = OMetaLineageMixin._merge_indirect_columns(
+        [filter_col.model_dump()],
+        [filter_col, join_col],
+    )
+
+    assert merged == [
+        {"fromColumn": FLAG, "transformationType": "INDIRECT", "transformationSubtype": "FILTER"},
+        {"fromColumn": AMOUNT, "transformationType": "INDIRECT", "transformationSubtype": "JOIN"},
+    ]
+    assert OMetaLineageMixin._merge_indirect_columns([filter_col.model_dump()], None) == [filter_col.model_dump()]
+    assert OMetaLineageMixin._merge_indirect_columns([filter_col.model_dump()], []) == []
