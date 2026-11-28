@@ -12435,9 +12435,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * guard exists to prevent. A property removed at the source therefore lingers until someone
      * deletes it; that needs per-key provenance, which is tracked separately. Do not turn this into
      * a wholesale replace to match tags - see
-     * ADR:2026-10-16-a-force-sync-merges-connector-supplied-custom-properties.
+     * ADR:2026-10-16-a-force-sync-merges-connector-supplied-custom-properties. A write from a
+     * caller not shown the values keeps them the same way
+     * (ADR:2026-11-17-custom-property-values-need-view-custom-fields).
      */
-    private Object mergedOverStoredExtension(Object storedExtension, Object incomingExtension) {
+    public static Object mergedOverStoredExtension(
+        Object storedExtension, Object incomingExtension) {
       JsonNode stored = JsonUtils.valueToTree(storedExtension);
       JsonNode incoming = JsonUtils.valueToTree(incomingExtension);
       if (!stored.isObject() || !incoming.isObject()) {
