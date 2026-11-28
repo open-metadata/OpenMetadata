@@ -103,7 +103,7 @@ $$
 $$section
 ### Live Index Settings $(id="liveIndexSettings")
 
-Settings applied to staged indexes before alias swap (live serving values). Tune for read freshness and HA. Defaults preserve current near-real-time read-after-write behavior. number_of_shards is omitted — it can only be set at index creation time, not via PUT _settings, and the staged-index reindex flow uses the static mapping JSON for creation.
+Settings applied to staged indexes before alias swap (live serving values). Tune for read freshness and HA. Defaults preserve current near-real-time read-after-write behavior. Number of Shards is applied when the staged index is created, since shards cannot change on an existing index.
 
 $$
 
@@ -111,6 +111,13 @@ $$section
 ### Number of Replicas $(id="liveIndexSettings.numberOfReplicas")
 
 Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.
+
+$$
+
+$$section
+### Number of Shards $(id="liveIndexSettings.numberOfShards")
+
+Primary shard count of the staged index, set when it is created. Leave empty to keep the cluster default (5 on AWS OpenSearch). 1 is enough for most catalogs and keeps single-node clusters under cluster.max_shards_per_node during a reindex.
 
 $$
 

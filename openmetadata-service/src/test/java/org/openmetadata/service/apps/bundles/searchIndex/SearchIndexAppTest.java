@@ -135,6 +135,21 @@ class SearchIndexAppTest {
   }
 
   @Test
+  void validationRejectsNonpositiveShardCounts() {
+    assertThrows(
+        AppException.class,
+        () ->
+            searchIndexApp.validateConfig(
+                Map.of("liveIndexSettings", Map.of("numberOfShards", 0))));
+    assertThrows(
+        AppException.class,
+        () ->
+            searchIndexApp.validateConfig(
+                Map.of(
+                    "liveIndexSettingsByEntity", Map.of("table", Map.of("numberOfShards", -2)))));
+  }
+
+  @Test
   void reindexingExceptionConstructorsPreserveMessageAndCause() {
     SearchIndexApp.ReindexingException simple = new SearchIndexApp.ReindexingException("message");
     RuntimeException cause = new RuntimeException("boom");

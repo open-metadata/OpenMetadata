@@ -1150,14 +1150,20 @@ export enum ConnectionMode {
  *
  * Index settings applied to live (post-promote) search indexes. Tune for read freshness,
  * durability, and HA. These do not affect bulk reindex throughput; bulkIndexOverrides
- * controls that. number_of_shards is intentionally omitted — it can only be set at index
- * creation time and the staged-index reindex flow uses the static mapping JSON for creation.
+ * controls that. numberOfShards is applied when the staged index is created, since shards
+ * cannot change on an existing index.
  */
 export interface IndexSettings {
     /**
      * Replica shard count. 1 for HA on multi-node clusters; 0 for single-node.
      */
     numberOfReplicas?: number;
+    /**
+     * Primary shard count of the staged index, set when it is created. Unset keeps the cluster
+     * default (5 on AWS OpenSearch). 1 is enough for most catalogs and keeps single-node
+     * clusters under cluster.max_shards_per_node during a reindex.
+     */
+    numberOfShards?: number;
     /**
      * How often new writes become searchable. '1s' = near-real-time (default; required if
      * users/agents read-after-write). Higher values reduce CPU/segment churn but delay search
