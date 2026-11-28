@@ -1,5 +1,7 @@
 package org.openmetadata.service.cache;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.google.common.collect.Lists;
 import java.time.Duration;
 import java.util.List;
@@ -16,6 +18,10 @@ public class CachedEntityDao {
   /** Caps a single DEL so evicting a very large cascade never blocks Redis on one command. */
   static final int MAX_KEYS_PER_DELETE = 1_000;
 
+  private static final String FIELD_BASE = "base";
+  private static final String FIELD_REF = "ref";
+  private static final String EMPTY_JSON_OBJECT = "{}";
+
   private final CacheProvider cache;
   private final CacheKeys keys;
   private final CacheConfig config;
@@ -23,97 +29,83 @@ public class CachedEntityDao {
   /** One entity's cached variants: the id hash (base and reference) and the by-name aliases. */
   public record EntityKey(String entityType, UUID id, String fqn) {}
 
-  public Optional<String> getBase(UUID entityId, String entityType) {
+  public Optional<String> getBase(final UUID entityId, final String entityType) {
     if (EntityCacheBypass.isSkipped()) {
       return Optional.empty();
     }
 
-    String cacheKey = keys.entity(entityType, entityId);
-    Optional<String> cached = cache.hget(cacheKey, "base");
-    CacheMetrics m = CacheMetrics.getInstance();
-    if (cached.isPresent()) {
-      LOG.debug("Cache hit for entity: {} -> {}", entityType, entityId);
-      if (m != null) m.recordLayerHit(entityType);
-      return cached;
-    }
-
-    LOG.debug("Cache miss for entity: {} -> {}", entityType, entityId);
-    if (m != null) m.recordLayerMiss(entityType);
-    return Optional.empty();
+    final Optional<String> cached = readDecodedBase(entityType, entityId);
+    recordLayerOutcome(entityType, cached.isPresent());
+    LOG.debug(
+        "Cache {} for entity: {} -> {}", cached.isPresent() ? "hit" : "miss", entityType, entityId);
+    return cached;
   }
 
   /**
    * Store an entity's JSON. Only readers call this, with the row they loaded from the database;
-   * writers evict instead.
+   * writers evict instead. Returns {@code true} if the entry was written to Redis, or {@code false}
+   * if skipped (bypassed, empty, oversized, or unavailable).
    */
-  public void putBase(String entityType, UUID entityId, String entityJson) {
-    if (EntityCacheBypass.isSkipped()) {
-      return;
+  public boolean putBase(final String entityType, final UUID entityId, final String entityJson) {
+    if (EntityCacheBypass.isPopulateSkipped()) {
+      return false;
     }
-    if (entityJson == null || entityJson.isEmpty() || "{}".equals(entityJson)) {
+    if (isEmptyEntityJson(entityJson)) {
       LOG.warn(
           "CACHE: Skipping cache write for empty entity JSON - Type: {}, ID: {}",
           entityType,
           entityId);
-      return;
+      return false;
     }
 
-    String cacheKey = keys.entity(entityType, entityId);
-    LOG.info(
-        "CACHE: Writing entity to Redis - Key: {}, JSON length: {}", cacheKey, entityJson.length());
+    final String encoded = CacheValueCodec.encode(entityJson, config.compressionThresholdBytes);
+    if (exceedsMaxEntrySize(encoded)) {
+      LOG.debug(
+          "CACHE: Skipping oversized entity - Type: {}, ID: {}, encodedBytes={}, maxEntrySizeBytes={}",
+          entityType,
+          entityId,
+          encoded.length(),
+          config.maxEntrySizeBytes);
+      return false;
+    }
+
+    final String cacheKey = keys.entity(entityType, entityId);
     try {
-      if (cache.tryHset(
-          cacheKey, Map.of("base", entityJson), Duration.ofSeconds(config.entityTtlSeconds))) {
-        LOG.info(
-            "CACHE: Successfully wrote entity to Redis - Type: {} -> ID: {}", entityType, entityId);
-      } else {
-        LOG.info(
-            "CACHE: Entity not written to Redis (unavailable or failed) - Type: {} -> ID: {}",
-            entityType,
-            entityId);
-      }
-    } catch (Exception e) {
+      final boolean written = cache.tryHset(cacheKey, Map.of(FIELD_BASE, encoded), entityTtl());
+      LOG.debug(
+          "CACHE: putBase {} - Key: {}, rawLength: {}, storedLength: {}",
+          written ? "succeeded" : "skipped",
+          cacheKey,
+          entityJson.length(),
+          encoded.length());
+      return written;
+    } catch (RuntimeException e) {
       LOG.error(
           "CACHE: Failed to write entity to Redis - Type: {} -> ID: {}", entityType, entityId, e);
+      return false;
     }
   }
 
   /**
-   * Store an entity's JSON under its FQN for name-based lookups. Only readers call this, with the
-   * row they loaded from the database; writers evict instead.
+   * Store an FQN-to-UUID pointer so name-based lookups resolve against the single entity JSON held
+   * under {@link CacheKeys#entity(String, UUID)} instead of storing a second copy of the JSON.
    */
-  public void putByName(String entityType, String fqn, String entityJson) {
-    if (EntityCacheBypass.isSkipped()) {
-      return;
-    }
-    if (entityJson == null || entityJson.isEmpty() || "{}".equals(entityJson)) {
-      LOG.warn(
-          "CACHE: Skipping cache write by name for empty entity JSON - Type: {}, FQN: {}",
-          entityType,
-          fqn);
+  public void putByName(final String entityType, final String fqn, final UUID entityId) {
+    if (EntityCacheBypass.isPopulateSkipped() || nullOrEmpty(fqn) || entityId == null) {
       return;
     }
 
-    String cacheKey = keys.entityByName(entityType, fqn);
-    LOG.info(
-        "CACHE: Writing entity by name to Redis - Key: {}, JSON length: {}",
-        cacheKey,
-        entityJson.length());
+    final String cacheKey = keys.entityIdByName(entityType, fqn);
     try {
-      if (cache.trySet(cacheKey, entityJson, Duration.ofSeconds(config.entityTtlSeconds))) {
-        LOG.info(
-            "CACHE: Successfully wrote entity by name to Redis - Type: {} -> FQN: {}",
-            entityType,
-            fqn);
-      } else {
-        LOG.info(
-            "CACHE: Entity not written to Redis by name (unavailable or failed) - Type: {} -> FQN: {}",
-            entityType,
-            fqn);
-      }
-    } catch (Exception e) {
+      final boolean written = cache.trySet(cacheKey, entityId.toString(), entityTtl());
+      LOG.debug(
+          "CACHE: putByName pointer {} - Key: {}, ID: {}",
+          written ? "succeeded" : "skipped",
+          cacheKey,
+          entityId);
+    } catch (RuntimeException e) {
       LOG.error(
-          "CACHE: Failed to write entity by name to Redis - Type: {} -> FQN: {}",
+          "CACHE: Failed to write entity ID pointer by name - Type: {} -> FQN: {}",
           entityType,
           fqn,
           e);
@@ -123,16 +115,16 @@ public class CachedEntityDao {
   /**
    * Write-through cache: Store entity reference for fast reference lookups
    */
-  public void putReference(String entityType, UUID entityId, String refJson) {
-    if (refJson == null || refJson.isEmpty() || EntityCacheBypass.isSkipped()) {
+  public void putReference(final String entityType, final UUID entityId, final String refJson) {
+    if (nullOrEmpty(refJson) || EntityCacheBypass.isPopulateSkipped()) {
       return;
     }
 
-    String cacheKey = keys.entity(entityType, entityId);
+    final String cacheKey = keys.entity(entityType, entityId);
     try {
-      cache.hset(cacheKey, Map.of("ref", refJson), Duration.ofSeconds(config.entityTtlSeconds));
+      cache.hset(cacheKey, Map.of(FIELD_REF, refJson), entityTtl());
       LOG.debug("Write-through cached entity reference: {} -> {}", entityType, entityId);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.warn("Failed to write-through cache entity reference: {} -> {}", entityType, entityId, e);
     }
   }
@@ -140,90 +132,77 @@ public class CachedEntityDao {
   /**
    * Write-through cache: Store entity reference by name
    */
-  public void putReferenceByName(String entityType, String fqn, String refJson) {
-    if (refJson == null || refJson.isEmpty() || EntityCacheBypass.isSkipped()) {
+  public void putReferenceByName(final String entityType, final String fqn, final String refJson) {
+    if (nullOrEmpty(refJson) || EntityCacheBypass.isPopulateSkipped()) {
       return;
     }
 
-    String cacheKey = keys.refByName(entityType, fqn);
+    final String cacheKey = keys.refByName(entityType, fqn);
     try {
-      cache.set(cacheKey, refJson, Duration.ofSeconds(config.entityTtlSeconds));
+      cache.set(cacheKey, refJson, entityTtl());
       LOG.debug("Write-through cached entity reference by name: {} -> {}", entityType, fqn);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.warn(
           "Failed to write-through cache entity reference by name: {} -> {}", entityType, fqn, e);
     }
   }
 
   /**
-   * Get entity by name from cache
+   * Resolve entity JSON by FQN via two single-slot Redis reads: FQN pointer → UUID → base JSON.
    */
-  public Optional<String> getByName(String entityType, String fqn) {
+  public Optional<String> getByName(final String entityType, final String fqn) {
     if (EntityCacheBypass.isSkipped()) {
       return Optional.empty();
     }
-    String cacheKey = keys.entityByName(entityType, fqn);
-    Optional<String> result = cache.get(cacheKey);
-    CacheMetrics m = CacheMetrics.getInstance();
-    if (m != null) {
-      if (result.isPresent()) m.recordLayerHit(entityType);
-      else m.recordLayerMiss(entityType);
-    }
+    final Optional<UUID> entityId = resolveIdByName(entityType, fqn);
+    final Optional<String> result = entityId.flatMap(id -> readDecodedBase(entityType, id));
+    recordLayerOutcome(entityType, result.isPresent());
     return result;
   }
 
   /**
    * Get entity reference by ID from cache
    */
-  public Optional<String> getReference(String entityType, UUID entityId) {
+  public Optional<String> getReference(final String entityType, final UUID entityId) {
     if (EntityCacheBypass.isSkipped()) {
       return Optional.empty();
     }
-    String cacheKey = keys.entity(entityType, entityId);
-    Optional<String> result = cache.hget(cacheKey, "ref");
-    CacheMetrics m = CacheMetrics.getInstance();
-    if (m != null) {
-      if (result.isPresent()) m.recordLayerHit(entityType);
-      else m.recordLayerMiss(entityType);
-    }
+    final String cacheKey = keys.entity(entityType, entityId);
+    final Optional<String> result = cache.hget(cacheKey, FIELD_REF);
+    recordLayerOutcome(entityType, result.isPresent());
     return result;
   }
 
   /**
    * Get entity reference by name from cache
    */
-  public Optional<String> getReferenceByName(String entityType, String fqn) {
+  public Optional<String> getReferenceByName(final String entityType, final String fqn) {
     if (EntityCacheBypass.isSkipped()) {
       return Optional.empty();
     }
-    String cacheKey = keys.refByName(entityType, fqn);
-    Optional<String> result = cache.get(cacheKey);
-    CacheMetrics m = CacheMetrics.getInstance();
-    if (m != null) {
-      if (result.isPresent()) m.recordLayerHit(entityType);
-      else m.recordLayerMiss(entityType);
-    }
+    final String cacheKey = keys.refByName(entityType, fqn);
+    final Optional<String> result = cache.get(cacheKey);
+    recordLayerOutcome(entityType, result.isPresent());
     return result;
   }
 
-  public void invalidate(UUID entityId, String entityType) {
+  public void invalidate(final UUID entityId, final String entityType) {
     if (EntityCacheBypass.isSkipped()) {
       return;
     }
-    String cacheKey = keys.entity(entityType, entityId);
+    final String cacheKey = keys.entity(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Invalidated cache for entity: {} -> {}", entityType, entityId);
   }
 
-  public void invalidateByName(String entityType, String fqn) {
+  public void invalidateByName(final String entityType, final String fqn) {
     if (EntityCacheBypass.isSkipped()) {
       return;
     }
-    String cacheKeyEntity = keys.entityByName(entityType, fqn);
-    String cacheKeyRef = keys.refByName(entityType, fqn);
-    // One DEL, not two: between two round trips a reader can see the entity alias evicted and the
-    // reference alias still live (or the reverse) and cache a half-stale view of the same entity.
-    cache.del(cacheKeyEntity, cacheKeyRef);
+    // One DEL, not multiple: between two round trips a reader can see one alias evicted and
+    // another still live and cache a half-stale view of the same entity. Includes legacy :en: for
+    // rolling-upgrade coherence.
+    cache.del(nameAliasKeys(entityType, fqn));
     LOG.debug("Invalidated cache for entity by name: {} -> {}", entityType, fqn);
   }
 
@@ -232,72 +211,129 @@ public class CachedEntityDao {
    * #MAX_KEYS_PER_DELETE} keys). A committed batch has to turn over at once: evicted entity by
    * entity, a reader finds one entity fresh while a sibling still serves its pre-write copy.
    */
-  public void invalidateEntities(List<EntityKey> entities) {
+  public void invalidateEntities(final List<EntityKey> entities) {
     if (EntityCacheBypass.isSkipped()) {
       return;
     }
-    List<String> cacheKeys = entities.stream().flatMap(this::cacheKeysOf).toList();
+    final List<String> cacheKeys = entities.stream().flatMap(this::cacheKeysOf).toList();
     for (List<String> chunk : Lists.partition(cacheKeys, MAX_KEYS_PER_DELETE)) {
       cache.del(chunk.toArray(String[]::new));
     }
   }
 
-  private Stream<String> cacheKeysOf(EntityKey entity) {
-    Stream<String> nameKeys =
+  private Stream<String> cacheKeysOf(final EntityKey entity) {
+    final Stream<String> nameKeys =
         entity.fqn() == null
             ? Stream.empty()
-            : Stream.of(
-                keys.entityByName(entity.entityType(), entity.fqn()),
-                keys.refByName(entity.entityType(), entity.fqn()));
+            : Stream.of(nameAliasKeys(entity.entityType(), entity.fqn()));
     return Stream.concat(Stream.of(keys.entity(entity.entityType(), entity.id())), nameKeys);
   }
 
   // Additional invalidation methods for delete operations
-  public void invalidateBase(String entityType, UUID entityId) {
+  public void invalidateBase(final String entityType, final UUID entityId) {
     if (EntityCacheBypass.isSkipped()) {
       return;
     }
-    String cacheKey = keys.entity(entityType, entityId);
+    final String cacheKey = keys.entity(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Invalidated base cache for entity: {} -> {}", entityType, entityId);
   }
 
-  public void invalidateReference(String entityType, UUID entityId) {
+  public void invalidateReference(final String entityType, final UUID entityId) {
     if (EntityCacheBypass.isSkipped()) {
       return;
     }
-    String cacheKey = keys.entity(entityType, entityId);
-    // Remove just the reference field from the hash
-    cache.hdel(cacheKey, "ref");
+    final String cacheKey = keys.entity(entityType, entityId);
+    cache.hdel(cacheKey, FIELD_REF);
     LOG.debug("Invalidated reference cache for entity: {} -> {}", entityType, entityId);
   }
 
   // Delete methods for evicting corrupted cache entries
-  public void deleteBase(String entityType, UUID entityId) {
+  public void deleteBase(final String entityType, final UUID entityId) {
     if (EntityCacheBypass.isSkipped()) {
       return;
     }
-    String cacheKey = keys.entity(entityType, entityId);
+    final String cacheKey = keys.entity(entityType, entityId);
     cache.del(cacheKey);
     LOG.debug("Deleted corrupted cache entry for entity: {} -> {}", entityType, entityId);
   }
 
-  public void deleteByName(String entityType, String fqn) {
+  public void deleteByName(final String entityType, final String fqn) {
     if (EntityCacheBypass.isSkipped()) {
       return;
     }
-    String entityCacheKey = keys.entityByName(entityType, fqn);
-    String refCacheKey = keys.refByName(entityType, fqn);
-    cache.del(entityCacheKey, refCacheKey);
+    cache.del(nameAliasKeys(entityType, fqn));
     LOG.debug("Deleted corrupted cache entries for entity by name: {} -> {}", entityType, fqn);
   }
 
-  public void invalidateReferenceByName(String entityType, String fqn) {
+  public void invalidateReferenceByName(final String entityType, final String fqn) {
     if (EntityCacheBypass.isSkipped()) {
       return;
     }
-    String cacheKey = keys.refByName(entityType, fqn);
+    final String cacheKey = keys.refByName(entityType, fqn);
     cache.del(cacheKey);
     LOG.debug("Invalidated reference cache by name: {} -> {}", entityType, fqn);
+  }
+
+  private Optional<String> readDecodedBase(final String entityType, final UUID entityId) {
+    final String cacheKey = keys.entity(entityType, entityId);
+    final Optional<String> stored = cache.hget(cacheKey, FIELD_BASE);
+    if (stored.isEmpty()) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(CacheValueCodec.decode(stored.get()));
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Evicting corrupted compressed entity cache entry: key={}", cacheKey, e);
+      cache.del(cacheKey);
+      return Optional.empty();
+    }
+  }
+
+  private boolean exceedsMaxEntrySize(final String encoded) {
+    return CacheValueCodec.exceedsMaxEntrySize(encoded, config.maxEntrySizeBytes);
+  }
+
+  private Optional<UUID> resolveIdByName(final String entityType, final String fqn) {
+    final String aliasKey = keys.entityIdByName(entityType, fqn);
+    final Optional<String> rawId = cache.get(aliasKey);
+    if (rawId.isEmpty()) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(UUID.fromString(rawId.get()));
+    } catch (IllegalArgumentException e) {
+      LOG.warn("Evicting malformed UUID pointer in cache: key={} value={}", aliasKey, rawId.get());
+      cache.del(aliasKey);
+      return Optional.empty();
+    }
+  }
+
+  private String[] nameAliasKeys(final String entityType, final String fqn) {
+    return new String[] {
+      keys.entityIdByName(entityType, fqn),
+      keys.entityByName(entityType, fqn),
+      keys.refByName(entityType, fqn)
+    };
+  }
+
+  private Duration entityTtl() {
+    return Duration.ofSeconds(config.entityTtlSeconds);
+  }
+
+  private static boolean isEmptyEntityJson(final String entityJson) {
+    return nullOrEmpty(entityJson) || EMPTY_JSON_OBJECT.equals(entityJson);
+  }
+
+  private static void recordLayerOutcome(final String entityType, final boolean hit) {
+    final CacheMetrics metrics = CacheMetrics.getInstance();
+    if (metrics == null) {
+      return;
+    }
+    if (hit) {
+      metrics.recordLayerHit(entityType);
+    } else {
+      metrics.recordLayerMiss(entityType);
+    }
   }
 }

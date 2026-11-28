@@ -1,5 +1,11 @@
 package org.openmetadata.service.cache;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public class CacheConfig {
   public enum Provider {
     none,
@@ -12,12 +18,79 @@ public class CacheConfig {
     NONE
   }
 
+  public enum SessionStoreMode {
+    auto,
+    jdbc,
+    redis
+  }
+
   public Provider provider = Provider.none;
 
   // TTL settings in seconds
   public int entityTtlSeconds = 3600; // 1 hour
   public int relationshipTtlSeconds = 3600; // 1 hour
   public int tagTtlSeconds = 3600; // 1 hour
+
+  // Compress cached entity and read-bundle JSON above this byte threshold using GZIP+Base64.
+  // Set to 0 to disable compression (e.g. during rolling upgrades from pods without om:gz1:
+  // decode support).
+  public int compressionThresholdBytes = 2048;
+
+  // Maximum post-compression byte length for a single cached entity or read-bundle entry.
+  // Entries exceeding this limit are not written to Redis. Set to 0 for unlimited.
+  public int maxEntrySizeBytes = 0;
+
+  // Whether pre-write lookup misses during createOrUpdate (e.g. ingestion sweeps) populate Redis.
+  // Default false so bulk ingestion does not fill Redis with cold entities that nobody reads.
+  public boolean populateOnUpsert = false;
+
+  // Controls which SessionStore backend is used when Redis caching is configured:
+  // auto (default): Redis when provider=redis, else JDBC;
+  // jdbc: always store sessions in JDBC so Redis eviction policies cannot evict user sessions;
+  // redis: require Redis for sessions.
+  // Changing this setting switches to an empty store, so change all pods together and expect one
+  // forced sign-in for active users.
+  public SessionStoreMode sessionStore = SessionStoreMode.auto;
+
+  // Additional entity types excluded from Redis caching (appended to UNCACHED_ENTITY_TYPES).
+  // Applies to entity JSON, read bundles, tags, owners, domains, CONTAINS parent lookups, and
+  // CacheWarmupApp. Accepts a YAML list or comma-separated string (CACHE_EXCLUDED_ENTITY_TYPES).
+  private Set<String> excludedEntityTypes = Set.of();
+
+  public Set<String> getExcludedEntityTypes() {
+    return excludedEntityTypes;
+  }
+
+  @JsonSetter("excludedEntityTypes")
+  public void setExcludedEntityTypes(final Object raw) {
+    this.excludedEntityTypes = parseExcludedEntityTypes(raw);
+  }
+
+  public boolean isEntityTypeExcluded(final String entityType) {
+    return entityType != null && excludedEntityTypes.contains(entityType);
+  }
+
+  private static Set<String> parseExcludedEntityTypes(final Object raw) {
+    if (raw == null) {
+      return Set.of();
+    }
+    if (raw instanceof String csv) {
+      return Arrays.stream(csv.split(","))
+          .map(String::trim)
+          .filter(value -> !value.isEmpty())
+          .collect(Collectors.toUnmodifiableSet());
+    }
+    if (raw instanceof Collection<?> items) {
+      return items.stream()
+          .filter(item -> item != null)
+          .map(item -> item.toString().trim())
+          .filter(value -> !value.isEmpty())
+          .collect(Collectors.toUnmodifiableSet());
+    }
+    throw new IllegalArgumentException(
+        "excludedEntityTypes must be a list or comma-separated string, got: "
+            + raw.getClass().getSimpleName());
+  }
 
   // /api/v1/search/query response cache. Very short TTL because search results must
   // reflect entity writes promptly: user creates X → searches for X → expects to find X.
