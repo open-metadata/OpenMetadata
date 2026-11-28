@@ -2,6 +2,9 @@ import logging
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy.dialects import registry
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import NoSuchModuleError
 
 from metadata.data_quality.validations.models import (
     TableDiffRuntimeParameters,
@@ -297,6 +300,7 @@ def build_table(service: DatabaseServiceType, *columns: tuple[str, DataType], ke
 SQL_SERVER_INT_KEY = (
     "SUBSTRING(LOWER(CONVERT(VARCHAR(32), HASHBYTES('MD5', CAST(id AS VARCHAR(max)) + 'salt'), 2)), 1, 8) < '19999999'"
 )
+VERTICA_INT_KEY = "SUBSTRING(MD5(CAST(id AS VARCHAR) || 'salt'), 1, 8) < '19999999'"
 
 
 class TestBuildSampleWhereClause:
@@ -366,6 +370,28 @@ class TestBuildSampleWhereClause:
                 "SUBSTRING(LOWER(CONVERT(VARCHAR(32), HASHBYTES('MD5', CAST(id AS VARCHAR(max))"
                 " + CAST([Region] AS VARCHAR(max)) + 'salt'), 2)), 1, 8) < '19999999'",
             ),
+            # Vertica casts every key column to VARCHAR so it hashes the same key text as the other databases
+            (
+                build_table(DatabaseServiceType.Vertica, ("id", DataType.INT), key_columns=["id"]),
+                VERTICA_INT_KEY,
+            ),
+            (
+                build_table(
+                    DatabaseServiceType.Vertica,
+                    ("id", DataType.INT),
+                    ("Region", DataType.VARCHAR),
+                    key_columns=["id", "Region"],
+                ),
+                "SUBSTRING(MD5(CAST(id AS VARCHAR) || CAST(\"Region\" AS VARCHAR) || 'salt'), 1, 8) < '19999999'",
+            ),
+            (
+                build_table(
+                    DatabaseServiceType.Vertica,
+                    ("CustomerId", DataType.BIGINT),
+                    key_columns=["CustomerId"],
+                ),
+                "SUBSTRING(MD5(CAST(\"CustomerId\" AS VARCHAR) || 'salt'), 1, 8) < '19999999'",
+            ),
         ),
         ids=(
             "postgres",
@@ -377,6 +403,9 @@ class TestBuildSampleWhereClause:
             "sql-server-int",
             "azure-sql",
             "composite",
+            "vertica-int",
+            "vertica-composite",
+            "vertica-quoted",
         ),
     )
     def test_it_hashes_the_key_as_the_same_text_in_every_database(self, table: TableParameter, expected: str) -> None:
@@ -495,3 +524,88 @@ class TestSamplingWithOracle:
         )
 
         assert validator.sample_where_clause() == (None, None)
+
+
+class TestSamplingWithVertica:
+    def test_vertica_sampling_compiles_without_connector_metadata_registration(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """sqlalchemy-vertica only registers `vertica.vertica_python`, not bare `vertica`."""
+        monkeypatch.delitem(registry.impls, "vertica", raising=False)
+        with pytest.raises(NoSuchModuleError):
+            make_url("vertica://").get_dialect()
+
+        table = build_table(DatabaseServiceType.Vertica, ("id", DataType.INT), key_columns=["id"])
+
+        assert build_sample_where_clause(table, ["id"], "salt", "19999999") == VERTICA_INT_KEY
+
+    @pytest.mark.parametrize(
+        "left_service, right_service, expected",
+        (
+            (
+                DatabaseServiceType.Vertica,
+                DatabaseServiceType.Vertica,
+                (VERTICA_INT_KEY, VERTICA_INT_KEY),
+            ),
+            (
+                DatabaseServiceType.Vertica,
+                DatabaseServiceType.Postgres,
+                (VERTICA_INT_KEY, "SUBSTRING(MD5(id || 'salt'), 1, 8) < '19999999'"),
+            ),
+            (
+                DatabaseServiceType.Postgres,
+                DatabaseServiceType.Vertica,
+                ("SUBSTRING(MD5(id || 'salt'), 1, 8) < '19999999'", VERTICA_INT_KEY),
+            ),
+            (
+                DatabaseServiceType.Vertica,
+                DatabaseServiceType.Mssql,
+                (VERTICA_INT_KEY, SQL_SERVER_INT_KEY),
+            ),
+            (
+                DatabaseServiceType.Mssql,
+                DatabaseServiceType.Vertica,
+                (SQL_SERVER_INT_KEY, VERTICA_INT_KEY),
+            ),
+        ),
+        ids=("vertica-vertica", "vertica-postgres", "postgres-vertica", "vertica-mssql", "mssql-vertica"),
+    )
+    def test_cross_database_sampling_uses_matching_salt_and_nonce(
+        self,
+        left_service: DatabaseServiceType,
+        right_service: DatabaseServiceType,
+        expected: tuple[str, str],
+    ) -> None:
+        validator = build_sampling_validator(
+            build_table(left_service, ("id", DataType.INT), key_columns=["id"]),
+            build_table(right_service, ("id", DataType.INT), key_columns=["id"]),
+        )
+
+        with patch("random.choices", Mock(return_value=["salt"])):
+            assert validator.sample_where_clause() == expected
+
+    @pytest.mark.parametrize(
+        "left_service, right_service",
+        (
+            (DatabaseServiceType.Vertica, DatabaseServiceType.Mssql),
+            (DatabaseServiceType.Mssql, DatabaseServiceType.Vertica),
+        ),
+        ids=("vertica-mssql", "mssql-vertica"),
+    )
+    @pytest.mark.parametrize("key_type", (DataType.VARCHAR, DataType.DATE))
+    def test_cross_database_mssql_non_integer_key_skips_sampling(
+        self,
+        left_service: DatabaseServiceType,
+        right_service: DatabaseServiceType,
+        key_type: DataType,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        validator = build_sampling_validator(
+            build_table(left_service, ("id", key_type), key_columns=["id"]),
+            build_table(right_service, ("id", key_type), key_columns=["id"]),
+        )
+
+        with caplog.at_level(logging.WARNING, logger="TestSuite"):
+            assert validator.sample_where_clause() == (None, None)
+
+        assert f"Not supported: id ({key_type.value})." in caplog.text

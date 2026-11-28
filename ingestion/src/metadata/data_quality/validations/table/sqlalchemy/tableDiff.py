@@ -83,6 +83,7 @@ SUPPORTED_DIALECTS = [
     SapHanaScheme.hana.value,
     Dialects.Databricks,
     Dialects.UnityCatalog,
+    Dialects.Vertica,
 ]
 
 DUPLICATE_KEY_MESSAGE = "Duplicate primary keys"
@@ -122,6 +123,8 @@ class ColumnDiffResult(BaseModel):
 def build_sample_where_clause(table: TableParameter, key_columns: list[str], salt: str, hex_nounce: str) -> str:
     if table.database_service_type in SQL_SERVER_SERVICE_TYPES:
         return build_sql_server_sample_where_clause(table, key_columns, salt, hex_nounce)
+    if table.database_service_type == DatabaseServiceType.Vertica:
+        return build_vertica_sample_where_clause(table, key_columns, salt, hex_nounce)
     sql_alchemy_columns = [
         build_orm_col(i, c, table.database_service_type)
         for i, c in enumerate(table.columns)
@@ -140,6 +143,32 @@ def build_sample_where_clause(table: TableParameter, key_columns: list[str], sal
             < hex_nounce
         )
         .whereclause.compile(
+            dialect=sqa_dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+
+def build_vertica_sample_where_clause(table: TableParameter, key_columns: list[str], salt: str, hex_nounce: str) -> str:
+    """`build_sample_where_clause` for Vertica.
+
+    Every key column is cast to VARCHAR explicitly so the hashed text does not rest on `||`
+    coercion rules and stays the text Postgres and the other sampled databases hash. An unsized
+    VARCHAR cast keeps the whole value, so long string keys are not cut to the 80-byte column
+    default (checked on Vertica 24.1).
+
+    The dialect is resolved through `vertica+vertica_python://` because `sqlalchemy-vertica` only
+    registers driver-qualified entry points unless the connector module has already been imported.
+    """
+    key_texts: list[ColumnElement] = [
+        build_orm_col(i, c, table.database_service_type).cast(sqlalchemy.types.VARCHAR())
+        for i, c in enumerate(table.columns)
+        if c.name.root in key_columns
+    ]
+    reduced_concat = reduce(lambda c1, c2: c1.concat(c2), [*key_texts, literal(salt)])
+    sqa_dialect = make_url("vertica+vertica_python://").get_dialect()
+    return str(
+        (Substr(MD5(reduced_concat), 1, 8) < hex_nounce).compile(
             dialect=sqa_dialect(),
             compile_kwargs={"literal_binds": True},
         )

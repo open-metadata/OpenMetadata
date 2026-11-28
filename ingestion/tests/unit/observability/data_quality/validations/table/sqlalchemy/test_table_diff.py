@@ -616,3 +616,113 @@ class TestParallelQueries:
         validator.get_incomparable_columns()
 
         assert thread_counts(data_diff) == [4, 4]
+
+
+VERTICA_CONN_DICT_1 = {
+    "driver": "vertica",
+    "host": "vertica1.corp.local",
+    "port": 5433,
+    "user": "dbadmin",
+    "password": "secret",
+    "database": "vmart",
+}
+VERTICA_CONN_DICT_2 = {
+    "driver": "vertica",
+    "host": "vertica2.corp.local",
+    "port": 5433,
+    "user": "dbadmin",
+    "password": "secret",
+    "database": "analytics",
+}
+
+
+def build_vertica_validator(
+    service_url_1: str | dict = VERTICA_CONN_DICT_1,
+    service_url_2: str | dict = VERTICA_CONN_DICT_2,
+    parallel_queries: str | None = None,
+) -> TableDiffValidator:
+    table1 = TableParameter.model_construct(
+        serviceUrl=service_url_1,
+        path="public.orders",
+        fullyQualifiedName="vertica_svc.vmart.public.orders",
+        database_service_type=DatabaseServiceType.Vertica,
+        columns=[build_column("id", data_type=DataType.INT, constraint=Constraint.PRIMARY_KEY)],
+        privateKey=None,
+        passPhrase=None,
+        key_columns=["id"],
+        extra_columns=[],
+    )
+    table2 = TableParameter.model_construct(
+        serviceUrl=service_url_2,
+        path="public.orders",
+        fullyQualifiedName="vertica_svc.analytics.public.orders",
+        database_service_type=DatabaseServiceType.Vertica,
+        columns=[build_column("id", data_type=DataType.INT, constraint=Constraint.PRIMARY_KEY)],
+        privateKey=None,
+        passPhrase=None,
+        key_columns=["id"],
+        extra_columns=[],
+    )
+    params = TableDiffRuntimeParameters(
+        table1=table1,
+        table2=table2,
+        table_profile_config=None,
+        whereClause=None,
+        keyColumns=["id"],
+        extraColumns=[],
+    )
+    validator = TableDiffValidator(
+        runner=[],
+        test_case=TestCase.model_construct(
+            parameterValues=[]
+            if parallel_queries is None
+            else [TestCaseParameterValue(name="parallelQueries", value=parallel_queries)]
+        ),
+        execution_date=Timestamp(root=int(datetime.datetime.now().timestamp())),
+    )
+    validator.runtime_params = params
+    return validator
+
+
+class TestVerticaDialectSupport:
+    @pytest.mark.parametrize(
+        "url1, url2",
+        (
+            (VERTICA_CONN_DICT_1, VERTICA_CONN_DICT_2),
+            (
+                "vertica://dbadmin:secret@vertica1.corp.local:5433/vmart",
+                "vertica://dbadmin:secret@vertica2.corp.local:5433/analytics",
+            ),
+            (VERTICA_CONN_DICT_1, "postgresql://postgres:postgres@pg.corp.local:5432/analytics"),
+        ),
+        ids=("dict-dict", "url-url", "dict-postgres"),
+    )
+    def test_validate_dialects_accepts_vertica(self, url1: str | dict, url2: str | dict) -> None:
+        validator = build_vertica_validator(service_url_1=url1, service_url_2=url2)
+
+        validator._validate_dialects()
+
+    def test_unknown_dialect_is_aborted(self) -> None:
+        validator = build_vertica_validator(
+            service_url_1=VERTICA_CONN_DICT_1,
+            service_url_2={"driver": "sqlite", "host": "localhost"},
+        )
+        validator.get_runtime_parameters = Mock(return_value=validator.runtime_params)
+
+        result = validator._run_validation()
+
+        assert result.testCaseStatus is TestCaseStatus.Aborted
+        assert result.result == "Unsupported dialect in param table2.serviceUrl: sqlite"
+        assert result.errorDetails.errorType == "UnsupportedDialectError"
+
+    def test_parallel_queries_sizes_vertica_connections_and_threadpool(self, data_diff: MagicMock) -> None:
+        validator = build_vertica_validator(parallel_queries="4")
+
+        validator.get_table_diff()
+
+        assert [call.args[0] for call in data_diff.connect_to_table.call_args_list] == [
+            VERTICA_CONN_DICT_1,
+            VERTICA_CONN_DICT_2,
+        ]
+        assert thread_counts(data_diff) == [4, 4]
+        assert data_diff.diff_tables.call_args.kwargs["max_threadpool_size"] == 8

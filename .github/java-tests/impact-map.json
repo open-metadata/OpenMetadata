@@ -882,7 +882,8 @@
         "openmetadata-spec/src/main/resources/json/schema/tests/**",
         "openmetadata-spec/src/main/resources/json/schema/api/tests/**",
         "openmetadata-spec/src/main/resources/json/schema/api/data/createTableProfile.json",
-        "bootstrap/sql/migrations/native/2.1.1/**"
+        "bootstrap/sql/migrations/native/2.1.1/**",
+        "bootstrap/sql/migrations/native/2.1.2/**"
       ],
       "tests": [
         "*TestCase*IT",
