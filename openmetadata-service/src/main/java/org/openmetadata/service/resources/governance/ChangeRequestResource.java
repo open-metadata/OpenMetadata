@@ -22,6 +22,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
@@ -33,6 +34,8 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.governance.OverrideChangeRequest;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
@@ -78,9 +81,18 @@ public class ChangeRequestResource {
       @Parameter(description = "Asset id", schema = @Schema(type = "UUID")) @QueryParam("entityId")
           UUID entityId,
       @Parameter(description = "Requester user name") @QueryParam("requestedBy") String requestedBy,
+      @Parameter(
+              description =
+                  "Filter by status, comma-separated (e.g. Pending,Approved). "
+                      + "Allowed values: Pending, Approved, Applied, Rejected, Conflicted, Withdrawn,"
+                      + " Cancelled, Superseded")
+          @QueryParam("statuses")
+          String statuses,
       @QueryParam("limit") @DefaultValue("50") @Min(1) @Max(500) int limit) {
+    List<String> statusValues = parseStatuses(statuses);
     return new ResultList<>(
-        ChangeRequestVisibility.list(authorizer, securityContext, entityId, requestedBy, limit)
+        ChangeRequestVisibility.list(
+                authorizer, securityContext, entityId, requestedBy, statusValues, limit)
             .stream()
             .map(McpServerMasker::maskChangeRequest)
             .toList());
@@ -229,5 +241,36 @@ public class ChangeRequestResource {
     return McpServerMasker.maskChangeRequest(
         ChangeRequestService.finish(
             id, null, ChangeRequestStatus.CANCELLED, "Cancelled by %s".formatted(admin), admin));
+  }
+
+  /**
+   * Parses the comma-separated {@code statuses} query param into the stored {@link
+   * ChangeRequestStatus} values. Null or blank yields an empty list (no filter, legacy behavior);
+   * an unknown token surfaces a 400 so callers see a clear error instead of an opaque empty
+   * result.
+   */
+  static List<String> parseStatuses(String statuses) {
+    if (statuses == null || statuses.isBlank()) {
+      return List.of();
+    }
+    return Arrays.stream(statuses.split(","))
+        .map(String::trim)
+        .filter(token -> !token.isEmpty())
+        .map(
+            token -> {
+              try {
+                return ChangeRequestStatus.fromValue(token).value();
+              } catch (IllegalArgumentException e) {
+                throw new BadRequestException(
+                    "Invalid 'statuses' value '"
+                        + token
+                        + "'. Allowed values: "
+                        + Arrays.stream(ChangeRequestStatus.values())
+                            .map(ChangeRequestStatus::value)
+                            .toList());
+              }
+            })
+        .distinct()
+        .toList();
   }
 }

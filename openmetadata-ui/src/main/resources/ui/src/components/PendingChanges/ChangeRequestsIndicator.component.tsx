@@ -62,7 +62,12 @@ const ChangeRequestsIndicator = ({
       return;
     }
     try {
-      const all = await getChangeRequestsForEntity(entityId);
+      // Filter open statuses server-side, before the page limit, so closed requests cannot
+      // crowd the open ones out of the page. The client-side filter stays as a safety net.
+      const all = await getChangeRequestsForEntity(entityId, 50, [
+        ChangeRequestStatus.Pending,
+        ChangeRequestStatus.Approved,
+      ]);
       setRequests(all.filter((request) => OPEN_STATUSES.has(request.status)));
     } catch (error) {
       showErrorToast(error as AxiosError);

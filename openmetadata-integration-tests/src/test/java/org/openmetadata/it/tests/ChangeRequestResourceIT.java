@@ -545,6 +545,101 @@ class ChangeRequestResourceIT {
   }
 
   @Test
+  void statusesFilterReturnsOnlyMatchingStatuses(TestNamespace ns) {
+    Glossary glossary = gated(ns);
+    stageAsUser2(glossary);
+    UUID entityId = glossary.getId();
+
+    // The staged edit is Pending; the status filter must return it.
+    assertEquals(1, visibleCount(SdkClients.adminClient(), entityId, "Pending"));
+    assertEquals(1, visibleCount(SdkClients.adminClient(), entityId, "Pending,Approved"));
+    // Applied matches nothing (the only request is still open).
+    assertEquals(0, visibleCount(SdkClients.adminClient(), entityId, "Applied"));
+    // No statuses returns the same pending request (legacy behavior).
+    assertEquals(1, visibleCount(SdkClients.adminClient(), entityId));
+  }
+
+  @Test
+  void unknownStatusReturnsBadRequest() {
+    // A single unknown token -> 400.
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests?entityId=%s&statuses=Nope".formatted(UUID.randomUUID()),
+                    null));
+    // An unknown token among valid ones -> 400 (no partial result).
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests?entityId=%s&statuses=Pending,Nope"
+                        .formatted(UUID.randomUUID()),
+                    null));
+  }
+
+  // Regression for the reported bug: an asset with 50+ closed change requests and one open request
+  // must still surface the open one when the client filters by open statuses (as the asset-page
+  // indicator now does), even though the unfiltered page is full of closed rows.
+  @Test
+  void openRequestRemainsVisibleBesideFiftyClosed(TestNamespace ns) {
+    Glossary glossary = gated(ns);
+    stageAsUser2(glossary);
+    UUID entityId = glossary.getId();
+
+    // Plant 50 closed rows newer than the pending one, as update() does on every decision.
+    long base = System.currentTimeMillis();
+    for (int i = 0; i < 50; i++) {
+      ChangeRequest closed =
+          new ChangeRequest()
+              .withId(UUID.randomUUID())
+              .withEntityType(Entity.GLOSSARY)
+              .withEntityId(entityId)
+              .withEntityFullyQualifiedName(glossary.getFullyQualifiedName())
+              .withRequestedBy("closer" + i)
+              .withOrigin(
+                  org.openmetadata.schema.governance.changeRequest.ChangeRequestOrigin.INTERCEPTED)
+              .withWorkflowDefinitionId(UUID.randomUUID())
+              .withStatus(ChangeRequestStatus.APPLIED)
+              .withActiveRevisionId(UUID.randomUUID())
+              .withActiveRevisionNumber(1)
+              .withCreatedAt(base + 10_000L + i)
+              .withUpdatedAt(base + 10_000L + i);
+      Entity.getCollectionDAO().changeRequestDAO().insert(closed);
+    }
+
+    // The status-filtered list still returns the one open request.
+    assertEquals(
+        1,
+        visibleCount(SdkClients.adminClient(), entityId, "Pending,Approved"),
+        "the open request must surface beside 50 closed rows");
+    // The legacy unfiltered page is full of closed rows, so the open request is hidden without the
+    // status filter — the pre-fix behavior the indicator suffered from.
+    assertEquals(
+        50,
+        visibleCount(SdkClients.adminClient(), entityId),
+        "the unfiltered page is the 50 newest (all closed)");
+  }
+
+  private static int visibleCount(OpenMetadataClient client, UUID entityId, String statuses) {
+    String body =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeRequests?entityId=%s&statuses=%s".formatted(entityId, statuses),
+                null);
+    JsonNode data = JsonUtils.readTree(body).path("data");
+    return data.size();
+  }
+
+  @Test
   void enforcedEntityTypesListAnEnforceWorkflowWhileSuspendedUntilItIsDeleted(TestNamespace ns) {
     // The filter excludes every stored procedure, so no concurrent test's edit is held.
     String holdsNothing = JsonUtils.pojoToJson(Map.of(Entity.STORED_PROCEDURE, "{\"==\":[1,1]}"));

@@ -15,7 +15,10 @@ import { PagingResponse } from 'Models';
 import { WithdrawChangeRequest } from '../generated/api/governance/withdrawChangeRequest';
 import { ApprovalDecision } from '../generated/governance/changeRequest/approvalDecision';
 import { ChangeLifecycleEvent } from '../generated/governance/changeRequest/changeLifecycleEvent';
-import { ChangeRequest } from '../generated/governance/changeRequest/changeRequest';
+import {
+  ChangeRequest,
+  ChangeRequestStatus,
+} from '../generated/governance/changeRequest/changeRequest';
 import { ChangeRevision } from '../generated/governance/changeRequest/changeRevision';
 import APIClient from './axiosClient';
 
@@ -23,15 +26,21 @@ const BASE_URL = '/changeRequests';
 
 /**
  * Change requests on one asset that the caller may see: admins, owners and reviewers see every
- * request, anyone else only their own. Newest first.
+ * request, anyone else only their own. Newest first. Pass {@code statuses} to filter server-side
+ * (before the page limit) so closed requests cannot crowd open ones out of the page.
  */
 export const getChangeRequestsForEntity = async (
   entityId: string,
-  limit = 50
+  limit = 50,
+  statuses?: ChangeRequestStatus[]
 ): Promise<ChangeRequest[]> => {
+  const params: Record<string, string | number> = { entityId, limit };
+  if (statuses && statuses.length > 0) {
+    params.statuses = statuses.join(',');
+  }
   const response = await APIClient.get<PagingResponse<ChangeRequest[]>>(
     BASE_URL,
-    { params: { entityId, limit } }
+    { params }
   );
 
   return response.data.data;

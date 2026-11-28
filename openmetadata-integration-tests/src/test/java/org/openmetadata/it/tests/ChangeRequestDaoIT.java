@@ -16,6 +16,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
@@ -94,5 +95,58 @@ class ChangeRequestDaoIT {
     assertNull(dao().findById(UUID.randomUUID()));
     assertNull(dao().findByTaskId(UUID.randomUUID()));
     assertEquals(List.of(), dao().listByEntity(UUID.randomUUID(), 10));
+  }
+
+  // Regression for the pending-changes indicator: the status-unfiltered LIMIT must not hide open
+  // requests behind a wall of closed rows, and the status-filtered query must surface all open
+  // ones.
+  @Test
+  void openRequestsAreNotHiddenByClosedHistory() {
+    UUID entityId = UUID.randomUUID();
+    long base = System.currentTimeMillis();
+    // 51 closed rows, each bumped on close (as update() does), so they rank newest by updatedAt.
+    for (int i = 0; i < 51; i++) {
+      ChangeRequest closed =
+          pending(entityId, "closer" + i).withStatus(ChangeRequestStatus.APPLIED);
+      closed.setUpdatedAt(base + 10_000L + i);
+      dao().insert(closed);
+      dao().update(closed.withStatus(ChangeRequestStatus.APPLIED));
+    }
+    // 4 pending rows older than every closed row.
+    List<UUID> pendingIds = new java.util.ArrayList<>();
+    for (int i = 0; i < 4; i++) {
+      ChangeRequest open = pending(entityId, "open" + i);
+      open.setUpdatedAt(base + 100L + i);
+      dao().insert(open);
+      pendingIds.add(open.getId());
+    }
+
+    // The legacy unfiltered query returns the 50 newest rows — all closed — and hides the open
+    // ones.
+    List<ChangeRequest> legacyPage = dao().listByEntity(entityId, 50);
+    assertEquals(50, legacyPage.size());
+    assertTrue(legacyPage.stream().allMatch(r -> r.getStatus() == ChangeRequestStatus.APPLIED));
+
+    // The status-filtered query returns exactly the 4 open rows, newest first.
+    List<ChangeRequest> openPage =
+        dao()
+            .listByEntityAndStatuses(
+                entityId,
+                List.of(ChangeRequestStatus.PENDING.value(), ChangeRequestStatus.APPROVED.value()),
+                50);
+    assertEquals(4, openPage.size());
+    assertEquals(pendingIds, openPage.stream().map(ChangeRequest::getId).toList());
+    assertTrue(openPage.stream().allMatch(r -> r.getStatus() == ChangeRequestStatus.PENDING));
+    // Ordering is newest-first by updatedAt.
+    for (int i = 1; i < openPage.size(); i++) {
+      assertTrue(openPage.get(i - 1).getUpdatedAt() > openPage.get(i).getUpdatedAt());
+    }
+
+    // A Pending-only filter returns the same 4.
+    assertEquals(
+        4,
+        dao()
+            .listByEntityAndStatuses(entityId, List.of(ChangeRequestStatus.PENDING.value()), 50)
+            .size());
   }
 }

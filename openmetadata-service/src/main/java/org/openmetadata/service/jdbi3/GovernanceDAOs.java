@@ -408,6 +408,15 @@ public interface GovernanceDAOs {
     List<ChangeRequest> listByEntity(@BindUUID("entityId") UUID entityId, @Bind("limit") int limit);
 
     @SqlQuery(
+        "SELECT * FROM change_request WHERE entityId = :entityId AND status IN (<statuses>)"
+            + " ORDER BY updatedAt DESC LIMIT :limit")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByEntityAndStatuses(
+        @BindUUID("entityId") UUID entityId,
+        @BindList("statuses") List<String> statuses,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
         "SELECT * FROM change_request WHERE entityId IN (<entityIds>) AND status IN (<statuses>)")
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     List<ChangeRequest> listByEntitiesAndStatuses(
