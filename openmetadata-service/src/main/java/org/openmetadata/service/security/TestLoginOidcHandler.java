@@ -301,6 +301,7 @@ public final class TestLoginOidcHandler {
     JWTClaimsSet claimsSet = idToken.getJWTClaimsSet();
     AuthenticationCodeFlowHandler.validateNonceIfRequired(
         received.configuration(), handshake.nonce(), claimsSet);
+    AuthenticationCodeFlowHandler.validateAcrIfRequired(received.configuration(), claimsSet);
     Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     claims.putAll(claimsSet.getClaims());
     return claims;

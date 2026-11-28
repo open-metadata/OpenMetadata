@@ -78,7 +78,7 @@ reports success.
 | Area | Class | Scenarios |
 |---|---|---|
 | Confidential OIDC login | `SsoOidcConfidentialLoginIT` | OC-01, 04, 05, 06, 14, 20, 21, 22, 23, 24, 27, 28 |
-| Confidential callback hardening | `SsoOidcCallbackHardeningIT` | OC-08, 09, 10, 11, 13 |
+| Confidential callback hardening | `SsoOidcCallbackHardeningIT` | OC-08, 09, 10, 11, 13, 29, 30 |
 | Public OIDC bearer tokens | `SsoOidcPublicBearerIT` | OP-01, 02, 03, 04, 06, 08, 09, 10, 11, 12, 14, 15, 16 |
 | Session renewal | `SsoTokenRenewalIT` | RN-01 to RN-09, RN-12, RN-16 |
 | Provider shapes (Okta, Google, Auth0, Cognito, Keycloak, Entra) | `SsoOidcProviderProfilesIT` | OC-02, OC-03, OP-01 per provider |

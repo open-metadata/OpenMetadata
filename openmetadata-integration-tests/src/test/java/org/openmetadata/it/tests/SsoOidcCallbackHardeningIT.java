@@ -8,11 +8,13 @@ import static org.openmetadata.it.sso.SsoFlows.assertCallbackRefused;
 import static org.openmetadata.it.sso.SsoFlows.assertLoginRefused;
 import static org.openmetadata.it.sso.SsoFlows.editQuery;
 import static org.openmetadata.it.sso.SsoFlows.idTokenFrom;
+import static org.openmetadata.it.sso.SsoFlows.loggedInUser;
 import static org.openmetadata.it.sso.SsoFlows.login;
 import static org.openmetadata.it.sso.SsoFlows.loginUpToCallback;
 
 import java.net.URI;
 import java.net.http.HttpResponse;
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.sso.MockHttp;
 import org.openmetadata.it.sso.browser.SsoBrowser;
 import org.openmetadata.it.sso.browser.SsoNavigation;
 import org.openmetadata.it.sso.config.SecurityConfigSwap;
@@ -49,6 +52,11 @@ class SsoOidcCallbackHardeningIT {
       "State parameter is different from the one sent in authentication request.";
   private static final String NONCE_MISMATCH = "Unexpected JWT nonce (nonce) claim";
   private static final String ISSUER_MISMATCH = "Issuer mismatch, possible mix-up attack.";
+  private static final String ACR_MISMATCH = "Unexpected JWT acr claim";
+  private static final String ACR_MISSING = "Missing JWT acr claim";
+  private static final String MFA_ACR = "urn:domain.tld:idp:contract:password:multifactor";
+  private static final String WEBAUTHN_ACR = "urn:domain.tld:idp:contract:webauthn";
+  private static final String PASSWORD_ONLY_ACR = "urn:domain.tld:idp:contract:password";
 
   private static MockOidcProvider provider;
   private static SecurityConfigSwap securityConfig;
@@ -182,6 +190,76 @@ class SsoOidcCallbackHardeningIT {
           } finally {
             provider.useIssuerParameter(IssuerParameter.NOT_ADVERTISED);
           }
+        });
+  }
+
+  @Test
+  @DisplayName(
+      "OC-29 tampering with acr_values to downgrade MFA on the authorization request is refused")
+  void downgradedOrStrippedAcrValuesAreRefused(TestNamespace ns) throws Throwable {
+    signInAs(ns, "acr-downgrade");
+    securityConfig.withVariant(
+        config -> {
+          config
+              .getAuthenticationConfiguration()
+              .getOidcConfiguration()
+              .setCustomParams(
+                  Map.of("customParamKey1", "acr_values", "customParamValue1", MFA_ACR));
+          return config;
+        },
+        () -> {
+          // Downgrade acr_values in the browser redirect URL before it reaches the IdP (#34096).
+          SsoBrowser downgradeBrowser = new SsoBrowser();
+          URI authorizeUrl =
+              downgradeBrowser
+                  .navigate(SsoServer.loginUrl(), SsoBrowser.pathIs("/authorize"))
+                  .requirePendingUrl();
+          assertEquals(MFA_ACR, MockHttp.decode(authorizeUrl.getRawQuery()).get("acr_values"));
+          SsoNavigation downgraded =
+              downgradeBrowser.navigate(
+                  editQuery(authorizeUrl, query -> query.put("acr_values", PASSWORD_ONLY_ACR)));
+          assertCallbackRefused(downgradeBrowser, downgraded, ACR_MISMATCH);
+
+          // Strip acr_values completely so the IdP issues an ID token with no acr claim.
+          SsoBrowser stripBrowser = new SsoBrowser();
+          URI stripAuthorizeUrl =
+              stripBrowser
+                  .navigate(SsoServer.loginUrl(), SsoBrowser.pathIs("/authorize"))
+                  .requirePendingUrl();
+          assertEquals(MFA_ACR, MockHttp.decode(stripAuthorizeUrl.getRawQuery()).get("acr_values"));
+          SsoNavigation stripped =
+              stripBrowser.navigate(
+                  editQuery(stripAuthorizeUrl, query -> query.remove("acr_values")));
+          assertCallbackRefused(stripBrowser, stripped, ACR_MISSING);
+        });
+  }
+
+  @Test
+  @DisplayName("OC-30 an ID token whose acr matches one of the configured acr_values signs in")
+  void matchingConfiguredAcrValuesSucceed(TestNamespace ns) throws Throwable {
+    signInAs(ns, "acr-match");
+    securityConfig.withVariant(
+        config -> {
+          config
+              .getAuthenticationConfiguration()
+              .getOidcConfiguration()
+              .setCustomParams(
+                  Map.of(
+                      "customParamKey1",
+                      "acr_values",
+                      "customParamValue1",
+                      MFA_ACR + " " + WEBAUTHN_ACR));
+          return config;
+        },
+        () -> {
+          SsoBrowser primaryBrowser = new SsoBrowser();
+          String primaryToken = idTokenFrom(login(primaryBrowser));
+          assertEquals(200, loggedInUser(primaryBrowser, primaryToken).statusCode());
+
+          provider.issueNextAcrClaim(WEBAUTHN_ACR);
+          SsoBrowser secondaryBrowser = new SsoBrowser();
+          String secondaryToken = idTokenFrom(login(secondaryBrowser));
+          assertEquals(200, loggedInUser(secondaryBrowser, secondaryToken).statusCode());
         });
   }
 

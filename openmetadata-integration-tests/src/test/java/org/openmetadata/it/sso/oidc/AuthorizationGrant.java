@@ -13,7 +13,8 @@ record AuthorizationGrant(
     String redirectUri,
     String nonce,
     String codeChallenge,
-    String scope) {
+    String scope,
+    String acrValues) {
   private static final String SHA_256 = "SHA-256";
   private static final String SCOPE_SEPARATOR = " ";
 
