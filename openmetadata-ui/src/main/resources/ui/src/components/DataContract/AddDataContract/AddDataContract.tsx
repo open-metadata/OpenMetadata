@@ -229,13 +229,20 @@ const AddDataContract: React.FC<{
     const validSecurity = formValues.security
       ? {
           ...formValues.security,
-          policies: formValues.security.policies?.map((policy) => ({
-            ...policy,
-            rowFilters: policy.rowFilters?.filter(
-              (filter) =>
-                !isEmpty(filter?.columnName) && !isEmpty(filter?.values)
+          policies: formValues.security.policies
+            ?.map((policy) => ({
+              ...policy,
+              rowFilters: policy.rowFilters?.filter(
+                (filter) =>
+                  !isEmpty(filter?.columnName) && !isEmpty(filter?.values)
+              ),
+            }))
+            .filter(
+              (policy) =>
+                !isEmpty(policy.accessPolicy) ||
+                !isEmpty(policy.identities) ||
+                !isEmpty(policy.rowFilters)
             ),
-          })),
         }
       : undefined;
 

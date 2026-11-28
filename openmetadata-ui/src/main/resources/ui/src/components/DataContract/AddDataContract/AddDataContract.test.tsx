@@ -176,6 +176,35 @@ jest.mock('../ContractSecurityFormTab/ContractSecurityFormTab', () => ({
           }>
           Change Security
         </button>
+        <button
+          data-testid="security-empty-policy-btn"
+          onClick={() =>
+            onChange({
+              security: {
+                dataClassification: 'Confidential',
+                policies: [
+                  {
+                    accessPolicy: 'Real Policy',
+                    identities: ['user@org.com'],
+                    rowFilters: [
+                      { columnName: 'col1', values: ['v1'] },
+                      { columnName: '', values: [] },
+                    ],
+                  },
+                  {
+                    accessPolicy: '',
+                    identities: [],
+                    rowFilters: [
+                      { columnName: '', values: [] },
+                      { columnName: 'col2', values: [] },
+                    ],
+                  },
+                ],
+              },
+            })
+          }>
+          Security With Empty Policy
+        </button>
         <button onClick={onNext}>Next</button>
       </div>
     )),
@@ -436,6 +465,76 @@ describe('AddDataContract', () => {
           security: undefined,
         })
       );
+    });
+
+    it('should drop empty policies (no accessPolicy, identities, or rowFilters) before saving', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      await act(async () => {
+        fireEvent.click(securityTab);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('security-empty-policy-btn'));
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('save-contract-btn'));
+      });
+
+      expect(createContract).toHaveBeenCalledTimes(1);
+
+      const payload = (createContract as jest.Mock).mock.calls[0][0];
+
+      // The empty (placeholder) policy must be dropped; only the authored policy survives.
+      expect(payload.security.policies).toHaveLength(1);
+      expect(payload.security.policies[0]).toEqual({
+        accessPolicy: 'Real Policy',
+        identities: ['user@org.com'],
+        rowFilters: [{ columnName: 'col1', values: ['v1'] }],
+      });
+    });
+
+    it('should keep a policy that has only a valid row filter (no accessPolicy/identities)', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      await act(async () => {
+        fireEvent.click(securityTab);
+      });
+
+      // Emit a policy with no accessPolicy/identities but a meaningful row filter.
+      const securityTabMock = jest.requireMock(
+        '../ContractSecurityFormTab/ContractSecurityFormTab'
+      ).ContractSecurityFormTab as jest.Mock;
+      const onChange = securityTabMock.mock.calls[0][0].onChange;
+      await act(async () => {
+        onChange({
+          security: {
+            dataClassification: 'Restricted',
+            policies: [
+              {
+                accessPolicy: '',
+                identities: [],
+                rowFilters: [{ columnName: 'colX', values: ['vX'] }],
+              },
+            ],
+          },
+        });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('save-contract-btn'));
+      });
+
+      const payload = (createContract as jest.Mock).mock.calls[0][0];
+
+      // The authored row filter constitutes a real policy; it is preserved.
+      expect(payload.security.policies).toHaveLength(1);
+      expect(payload.security.policies[0].rowFilters).toEqual([
+        { columnName: 'colX', values: ['vX'] },
+      ]);
     });
   });
 
