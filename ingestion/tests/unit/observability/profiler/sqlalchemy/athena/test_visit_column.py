@@ -31,13 +31,13 @@ class TestVisitColumnWithStructQuoting:
         column = MagicMock()
         column.name = "address.street"
 
-        mock_visit_column.return_value = "customers_with_address.address.street"
+        mock_visit_column.return_value = 'customers_with_address."address.street"'
         assert _visit_column_with_struct_quoting(compiler, column) == 'customers_with_address."address"."street"'
 
         column.name = "address.geo.lat"
-        mock_visit_column.return_value = "customers_with_address.address.geo.lat"
+        mock_visit_column.return_value = 'customers_with_address."address.geo.lat"'
         assert _visit_column_with_struct_quoting(compiler, column) == 'customers_with_address."address"."geo"."lat"'
 
         column.name = "address.city"
-        mock_visit_column.return_value = "address.city"
+        mock_visit_column.return_value = '"address.city"'
         assert _visit_column_with_struct_quoting(compiler, column) == '"address"."city"'
