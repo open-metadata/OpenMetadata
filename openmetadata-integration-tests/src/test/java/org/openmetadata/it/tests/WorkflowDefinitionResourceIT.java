@@ -220,6 +220,7 @@ import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository.StopRequest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
@@ -14712,6 +14713,17 @@ public class WorkflowDefinitionResourceIT {
             .findFirst()
             .orElseThrow();
 
+    String candidate1Link =
+        new MessageParser.EntityLink(Entity.USER, candidate1.getFullyQualifiedName())
+            .getLinkString();
+    String candidate2Link =
+        new MessageParser.EntityLink(Entity.USER, candidate2.getFullyQualifiedName())
+            .getLinkString();
+    assertEquals(
+        Set.of(candidate1Link, candidate2Link),
+        WorkflowHandler.getInstance().candidateUserIdsForTask(approvalTask.getId()),
+        "Both reviewers should exist as Flowable candidate links before voting");
+
     OpenMetadataClient candidate1Client =
         SdkClients.createClient(candidate1.getName(), candidate1.getEmail(), new String[] {});
     ResolveTask resolveApproval =
@@ -14737,6 +14749,10 @@ public class WorkflowDefinitionResourceIT {
         candidate2.getName(),
         intermediateTask.getAssignees().get(0).getName(),
         "The remaining assignee should still need to approve");
+    assertEquals(
+        Set.of(candidate2Link),
+        WorkflowHandler.getInstance().candidateUserIdsForTask(approvalTask.getId()),
+        "The approving user's candidate link should be removed from Flowable ACT_RU_IDENTITYLINK");
     assertThrows(
         Exception.class,
         () -> candidate1Client.tasks().resolve(approvalTask.getId().toString(), resolveApproval),

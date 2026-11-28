@@ -68,6 +68,8 @@ import org.flowable.engine.repository.ProcessDefinitionQuery;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.NativeProcessInstanceQuery;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.identitylink.api.IdentityLink;
+import org.flowable.identitylink.api.IdentityLinkType;
 import org.flowable.job.api.Job;
 import org.flowable.job.service.impl.asyncexecutor.AbstractAsyncExecutor;
 import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
@@ -99,13 +101,16 @@ import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
 import org.openmetadata.service.tasks.TaskReviewVotes;
 import org.openmetadata.service.util.FreshReadScope;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class WorkflowHandler {
@@ -1623,8 +1628,8 @@ public class WorkflowHandler {
     }
   }
 
-  private void updateFlowableVoteTracking(Task flowableTask, String currentUser) {
-    if (flowableTask == null || currentUser == null) {
+  void updateFlowableVoteTracking(Task flowableTask, String currentUser) {
+    if (flowableTask == null || currentUser == null || currentUser.isBlank()) {
       return;
     }
 
@@ -1644,14 +1649,44 @@ public class WorkflowHandler {
     }
 
     try {
+      String candidateUser = flowableCandidateUserId(currentUser);
       String currentAssignee = flowableTask.getAssignee();
-      if (currentUser.equals(currentAssignee)) {
+      if (candidateUser.equals(currentAssignee) || currentUser.equals(currentAssignee)) {
         taskService.unclaim(flowableTask.getId());
       }
-      taskService.deleteCandidateUser(flowableTask.getId(), currentUser);
+      taskService.deleteCandidateUser(flowableTask.getId(), candidateUser);
     } catch (Exception e) {
       LOG.debug("[WorkflowTask] Could not update Flowable task assignees: {}", e.getMessage());
     }
+  }
+
+  /**
+   * Formats a user name into the Flowable candidate entity-link identifier written by
+   * {@code SetApprovalAssigneesImpl} and {@code SetCandidateUsersImpl} (canonicalized and
+   * FQN-quoted to match {@link UserRepository#setFullyQualifiedName}).
+   */
+  static String flowableCandidateUserId(String userName) {
+    if (userName.startsWith("<#E::")) {
+      return userName;
+    }
+    String userFqn = FullyQualifiedName.quoteName(UserRepository.canonicalUserName(userName));
+    return new MessageParser.EntityLink(Entity.USER, userFqn).getLinkString();
+  }
+
+  /**
+   * Candidate user identity-link IDs currently recorded in Flowable ({@code ACT_RU_IDENTITYLINK})
+   * for the runtime task backing {@code customTaskId}.
+   */
+  public Set<String> candidateUserIdsForTask(UUID customTaskId) {
+    Task task = getTaskFromCustomTaskId(customTaskId);
+    if (task == null) {
+      return Set.of();
+    }
+    return processEngine.getTaskService().getIdentityLinksForTask(task.getId()).stream()
+        .filter(link -> IdentityLinkType.CANDIDATE.equals(link.getType()))
+        .map(IdentityLink::getUserId)
+        .filter(Objects::nonNull)
+        .collect(Collectors.toSet());
   }
 
   private boolean handleMultiApproval(
