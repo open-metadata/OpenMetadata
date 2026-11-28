@@ -18,7 +18,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -32,31 +36,37 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * Unit coverage for the {@code VIEW_BASIC} authorization gate added to the
  * {@code getLineageEdge} (by-id) and {@code getLineageEdgeByName} (by-FQN) read endpoints in
- * {@link LineageResource}. The static {@link Entity} facade and the {@link Authorizer} are
- * stubbed; the real allow/deny filtering in the resource runs so that a missing gate would fail
- * these tests.
+ * {@link LineageResource}. The static {@link Entity} facade, the table repository and the {@link
+ * Authorizer} are stubbed; the real allow/deny filtering in the resource runs so that a missing
+ * gate would fail these tests.
  */
 class LineageResourceGetLineageEdgeAuthorizationTest {
 
@@ -64,6 +74,7 @@ class LineageResourceGetLineageEdgeAuthorizationTest {
   private Authorizer authorizer;
   private SecurityContext securityContext;
   private LineageRepository lineageRepository;
+  private EntityRepository<Table> tableRepository;
   private LineageResource lineageResource;
 
   private static final String ENTITY_TYPE = "table";
@@ -105,14 +116,36 @@ class LineageResourceGetLineageEdgeAuthorizationTest {
             .withName("toTable")
             .withFullyQualifiedName(toFqn);
 
-    entityMock
-        .when(() -> Entity.getEntityReferenceByName(ENTITY_TYPE, fromFqn, Include.NON_DELETED))
-        .thenReturn(fromRef);
-    entityMock
-        .when(() -> Entity.getEntityReferenceByName(ENTITY_TYPE, toFqn, Include.NON_DELETED))
-        .thenReturn(toRef);
+    tableRepository = tableRepository();
+    lineageResource = resourceFor(false);
+  }
 
-    lineageResource = new LineageResource(authorizer);
+  @SuppressWarnings("unchecked")
+  private EntityRepository<Table> tableRepository() {
+    EntityRepository<Table> repository = mock(EntityRepository.class);
+    doReturn(new Fields(Set.of())).when(repository).getFields(anyString());
+    doReturn(storedTable(fromRef))
+        .when(repository)
+        .getByName(isNull(), eq(fromFqn), any(), any(RelationIncludes.class), eq(false));
+    doReturn(storedTable(toRef))
+        .when(repository)
+        .getByName(isNull(), eq(toFqn), any(), any(RelationIncludes.class), eq(false));
+    doReturn(fromRef).when(repository).getReferenceByName(fromFqn, Include.NON_DELETED);
+    doReturn(toRef).when(repository).getReferenceByName(toFqn, Include.NON_DELETED);
+    return repository;
+  }
+
+  private LineageResource resourceFor(boolean admin) {
+    return new LineageResource(
+        authorizer, new LineageEdgeAccess(authorizer, ignored -> admin, type -> tableRepository));
+  }
+
+  private static Table storedTable(EntityReference reference) {
+    return new Table()
+        .withId(reference.getId())
+        .withName(reference.getName())
+        .withFullyQualifiedName(reference.getFullyQualifiedName())
+        .withDeleted(false);
   }
 
   @AfterEach
@@ -122,8 +155,15 @@ class LineageResourceGetLineageEdgeAuthorizationTest {
 
   // ---------- helper ----------
 
-  private List<EntityReference> edgeEnds() {
-    return List.of(fromRef, toRef);
+  private EntitiesEdge storedEdge(LineageDetails details) {
+    return new EntitiesEdge()
+        .withFromEntity(new EntityReference().withId(fromId).withType(ENTITY_TYPE))
+        .withToEntity(new EntityReference().withId(toId).withType(ENTITY_TYPE))
+        .withLineageDetails(details);
+  }
+
+  private EntitiesEdge storedEdge() {
+    return storedEdge(new LineageDetails().withDescription("edge"));
   }
 
   private Response okEdgeResponse() {
@@ -144,7 +184,8 @@ class LineageResourceGetLineageEdgeAuthorizationTest {
 
   @Test
   void t1a_denyOnFromEntity_throwsAndDaoNeverCalled() {
-    when(lineageRepository.getLineageEdgeEnds(fromId, toId)).thenReturn(edgeEnds());
+    EntitiesEdge stored = storedEdge();
+    when(lineageRepository.getStoredEdge(fromId, toId)).thenReturn(stored);
     doThrow(new AuthorizationException("denied from"))
         .when(authorizer)
         .authorize(any(), any(), any());
@@ -153,12 +194,13 @@ class LineageResourceGetLineageEdgeAuthorizationTest {
         AuthorizationException.class,
         () -> lineageResource.getLineageEdge(null, securityContext, fromId, toId));
 
-    verify(lineageRepository, never()).getLineageEdge(any(), any());
+    verify(lineageRepository, never()).getLineageEdge(any(EntitiesEdge.class));
   }
 
   @Test
   void t1b_denyOnToEntity_throwsAndDaoNeverCalled() {
-    when(lineageRepository.getLineageEdgeEnds(fromId, toId)).thenReturn(edgeEnds());
+    EntitiesEdge stored = storedEdge();
+    when(lineageRepository.getStoredEdge(fromId, toId)).thenReturn(stored);
     // first authorize (from) succeeds; second (to) throws
     doNothing()
         .doThrow(new AuthorizationException("denied to"))
@@ -169,25 +211,27 @@ class LineageResourceGetLineageEdgeAuthorizationTest {
         AuthorizationException.class,
         () -> lineageResource.getLineageEdge(null, securityContext, fromId, toId));
 
-    verify(lineageRepository, never()).getLineageEdge(any(), any());
+    verify(lineageRepository, never()).getLineageEdge(any(EntitiesEdge.class));
   }
 
   @Test
   void t1c_allowBoth_returnsEdgeAndCallsDao() {
-    when(lineageRepository.getLineageEdgeEnds(fromId, toId)).thenReturn(edgeEnds());
-    when(lineageRepository.getLineageEdge(fromId, toId)).thenReturn(okEdgeResponse());
+    EntitiesEdge stored = storedEdge();
+    when(lineageRepository.getStoredEdge(fromId, toId)).thenReturn(stored);
+    when(lineageRepository.getLineageEdge(stored)).thenReturn(okEdgeResponse());
     doNothing().when(authorizer).authorize(any(), any(), any());
 
     Response response = lineageResource.getLineageEdge(null, securityContext, fromId, toId);
 
     assertEquals(OK.getStatusCode(), response.getStatus());
     assertNotNull(response.getEntity());
-    verify(lineageRepository).getLineageEdge(fromId, toId);
+    verify(lineageRepository).getLineageEdge(stored);
+    verify(lineageRepository, never()).getLineageEdge(any(UUID.class), any(UUID.class));
   }
 
   @Test
   void t1d_nonExistentEdge_throws404_andNeverAuthorizes() {
-    when(lineageRepository.getLineageEdgeEnds(fromId, toId))
+    when(lineageRepository.getStoredEdge(fromId, toId))
         .thenThrow(new EntityNotFoundException("Lineage edge not found"));
 
     assertThrows(
@@ -195,13 +239,30 @@ class LineageResourceGetLineageEdgeAuthorizationTest {
         () -> lineageResource.getLineageEdge(null, securityContext, fromId, toId));
 
     verify(authorizer, never()).authorize(any(), any(), any());
-    verify(lineageRepository, never()).getLineageEdge(any(), any());
+    verify(lineageRepository, never()).getLineageEdge(any(EntitiesEdge.class));
+  }
+
+  /** A row stored without details is still 404, and only after both ends were authorized. */
+  @Test
+  void t1f_storedEdgeWithoutDetails_is404AfterAuthorization() {
+    EntitiesEdge stored = storedEdge(null);
+    when(lineageRepository.getStoredEdge(fromId, toId)).thenReturn(stored);
+    when(lineageRepository.getLineageEdge(stored))
+        .thenThrow(new EntityNotFoundException("Lineage edge not found"));
+    doNothing().when(authorizer).authorize(any(), any(), any());
+
+    assertThrows(
+        EntityNotFoundException.class,
+        () -> lineageResource.getLineageEdge(null, securityContext, fromId, toId));
+
+    verify(authorizer, times(2)).authorize(any(), any(), any());
   }
 
   @Test
   void t1e_authorizerReceivesViewBasic_notEditLineage() {
-    when(lineageRepository.getLineageEdgeEnds(fromId, toId)).thenReturn(edgeEnds());
-    when(lineageRepository.getLineageEdge(fromId, toId)).thenReturn(okEdgeResponse());
+    EntitiesEdge stored = storedEdge();
+    when(lineageRepository.getStoredEdge(fromId, toId)).thenReturn(stored);
+    when(lineageRepository.getLineageEdge(stored)).thenReturn(okEdgeResponse());
     doNothing().when(authorizer).authorize(any(), any(), any());
 
     ArgumentCaptor<OperationContext> opCaptor = ArgumentCaptor.forClass(OperationContext.class);
@@ -282,20 +343,17 @@ class LineageResourceGetLineageEdgeAuthorizationTest {
   }
 
   @Test
-  void t2e_resolvesReferencesWithNonDeletedIncludeScope() {
+  void t2e_adminResolvesReferencesWithNonDeletedIncludeScope() {
     when(lineageRepository.getLineageEdge(fromId, toId)).thenReturn(okEdgeResponse());
     doNothing().when(authorizer).authorize(any(), any(), any());
 
-    lineageResource.getLineageEdgeByName(
-        null, securityContext, ENTITY_TYPE, fromFqn, ENTITY_TYPE, toFqn);
+    Response response =
+        resourceFor(true)
+            .getLineageEdgeByName(null, securityContext, ENTITY_TYPE, fromFqn, ENTITY_TYPE, toFqn);
 
-    entityMock.verify(
-        () -> Entity.getEntityReferenceByName(ENTITY_TYPE, fromFqn, Include.NON_DELETED));
-    entityMock.verify(
-        () -> Entity.getEntityReferenceByName(ENTITY_TYPE, toFqn, Include.NON_DELETED));
-    entityMock.verify(
-        () -> Entity.getEntityReferenceByName(ENTITY_TYPE, fromFqn, Include.ALL), never());
-    entityMock.verify(
-        () -> Entity.getEntityReferenceByName(ENTITY_TYPE, toFqn, Include.ALL), never());
+    assertEquals(OK.getStatusCode(), response.getStatus());
+    verify(tableRepository).getReferenceByName(fromFqn, Include.NON_DELETED);
+    verify(tableRepository).getReferenceByName(toFqn, Include.NON_DELETED);
+    verify(authorizer, times(2)).authorize(any(), any(), any());
   }
 }

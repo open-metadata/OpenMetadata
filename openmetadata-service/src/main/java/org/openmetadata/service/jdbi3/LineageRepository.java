@@ -115,6 +115,13 @@ public class LineageRepository {
   private final CollectionDAO dao;
 
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
+  private static final String EDGE_RESPONSE_KEY = "edge";
+
+  /**
+   * The pipeline check for a write that leaves it to its caller: the MCP lineage tool links no
+   * pipeline, and the other callers do not act for a REST principal.
+   */
+  private static final Consumer<EntityReference> PIPELINE_AUTHORIZED_BY_CALLER = pipeline -> {};
 
   public LineageRepository() {
     this.dao = Entity.getCollectionDAO();
@@ -227,11 +234,30 @@ public class LineageRepository {
 
   @Transaction
   public void addLineage(AddLineage addLineage, String updatedBy) {
-    // Validate from entity
+    addLineage(addLineage, updatedBy, PIPELINE_AUTHORIZED_BY_CALLER);
+  }
+
+  /**
+   * Writes an edge, passing {@code authorizeNewlyLinkedPipeline} the pipeline the write newly links
+   * to it, or null when there is none to check. That check runs first, on the pipeline as
+   * requested and against the row the write replaces, before the ends or the pipeline are looked
+   * up: a caller it refuses gets the same denial whether or not they exist. The pipeline is then
+   * resolved by the same id, so the one written is the one checked or one the row already carried.
+   */
+  @Transaction
+  public void addLineage(
+      AddLineage addLineage,
+      String updatedBy,
+      Consumer<EntityReference> authorizeNewlyLinkedPipeline) {
     LineageDetails lineageDetails =
         addLineage.getEdge().getLineageDetails() != null
             ? addLineage.getEdge().getLineageDetails()
             : new LineageDetails();
+    LineageDetails priorDetails = getReplacedDetails(addLineage.getEdge());
+    authorizeNewlyLinkedPipeline.accept(
+        newlyLinkedEdgePipeline(lineageDetails.getPipeline(), priorDetails));
+
+    // Validate from entity
     EntityReference from =
         Entity.getEntityReferenceById(
             addLineage.getEdge().getFromEntity().getType(),
@@ -245,19 +271,8 @@ public class LineageRepository {
             addLineage.getEdge().getToEntity().getId(),
             Include.NON_DELETED);
 
-    CollectionDAO.EntityRelationshipObject existingRecord =
-        dao.relationshipDAO().getRecord(from.getId(), to.getId(), Relationship.UPSTREAM.ordinal());
-    LineageDetails priorDetails =
-        nullOrEmpty(existingRecord)
-            ? null
-            : JsonUtils.readValue(existingRecord.getJson(), LineageDetails.class);
     boolean relationAlreadyExists = priorDetails != null;
-
-    if (lineageDetails.getPipeline() != null) {
-      EntityReference storedPipeline = priorDetails == null ? null : priorDetails.getPipeline();
-      lineageDetails.withPipeline(
-          resolveEdgePipeline(lineageDetails.getPipeline(), storedPipeline));
-    }
+    resolveLinkedPipeline(lineageDetails, priorDetails);
 
     applyTemporalFields(lineageDetails, priorDetails, updatedBy, System.currentTimeMillis());
     preserveAssetEdges(lineageDetails, priorDetails);
@@ -303,6 +318,19 @@ public class LineageRepository {
 
     // build Extended Lineage
     buildExtendedLineage(from, to, lineageDetails, priorDetails, relationAlreadyExists);
+  }
+
+  /** The stored details of the edge a write replaces, or null when it writes a new edge. */
+  private LineageDetails getReplacedDetails(EntitiesEdge edge) {
+    CollectionDAO.EntityRelationshipObject existingRecord =
+        dao.relationshipDAO()
+            .getRecord(
+                edge.getFromEntity().getId(),
+                edge.getToEntity().getId(),
+                Relationship.UPSTREAM.ordinal());
+    return nullOrEmpty(existingRecord)
+        ? null
+        : JsonUtils.readValue(existingRecord.getJson(), LineageDetails.class);
   }
 
   @Transaction
@@ -770,6 +798,27 @@ public class LineageRepository {
         "fqnHash",
         FullyQualifiedName.buildHash((String) pipelineMap.get(Entity.FIELD_FULLY_QUALIFIED_NAME)));
     return Pair.of(pipelineRef.getType(), pipelineMap);
+  }
+
+  /**
+   * The PATCH rule: resolves the patched pipeline against the row the patch is about to replace,
+   * then hands the one it newly links to {@code authorizeNewlyLinkedPipeline}. Both decisions read
+   * that same row, so the pipeline written is the one checked, or one the row already carried. A PUT
+   * checks before it resolves instead; see {@link #addLineage(AddLineage, String, Consumer)}.
+   */
+  private static void linkEdgePipeline(
+      LineageDetails incoming,
+      LineageDetails prior,
+      Consumer<EntityReference> authorizeNewlyLinkedPipeline) {
+    resolveLinkedPipeline(incoming, prior);
+    authorizeNewlyLinkedPipeline.accept(newlyLinkedEdgePipeline(incoming.getPipeline(), prior));
+  }
+
+  private static void resolveLinkedPipeline(LineageDetails incoming, LineageDetails prior) {
+    if (incoming.getPipeline() != null) {
+      EntityReference stored = prior == null ? null : prior.getPipeline();
+      incoming.withPipeline(resolveEdgePipeline(incoming.getPipeline(), stored));
+    }
   }
 
   /**
@@ -1269,15 +1318,14 @@ public class LineageRepository {
     return result;
   }
 
+  /**
+   * Reads the stored entity, whose JSON keeps every registry type's child containers and their
+   * names. Asking for the container fields would also load the children's tags (a table's columns
+   * field does), once per end on every column lineage write, for names that never need them.
+   */
   private Set<String> getRegistryChildrenNames(EntityReference entityReference, String entityType) {
-    // Only the container fields: this path reads child names, so asking for the write path's tags
-    // and constraints would add a tag lookup per lineage edge for nothing.
     EntityInterface<?> parent =
-        Entity.getEntity(
-            entityType,
-            entityReference.getId(),
-            ChildFieldResolver.containerFields(entityType),
-            Include.NON_DELETED);
+        Entity.getEntityRepository(entityType).find(entityReference.getId(), Include.NON_DELETED);
     return CommonUtil.getChildrenNames(
         ChildFieldResolver.childrenOf(parent, entityType),
         "getChildren",
@@ -1794,28 +1842,49 @@ public class LineageRepository {
   }
 
   public Response getLineageEdge(UUID fromId, UUID toId) {
-    LineageDetails lineageDetails = getLineageDetails(fromId, toId);
-    if (lineageDetails != null) {
-      Map<String, Object> responseMap = new HashMap<>();
-      responseMap.put("edge", lineageDetails);
-      return Response.status(OK).entity(responseMap).build();
-    } else {
-      throw new EntityNotFoundException(
-          "Lineage edge not found between " + fromId + " and " + " " + toId);
+    return edgeResponse(fromId, toId, getLineageDetails(fromId, toId));
+  }
+
+  /** The response for an edge already read by {@link #getStoredEdge}, without reading it again. */
+  public Response getLineageEdge(EntitiesEdge stored) {
+    return edgeResponse(
+        stored.getFromEntity().getId(), stored.getToEntity().getId(), stored.getLineageDetails());
+  }
+
+  private static Response edgeResponse(UUID fromId, UUID toId, LineageDetails details) {
+    if (details == null) {
+      throw new EntityNotFoundException(edgeNotFound(fromId, toId));
     }
+    return Response.status(OK).entity(Map.of(EDGE_RESPONSE_KEY, details)).build();
+  }
+
+  /**
+   * The stored upstream edge between two entities, read once: its typed ends, so callers can
+   * authorize them, and its details, null when the row carries none.
+   */
+  public EntitiesEdge getStoredEdge(UUID fromId, UUID toId) {
+    CollectionDAO.EntityRelationshipObject edge =
+        dao.relationshipDAO().getRecord(fromId, toId, Relationship.UPSTREAM.ordinal());
+    if (edge == null) {
+      throw new EntityNotFoundException(edgeNotFound(fromId, toId));
+    }
+    return new EntitiesEdge()
+        .withFromEntity(new EntityReference().withId(fromId).withType(edge.getFromEntity()))
+        .withToEntity(new EntityReference().withId(toId).withType(edge.getToEntity()))
+        .withLineageDetails(
+            edge.getJson() == null
+                ? null
+                : JsonUtils.readValue(edge.getJson(), LineageDetails.class));
   }
 
   /** The typed ends of the upstream edge between two entities, so callers can authorize them. */
   public List<EntityReference> getLineageEdgeEnds(UUID fromId, UUID toId) {
-    CollectionDAO.EntityRelationshipObject edge =
-        dao.relationshipDAO().getRecord(fromId, toId, Relationship.UPSTREAM.ordinal());
-    if (edge == null) {
-      throw new EntityNotFoundException(
-          "Lineage edge not found between " + fromId + " and " + " " + toId);
-    }
-    return List.of(
-        new EntityReference().withId(fromId).withType(edge.getFromEntity()),
-        new EntityReference().withId(toId).withType(edge.getToEntity()));
+    EntitiesEdge stored = getStoredEdge(fromId, toId);
+    return List.of(stored.getFromEntity(), stored.getToEntity());
+  }
+
+  private static String edgeNotFound(UUID fromId, UUID toId) {
+    return "Lineage edge not found between " + fromId + " and " + toId;
   }
 
   public Response patchLineageEdge(
@@ -1834,13 +1903,7 @@ public class LineageRepository {
 
       LineageDetails original = JsonUtils.readValue(json, LineageDetails.class);
       LineageDetails updated = JsonUtils.applyPatch(original, patch, LineageDetails.class);
-      if (updated.getPipeline() != null) {
-        updated.withPipeline(resolveEdgePipeline(updated.getPipeline(), original.getPipeline()));
-      }
-      // Authorize the pipeline this patch links, resolved from the row about to be written, so a
-      // concurrent write cannot substitute a different, unviewable pipeline before the insert
-      // (ANT-2026-RL0ZDKB8).
-      authorizeNewlyLinkedPipeline.accept(newlyLinkedEdgePipeline(updated.getPipeline(), original));
+      linkEdgePipeline(updated, original, authorizeNewlyLinkedPipeline);
 
       // Update the lineage details with user and time
       updated.setUpdatedAt(System.currentTimeMillis());

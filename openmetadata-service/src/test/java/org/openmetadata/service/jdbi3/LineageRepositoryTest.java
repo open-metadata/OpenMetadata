@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -29,8 +30,10 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.io.StringReader;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
@@ -65,6 +68,7 @@ class LineageRepositoryTest {
 
   private static MockedStatic<Entity> mockedEntity;
   private static SearchRepository searchRepository;
+  private static EntityRepository<?> storedTables;
 
   @BeforeAll
   static void initMocks() {
@@ -79,6 +83,7 @@ class LineageRepositoryTest {
     mockedEntity = mockStatic(Entity.class);
     mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
     mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+    storedTables = mock(EntityRepository.class);
   }
 
   @AfterAll
@@ -290,9 +295,18 @@ class LineageRepositoryTest {
                         .withName("amount")
                         .withDataType(ColumnDataType.BIGINT)
                         .withFullyQualifiedName(table.getFullyQualifiedName() + ".amount")));
+    stubStoredTable(salesTable);
+  }
+
+  /**
+   * Column lineage reads an end's child names from the stored table, whose JSON carries the
+   * columns, so the validation needs neither a field read nor a tag lookup.
+   */
+  private static void stubStoredTable(final Table table) {
+    doReturn(table).when(storedTables).find(table.getId(), Include.NON_DELETED);
     mockedEntity
-        .when(() -> Entity.getEntity(Entity.TABLE, table.getId(), "columns", Include.NON_DELETED))
-        .thenReturn(salesTable);
+        .when(() -> Entity.getEntityRepository(Entity.TABLE))
+        .thenAnswer(invocation -> storedTables);
   }
 
   private static LineageDetails columnLineageDetails(
@@ -1285,6 +1299,288 @@ class LineageRepositoryTest {
   }
 
   @Test
+  void testGetStoredEdge_ReadsTheEndsAndDetailsFromOneRecord() {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = stubRelationshipDAO();
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    when(relationshipDAO.getRecord(fromId, toId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(edgeRecord(fromId, toId, JsonUtils.pojoToJson(sqlDetails())));
+
+    EntitiesEdge stored = new LineageRepository().getStoredEdge(fromId, toId);
+
+    assertEquals(fromId, stored.getFromEntity().getId());
+    assertEquals("table", stored.getFromEntity().getType());
+    assertEquals("dashboard", stored.getToEntity().getType());
+    assertEquals("select 1", stored.getLineageDetails().getSqlQuery());
+    verify(relationshipDAO, never()).getRelation(any(), any(), anyInt());
+  }
+
+  @Test
+  void testGetLineageEdge_StoredEdgeWithoutDetails_IsNotFound() {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = stubRelationshipDAO();
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    when(relationshipDAO.getRecord(fromId, toId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(edgeRecord(fromId, toId, null));
+    LineageRepository repository = new LineageRepository();
+
+    EntitiesEdge stored = repository.getStoredEdge(fromId, toId);
+
+    assertNull(stored.getLineageDetails());
+    assertThrows(EntityNotFoundException.class, () -> repository.getLineageEdge(stored));
+  }
+
+  @Test
+  void testGetLineageEdge_StoredEdge_AnswersWithTheStoredDetails() {
+    EntitiesEdge stored =
+        new EntitiesEdge()
+            .withFromEntity(fromEntity)
+            .withToEntity(toEntity)
+            .withLineageDetails(sqlDetails());
+
+    Object body = new LineageRepository().getLineageEdge(stored).getEntity();
+
+    assertEquals(Map.of("edge", stored.getLineageDetails()), body);
+  }
+
+  /**
+   * The decision table for the pipeline a PATCH carries, against the row it replaces. The check is
+   * offered null when nothing needs it.
+   */
+  @Test
+  void testLinkEdgePipeline_NoPipeline_OffersNothingToCheck() throws Exception {
+    LineageDetails incoming = new LineageDetails();
+
+    assertEquals(Collections.singletonList(null), linkEdgePipeline(incoming, null));
+    assertNull(incoming.getPipeline());
+  }
+
+  @Test
+  void testLinkEdgePipeline_NewlyLinkedPipeline_IsResolvedThenChecked() throws Exception {
+    EntityReference requested = pipelineReference();
+    EntityReference resolved =
+        pipelineReference().withId(requested.getId()).withName("resolved_pipeline");
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntityReferenceById(
+                    Entity.PIPELINE, requested.getId(), Include.NON_DELETED))
+        .thenReturn(resolved);
+    LineageDetails incoming = new LineageDetails().withPipeline(requested);
+    LineageDetails prior = new LineageDetails().withPipeline(pipelineReference());
+
+    assertEquals(List.of(resolved), linkEdgePipeline(incoming, prior));
+    assertSame(resolved, incoming.getPipeline());
+  }
+
+  @Test
+  void testLinkEdgePipeline_PipelineAlreadyOnTheEdge_IsNotChecked() throws Exception {
+    EntityReference stored = pipelineReference();
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(Entity.PIPELINE, stored.getId(), Include.ALL))
+        .thenReturn(stored);
+    LineageDetails incoming = new LineageDetails().withPipeline(stored);
+
+    assertEquals(
+        Collections.singletonList(null),
+        linkEdgePipeline(incoming, new LineageDetails().withPipeline(stored)));
+    assertSame(stored, incoming.getPipeline());
+  }
+
+  @Test
+  void testLinkEdgePipeline_UnsupportedTypeNewlyLinked_IsRejectedBeforeAnyCheck() {
+    EntityReference service =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    List<EntityReference> offered = new ArrayList<>();
+
+    InvocationTargetException rejected =
+        assertThrows(
+            InvocationTargetException.class,
+            () -> linkEdgePipeline(new LineageDetails().withPipeline(service), null, offered));
+
+    assertInstanceOf(IllegalArgumentException.class, rejected.getCause());
+    assertTrue(offered.isEmpty());
+  }
+
+  @Test
+  void testLinkEdgePipeline_UnsupportedTypeAlreadyOnTheEdge_IsDropped() throws Exception {
+    EntityReference service =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
+    LineageDetails incoming = new LineageDetails().withPipeline(service);
+
+    assertEquals(
+        Collections.singletonList(null),
+        linkEdgePipeline(incoming, new LineageDetails().withPipeline(service)));
+    assertNull(incoming.getPipeline());
+  }
+
+  /** A denied pipeline stops a PUT before the edge is stored, as it does a PATCH. */
+  @Test
+  void testAddLineage_DeniedPipeline_StoresNothing() {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = stubRelationshipDAO();
+    when(relationshipDAO.getRecord(fromEntityId, toEntityId, Relationship.UPSTREAM.ordinal()))
+        .thenReturn(null);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(fromEntityId), any()))
+        .thenReturn(fromEntity);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(toEntityId), any()))
+        .thenReturn(toEntity);
+    EntityReference hidden = pipelineReference();
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntityReferenceById(Entity.PIPELINE, hidden.getId(), Include.NON_DELETED))
+        .thenReturn(hidden);
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(fromEntity)
+                    .withToEntity(toEntity)
+                    .withLineageDetails(new LineageDetails().withPipeline(hidden)));
+    List<EntityReference> offered = new ArrayList<>();
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new LineageRepository()
+                .addLineage(
+                    addLineage,
+                    "user",
+                    pipeline -> {
+                      offered.add(pipeline);
+                      throw new IllegalStateException("denied");
+                    }));
+
+    assertEquals(List.of(hidden), offered);
+    verify(relationshipDAO, never()).insert(any(), any(), any(), any(), anyInt(), any());
+  }
+
+  /**
+   * A PUT checks the pipeline it newly links before it looks up the ends or the pipeline, so a
+   * caller the check refuses gets that denial even when none of them exist.
+   */
+  @Test
+  void testAddLineage_DeniedPipeline_IsRefusedBeforeAnythingIsLookedUp() {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = stubRelationshipDAO();
+    EntityReference missingFrom =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
+    EntityReference missingTo =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
+    EntityReference missingPipeline = pipelineReference();
+    List.of(missingFrom, missingTo, missingPipeline).forEach(LineageRepositoryTest::stubMissing);
+    List<EntityReference> offered = new ArrayList<>();
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new LineageRepository()
+                .addLineage(
+                    edgeWithPipeline(missingFrom, missingTo, missingPipeline),
+                    "user",
+                    pipeline -> {
+                      offered.add(pipeline);
+                      throw new IllegalStateException("denied");
+                    }));
+
+    assertEquals(List.of(missingPipeline), offered);
+    verify(relationshipDAO, never()).insert(any(), any(), any(), any(), anyInt(), any());
+  }
+
+  /** A pipeline the check lets through is then resolved, so one that is not there is a 404. */
+  @Test
+  void testAddLineage_AllowedPipelineThatIsMissing_IsNotFound() {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = stubRelationshipDAO();
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(fromEntityId), any()))
+        .thenReturn(fromEntity);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq("table"), eq(toEntityId), any()))
+        .thenReturn(toEntity);
+    EntityReference missingPipeline = pipelineReference();
+    stubMissing(missingPipeline);
+    List<EntityReference> offered = new ArrayList<>();
+
+    assertThrows(
+        EntityNotFoundException.class,
+        () ->
+            new LineageRepository()
+                .addLineage(
+                    edgeWithPipeline(fromEntity, toEntity, missingPipeline), "user", offered::add));
+
+    assertEquals(List.of(missingPipeline), offered);
+    verify(relationshipDAO, never()).insert(any(), any(), any(), any(), anyInt(), any());
+  }
+
+  private static void stubMissing(EntityReference reference) {
+    mockedEntity
+        .when(
+            () ->
+                Entity.getEntityReferenceById(
+                    reference.getType(), reference.getId(), Include.NON_DELETED))
+        .thenThrow(EntityNotFoundException.byMessage("missing " + reference.getId()));
+  }
+
+  private static AddLineage edgeWithPipeline(
+      EntityReference from, EntityReference to, EntityReference pipeline) {
+    return new AddLineage()
+        .withEdge(
+            new EntitiesEdge()
+                .withFromEntity(from)
+                .withToEntity(to)
+                .withLineageDetails(new LineageDetails().withPipeline(pipeline)));
+  }
+
+  private static CollectionDAO.EntityRelationshipDAO stubRelationshipDAO() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+    return relationshipDAO;
+  }
+
+  private static CollectionDAO.EntityRelationshipObject edgeRecord(
+      UUID fromId, UUID toId, String json) {
+    return CollectionDAO.EntityRelationshipObject.builder()
+        .fromId(fromId.toString())
+        .toId(toId.toString())
+        .fromEntity("table")
+        .toEntity("dashboard")
+        .relation(Relationship.UPSTREAM.ordinal())
+        .json(json)
+        .build();
+  }
+
+  private static LineageDetails sqlDetails() {
+    return new LineageDetails().withSqlQuery("select 1");
+  }
+
+  private static EntityReference pipelineReference() {
+    return new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE);
+  }
+
+  /** Runs the private rule and returns every value it offered the pipeline check. */
+  private static List<EntityReference> linkEdgePipeline(
+      LineageDetails incoming, LineageDetails prior) throws Exception {
+    List<EntityReference> offered = new ArrayList<>();
+    linkEdgePipeline(incoming, prior, offered);
+    return offered;
+  }
+
+  private static void linkEdgePipeline(
+      LineageDetails incoming, LineageDetails prior, List<EntityReference> offered)
+      throws Exception {
+    Method linkEdgePipeline =
+        LineageRepository.class.getDeclaredMethod(
+            "linkEdgePipeline", LineageDetails.class, LineageDetails.class, Consumer.class);
+    linkEdgePipeline.setAccessible(true);
+    Consumer<EntityReference> check = offered::add;
+    linkEdgePipeline.invoke(null, incoming, prior, check);
+  }
+
+  @Test
   void testNewlyLinkedEdgePipeline_NullOrNonPipeline_NeedsNoViewCheck() {
     EntityReference service =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.DATABASE_SERVICE);
@@ -1861,9 +2157,9 @@ class LineageRepositoryTest {
   }
 
   /**
-   * Stubs {@link Entity#getEntity} for the given table with a column-bearing {@link Table} entity
-   * serving both getChildrenNames (fields=columns + Include.NON_DELETED) and buildExtendedLineage
-   * (fields="" + Include.ALL), so addLineage can complete without touching real repositories.
+   * Stubs a column-bearing {@link Table} as both the stored table getChildrenNames reads and the
+   * entity buildExtendedLineage loads (fields="" + Include.ALL), so addLineage can complete
+   * without touching real repositories.
    */
   private static void mockTableForLineage(EntityReference tableRef, String columnName) {
     String fqn = tableRef.getFullyQualifiedName();
@@ -1881,5 +2177,6 @@ class LineageRepositoryTest {
     mockedEntity
         .when(() -> Entity.getEntity(eq(Entity.TABLE), eq(tableRef.getId()), any(), any()))
         .thenReturn(table);
+    stubStoredTable(table);
   }
 }

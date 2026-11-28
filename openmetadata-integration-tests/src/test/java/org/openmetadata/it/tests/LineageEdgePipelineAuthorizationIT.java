@@ -6,15 +6,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -22,6 +26,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreatePipeline;
+import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -32,6 +37,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -40,6 +46,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -57,6 +64,7 @@ import org.openmetadata.service.Entity;
 public class LineageEdgePipelineAuthorizationIT {
 
   private static final String LINEAGE_PATH = "/v1/lineage";
+  private static final String OPEN_LINEAGE_BATCH_PATH = "/v1/openlineage/lineage/batch";
   private static final String SQL_QUERY = "select id from source_table";
   private static final RequestOptions JSON_PATCH =
       RequestOptions.builder().header("Content-Type", "application/json-patch+json").build();
@@ -64,6 +72,19 @@ public class LineageEdgePipelineAuthorizationIT {
   private final Deque<Runnable> fixtureCleanups = new ArrayDeque<>();
 
   private record EdgeTables(Table from, Table to) {}
+
+  /** The two PUT routes, which must answer a newly linked pipeline the same way. */
+  enum PutRoute {
+    BY_ID,
+    BY_NAME;
+
+    void put(OpenMetadataClient client, EdgeTables edge, LineageDetails details) {
+      switch (this) {
+        case BY_ID -> putEdgeById(client, edge, details);
+        case BY_NAME -> putEdge(client, edge, details);
+      }
+    }
+  }
 
   @AfterEach
   void removeFixtures() {
@@ -110,6 +131,84 @@ public class LineageEdgePipelineAuthorizationIT {
         ForbiddenException.class,
         () -> putEdge(caller, edge, new LineageDetails().withPipeline(ref(hidden))));
     assertEdgeAbsent(edge);
+  }
+
+  /**
+   * A PUT checks the pipeline it newly links before looking it up, so a caller who may not view
+   * pipelines is refused alike for one that exists, one that is soft-deleted and one that was never
+   * created, and cannot tell them apart. Nothing is written.
+   */
+  @ParameterizedTest
+  @EnumSource(PutRoute.class)
+  void put_pipelineCallerCannotView_isForbiddenWhetherOrNotItExists(
+      PutRoute route, TestNamespace ns) {
+    EdgeTables edge = createEdgeTables(ns);
+    OpenMetadataClient caller =
+        clientForPrincipalWithRules(
+            ns,
+            "hidepipe" + route.ordinal(),
+            List.of(allowEditLineageOnTables(ns), denyViewingPipelines(ns)));
+    List<EntityReference> pipelines =
+        List.of(ref(createPipeline(ns, "live")), softDeletedPipeline(ns), missingPipeline());
+
+    for (EntityReference pipeline : pipelines) {
+      assertThrows(
+          ForbiddenException.class,
+          () -> route.put(caller, edge, new LineageDetails().withPipeline(pipeline)),
+          route + " linking " + pipeline.getId());
+    }
+    assertEdgeAbsent(edge);
+  }
+
+  /** Only a caller who may view pipelines learns that one it newly links is not there. */
+  @ParameterizedTest
+  @EnumSource(PutRoute.class)
+  void put_pipelineCallerCanViewButIsGone_isNotFound(PutRoute route, TestNamespace ns) {
+    EdgeTables edge = createEdgeTables(ns);
+    OpenMetadataClient caller =
+        clientForPrincipalWithRules(
+            ns, "seepipe" + route.ordinal(), List.of(allowEditLineageOnTables(ns)));
+
+    for (EntityReference pipeline : List.of(softDeletedPipeline(ns), missingPipeline())) {
+      OpenMetadataException notFound =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> route.put(caller, edge, new LineageDetails().withPipeline(pipeline)));
+      assertEquals(404, notFound.getStatusCode(), route + ": " + notFound.getMessage());
+    }
+    assertEdgeAbsent(edge);
+  }
+
+  /**
+   * OpenLineage resolves the pipeline from the job and writes each edge on its own, so a pipeline
+   * the caller cannot view fails only the edges that would link it; the batch's other events are
+   * still written.
+   */
+  @Test
+  void openLineageBatch_hiddenPipelineFailsOnlyItsOwnEdges(TestNamespace ns) {
+    String schemaFqn = DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName();
+    Table source = TableTestFactory.createWithName(ns, schemaFqn, "ol_src");
+    Table hiddenTarget = TableTestFactory.createWithName(ns, schemaFqn, "ol_hidden");
+    Table openTarget = TableTestFactory.createWithName(ns, schemaFqn, "ol_open");
+    Pipeline hidden = createPipeline(ns, "ol_hidden_pipe");
+    OpenMetadataClient caller =
+        clientForPrincipalWithRules(
+            ns, "olcaller", List.of(allowEditLineageOnTables(ns), denyViewingPipelines(ns)));
+    String batch =
+        """
+        {"events": [%s, %s]}
+        """
+            .formatted(
+                runEvent(hidden.getService().getName(), hidden.getName(), source, hiddenTarget),
+                runEvent(
+                    ns.prefix("no_pipeline_ns"), ns.prefix("no_pipeline_job"), source, openTarget));
+
+    caller
+        .getHttpClient()
+        .executeForString(HttpMethod.POST, OPEN_LINEAGE_BATCH_PATH, JsonUtils.readTree(batch));
+
+    assertEdgeAbsent(new EdgeTables(source, hiddenTarget));
+    assertNull(getEdge(new EdgeTables(source, openTarget)).getPipeline());
   }
 
   @Test
@@ -173,6 +272,16 @@ public class LineageEdgePipelineAuthorizationIT {
                 .withService(service.getFullyQualifiedName()));
   }
 
+  private static EntityReference softDeletedPipeline(TestNamespace ns) {
+    Pipeline pipeline = createPipeline(ns, "deleted");
+    SdkClients.adminClient().pipelines().delete(pipeline.getId());
+    return ref(pipeline);
+  }
+
+  private static EntityReference missingPipeline() {
+    return new EntityReference().withId(UUID.randomUUID()).withType(Entity.PIPELINE);
+  }
+
   private static EntityReference ref(Pipeline pipeline) {
     return new EntityReference().withId(pipeline.getId()).withType(Entity.PIPELINE);
   }
@@ -234,11 +343,51 @@ public class LineageEdgePipelineAuthorizationIT {
     return SdkClients.createClient(email, email, new String[] {});
   }
 
+  private static String runEvent(String jobNamespace, String jobName, Table input, Table output) {
+    return """
+        {"eventType": "COMPLETE", "eventTime": "%s", "producer": "https://openmetadata.org/it",
+         "schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json#/$defs/RunEvent",
+         "run": {"runId": "%s"}, "job": {"namespace": "%s", "name": "%s"},
+         "inputs": [%s], "outputs": [%s]}
+        """
+        .formatted(
+            Instant.now(),
+            UUID.randomUUID(),
+            jobNamespace,
+            jobName,
+            dataset(input),
+            dataset(output));
+  }
+
+  /** A dataset names its table relative to the database service, which is its namespace. */
+  private static String dataset(Table table) {
+    return """
+        {"namespace": "%s", "name": "%s.%s.%s"}
+        """
+        .formatted(
+            table.getService().getName(),
+            table.getDatabase().getName(),
+            table.getDatabaseSchema().getName(),
+            table.getName());
+  }
+
   private static String addPipelinePatch(EntityReference pipeline) {
     return """
         [{"op":"add","path":"/pipeline","value":{"id":"%s","type":"%s"}}]
         """
         .formatted(pipeline.getId(), pipeline.getType());
+  }
+
+  private static void putEdgeById(
+      OpenMetadataClient client, EdgeTables edge, LineageDetails details) {
+    AddLineage addLineage =
+        new AddLineage()
+            .withEdge(
+                new EntitiesEdge()
+                    .withFromEntity(edge.from().getEntityReference())
+                    .withToEntity(edge.to().getEntityReference())
+                    .withLineageDetails(details));
+    client.getHttpClient().executeForString(HttpMethod.PUT, LINEAGE_PATH, addLineage);
   }
 
   private static void putEdge(OpenMetadataClient client, EdgeTables edge, LineageDetails details) {
