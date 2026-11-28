@@ -1,7 +1,7 @@
 # A masked connection secret is restored only while the connection still points at the same endpoint
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources); v4 2026-10-30 (a storage manifest no schema matches); v5 2026-11-03 (typed-over password-map entries count as retargets); v6 2026-11-06 (declared map keys rotate like scalar secrets)
+- **Revisions:** v1 2026-10-24 (initial); v2 2026-10-24 (fail-closed: exempt known-safe fields rather than enumerate endpoint fields); v3 2026-10-30 (ingestion pipeline sources); v4 2026-10-30 (a storage manifest no schema matches); v5 2026-11-03 (typed-over password-map entries count as retargets); v6 2026-11-06 (declared map keys rotate like scalar secrets); v7 2026-11-18 (restore and soft delete re-store a storage manifest no schema matches)
 - **Deciders:** backend security
 - **Guard:** `ConnectionSecretsGuardTest`; `IngestionPipelineBuilderTest`; `IngestionPipelineResourceIT.test_dbtTokenMustBeReenteredWhenTheSourceMoves`, `IngestionPipelineResourceIT.test_storageManifestMatchingNoSourceSchemaIsRefused`
 - **Related:** open-metadata/openmetadata-collate#7797, open-metadata/OpenMetadata#36016
@@ -93,3 +93,17 @@ password fields, not map entries, so a typed value at one is a re-entered secret
 accepted: rotating `sasl.oauthbearer.client.secret` no longer asks for the connection's other
 secrets. Entries the schema does not declare keep the v5 rule. Pinned by
 `ConnectionSecretsGuardTest.rotatingADeclaredSecretInsideTheConfigMapKeepsTheOthersMasked`.
+
+## Amendment (v7, 2026-11-18)
+
+Restore and soft delete write a pipeline back as it is stored. That is a re-store, not a write, so
+for a storage manifest source no schema matches (v4):
+- **Re-stored unchanged** (restore, soft delete): the pipeline is converted as it is read back, so
+  such a source is dropped and has to be entered again; the rest of the pipeline is restored or
+  soft-deleted. Failing these with 400 left the pipeline with no way back except a hard delete.
+- **Written** by a user (PUT, PATCH, create) stays refused with 400, whether or not the write
+  changes `sourceConfig`: the masker converts it strictly before the update runs.
+
+Pinned by `IngestionPipelineBuilderTest.aStoredManifestMatchingNoSourceSchemaIsRewrittenWithoutItsCredentials`,
+`IngestionPipelineBuilderTest.aChangedManifestMatchingNoSourceSchemaIsStillRefusedWhenRewritten` and
+`IngestionPipelineBuilderTest.aStoredManifestMatchingNoSourceSchemaIsStillRefusedWhenAUserWritesItUnchanged`.

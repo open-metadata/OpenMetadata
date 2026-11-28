@@ -108,6 +108,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.TimezoneUtil;
@@ -1524,7 +1525,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     public IngestionPipelineUpdater(
         IngestionPipeline original, IngestionPipeline updated, Operation operation) {
-      super(buildIngestionPipelineDecrypted(original), updated, operation);
+      super(buildIngestionPipelineDecrypted(original), rewriteOf(original, updated), operation);
     }
 
     @Override
@@ -1675,6 +1676,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         recordChange("enabled", origEnabled, updatedEnabled);
       }
     }
+  }
+
+  private static IngestionPipeline rewriteOf(IngestionPipeline stored, IngestionPipeline updated) {
+    IngestionPipelineBuilder.addDefinedConfigForRewrite(stored, updated);
+    return updated;
   }
 
   protected static IngestionPipeline buildIngestionPipelineDecrypted(IngestionPipeline original) {
