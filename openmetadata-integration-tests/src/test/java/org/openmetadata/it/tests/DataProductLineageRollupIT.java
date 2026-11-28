@@ -216,6 +216,109 @@ public class DataProductLineageRollupIT {
     assertEquals(1, assetEdges(dp1, dp2));
   }
 
+  /** A PATCH that moves an asset under a drawn edge counts it there and keeps the drawn details. */
+  @Test
+  void aPatchCountsAssetEdgesOnADrawnEdgeAndKeepsIt(TestNamespace ns) {
+    Domain d1 = domain(ns, "d1");
+    Domain d2 = domain(ns, "d2");
+    DataProduct dp1 = dataProduct(ns, "dp1", d1);
+    DataProduct dp2 = dataProduct(ns, "dp2", d2);
+    DataProduct dp4 = dataProduct(ns, "dp4", d2);
+    Metric m1 = metric(ns, "m1", d1, dp1);
+    Metric m2 = metric(ns, "m2", d2, dp2);
+    putEdge(m1, m2);
+    putEdge(dp1, dp4, new LineageDetails().withDescription("drawn by an admin"));
+    LineageDetails drawn = edge(dp1, dp4);
+
+    client().metrics().patch(m2.getId(), set("/dataProducts", refs(dp4)));
+
+    LineageDetails counted = edge(dp1, dp4);
+    assertEquals(1, counted.getAssetEdges(), "m1 -> m2 now connects dp1 and dp4");
+    assertEquals(drawn.getSource(), counted.getSource());
+    assertEquals(drawn.getDescription(), counted.getDescription());
+    assertEquals(drawn.getCreatedAt(), counted.getCreatedAt());
+    assertEdgeAbsent(dp1, dp2);
+
+    client().metrics().patch(m2.getId(), set("/dataProducts", refs(dp2)));
+
+    LineageDetails released = edge(dp1, dp4);
+    assertNull(released.getAssetEdges(), "no asset edge connects dp1 and dp4 any more");
+    assertEquals(drawn.getDescription(), released.getDescription(), "the drawn edge stays");
+    assertEquals(1, assetEdges(dp1, dp2));
+  }
+
+  /** Deleting the last asset edge under a drawn edge releases its count and keeps the edge. */
+  @Test
+  void deletingTheLastAssetEdgeKeepsADrawnEdge(TestNamespace ns) throws Exception {
+    Domain d1 = domain(ns, "d1");
+    Domain d2 = domain(ns, "d2");
+    DataProduct dp1 = dataProduct(ns, "dp1", d1);
+    DataProduct dp2 = dataProduct(ns, "dp2", d2);
+    Metric m1 = metric(ns, "m1", d1, dp1);
+    Metric m2 = metric(ns, "m2", d2, dp2);
+    putEdge(m1, m2);
+    putEdge(dp1, dp2, new LineageDetails().withDescription("drawn by an admin"));
+    assertEquals(1, assetEdges(dp1, dp2), "the drawn edge carries the asset edge under it");
+
+    client()
+        .lineage()
+        .deleteLineage(Entity.METRIC + ":" + m1.getId(), Entity.METRIC + ":" + m2.getId());
+
+    LineageDetails kept = edge(dp1, dp2);
+    assertNull(kept.getAssetEdges());
+    assertEquals("drawn by an admin", kept.getDescription(), "the drawn edge stays");
+  }
+
+  /** Moving a product to another domain detaches its assets' other products and releases them. */
+  @Test
+  void aDataProductDomainMoveReleasesTheDetachedProductsEdge(TestNamespace ns) {
+    Domain d1 = domain(ns, "d1");
+    Domain d2 = domain(ns, "d2");
+    Domain d3 = domain(ns, "d3");
+    DataProduct moved = dataProduct(ns, "moved", d1);
+    DataProduct detached = dataProduct(ns, "detached", d1);
+    DataProduct dp2 = dataProduct(ns, "dp2", d2);
+    Metric m1 = metric(ns, "m1", d1, moved, detached);
+    Metric m2 = metric(ns, "m2", d2, dp2);
+    putEdge(m1, m2);
+    putEdge(detached, dp2, new LineageDetails().withDescription("drawn by an admin"));
+    assertEquals(1, assetEdges(detached, dp2), "the drawn edge carries the asset edge under it");
+
+    ArrayNode domains = MAPPER.createArrayNode();
+    domains.addObject().put("id", d3.getId().toString()).put("type", Entity.DOMAIN);
+    client().dataProducts().patch(moved.getId(), set("/domains", domains));
+
+    LineageDetails released = edge(detached, dp2);
+    assertNull(released.getAssetEdges(), "m1 no longer holds the detached product");
+    assertEquals("drawn by an admin", released.getDescription(), "the drawn edge stays");
+    assertEquals(1, assetEdges(moved, dp2), "m1 keeps the product that moved");
+  }
+
+  /** An override run deletes its lineage by source and adds it back: the edge counts once. */
+  @Test
+  void anOverrideRunCountsItsEdgeOnce(TestNamespace ns) throws Exception {
+    Domain d1 = domain(ns, "d1");
+    Domain d2 = domain(ns, "d2");
+    DataProduct dp1 = dataProduct(ns, "dp1", d1);
+    DataProduct dp2 = dataProduct(ns, "dp2", d2);
+    Metric m1 = metric(ns, "m1", d1, dp1);
+    Metric m2 = metric(ns, "m2", d2, dp2);
+    LineageDetails dbt = new LineageDetails().withSource(LineageDetails.Source.DBT_LINEAGE);
+    putEdge(m1, m2, dbt);
+    assertEquals(1, assetEdges(dp1, dp2));
+
+    client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/lineage/" + Entity.METRIC + "/" + m2.getId() + "/type/" + dbt.getSource().value(),
+            null);
+
+    assertEdgeAbsent(dp1, dp2);
+    putEdge(m1, m2, new LineageDetails().withSource(LineageDetails.Source.DBT_LINEAGE));
+    assertEquals(1, assetEdges(dp1, dp2), "the edge added back is counted once");
+  }
+
   private static Domain domain(TestNamespace ns, String name) {
     return ns.trackRoot(
         Entity.DOMAIN,
@@ -257,7 +360,8 @@ public class DataProductLineageRollupIT {
         .withDataProducts(fqns(products));
   }
 
-  private static Metric metric(TestNamespace ns, String name, Domain domain, DataProduct product) {
+  private static Metric metric(
+      TestNamespace ns, String name, Domain domain, DataProduct... products) {
     return ns.trackRoot(
         Entity.METRIC,
         client()
@@ -267,7 +371,7 @@ public class DataProductLineageRollupIT {
                     .withName(ns.prefix(name))
                     .withDescription("Data product lineage")
                     .withDomains(List.of(domain.getFullyQualifiedName()))
-                    .withDataProducts(List.of(product.getFullyQualifiedName()))));
+                    .withDataProducts(fqns(products))));
   }
 
   private static void importMetrics(String... rows) throws Exception {

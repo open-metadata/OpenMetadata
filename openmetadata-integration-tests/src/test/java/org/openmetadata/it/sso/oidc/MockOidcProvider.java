@@ -53,6 +53,7 @@ public final class MockOidcProvider implements AutoCloseable {
 
   private final MockHttp.LoopbackServer server;
   private final OidcProviderProfile profile;
+  private final boolean publicClient;
   private final String baseUrl;
   private final String issuer;
   private final MockOidcKeys keys = new MockOidcKeys();
@@ -65,13 +66,16 @@ public final class MockOidcProvider implements AutoCloseable {
   private final AtomicReference<MockResponseGate> nextJwksGate = new AtomicReference<>();
   private final AtomicReference<String> nextAuthorizationError = new AtomicReference<>();
 
-  private MockOidcProvider(MockHttp.LoopbackServer server, OidcProviderProfile profile) {
+  private MockOidcProvider(
+      MockHttp.LoopbackServer server, OidcProviderProfile profile, boolean publicClient) {
     this.server = server;
     this.profile = profile;
+    this.publicClient = publicClient;
     this.baseUrl = server.localhostUrl();
     this.issuer = profile.discoveryIssuer(baseUrl);
-    this.tokens = new MockOidcTokens(profile.tokenIssuer(baseUrl), CLIENT_ID, keys, profile);
-    this.tokenEndpoint = new MockOidcTokenEndpoint(tokens, journal, CLIENT_ID, CLIENT_SECRET);
+    this.tokens = new MockOidcTokens(profile.tokenIssuer(baseUrl), clientId(), keys, profile);
+    this.tokenEndpoint =
+        new MockOidcTokenEndpoint(tokens, journal, clientId(), publicClient ? null : CLIENT_SECRET);
   }
 
   public static MockOidcProvider start() {
@@ -80,9 +84,22 @@ public final class MockOidcProvider implements AutoCloseable {
 
   /** A provider that shapes its issuer and claims the way {@code profile}'s real one does. */
   public static MockOidcProvider start(OidcProviderProfile profile) {
-    MockOidcProvider provider = new MockOidcProvider(MockHttp.bindLoopbackServer(), profile);
+    return start(profile, false);
+  }
+
+  public static MockOidcProvider startPublicClient() {
+    return start(OidcProviderProfile.CUSTOM, true);
+  }
+
+  private static MockOidcProvider start(OidcProviderProfile profile, boolean publicClient) {
+    MockOidcProvider provider =
+        new MockOidcProvider(MockHttp.bindLoopbackServer(), profile, publicClient);
     provider.server.start(provider.routes());
     return provider;
+  }
+
+  public String clientId() {
+    return publicClient ? "om-sso-it-public-client" : CLIENT_ID;
   }
 
   public OidcProviderProfile profile() {
@@ -128,6 +145,11 @@ public final class MockOidcProvider implements AutoCloseable {
   /** The next ID token issued (at login, refresh or {@link #issueIdToken}) carries {@code defect}. */
   public void defectNextIdToken(IdTokenDefect defect) {
     tokens.defectNextIdToken(defect);
+  }
+
+  /** Models a provider registration which permits redemption only from a browser. */
+  public void registerRedirectForBrowserOnly() {
+    tokenEndpoint.registerRedirectForBrowserOnly();
   }
 
   public void answerRefreshesWith(RefreshOutcome outcome) {
@@ -245,6 +267,12 @@ public final class MockOidcProvider implements AutoCloseable {
     if (refusal != null) {
       return Map.of(ERROR, refusal);
     }
+    if (publicClient
+        && (!clientId().equals(query.get(MockOidcProtocol.CLIENT_ID))
+            || !"S256".equals(query.get("code_challenge_method"))
+            || query.getOrDefault(CODE_CHALLENGE, "").isBlank())) {
+      return Map.of(ERROR, "invalid_request");
+    }
     MockOidcIdentity user = signedInUser.get();
     return user == null ? Map.of(ERROR, LOGIN_REQUIRED) : Map.of(CODE, issueCode(user, query));
   }
@@ -285,9 +313,11 @@ public final class MockOidcProvider implements AutoCloseable {
         List.of("code", "id_token", "code id_token"),
         List.of("public"),
         List.of("RS256"),
-        List.of(CLIENT_SECRET_BASIC, CLIENT_SECRET_POST),
+        publicClient ? List.of("none") : List.of(CLIENT_SECRET_BASIC, CLIENT_SECRET_POST),
         List.of("S256"),
-        List.of(GRANT_AUTHORIZATION_CODE, GRANT_REFRESH_TOKEN, GRANT_CLIENT_CREDENTIALS),
+        publicClient
+            ? List.of(GRANT_AUTHORIZATION_CODE)
+            : List.of(GRANT_AUTHORIZATION_CODE, GRANT_REFRESH_TOKEN, GRANT_CLIENT_CREDENTIALS),
         mode.isAdvertised() ? Boolean.TRUE : null);
   }
 }

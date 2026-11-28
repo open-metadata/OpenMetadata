@@ -13,46 +13,116 @@
 
 package org.openmetadata.service.tasks;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
+@Slf4j
 public final class TaskAssigneeCleanup {
+  private static final String TASK_CLEANUP_FIELDS = "assignees,about,createdBy,reviewers,watchers";
+  private static final Set<String> ASSIGNEE_PATCH_FIELDS = Set.of(TaskRepository.FIELD_ASSIGNEES);
+
   private TaskAssigneeCleanup() {}
 
-  public static void removeAssignee(UUID entityId, String entityType) {
-    TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    List<EntityReference> taskReferences =
+  public static void removeAssignee(final UUID entityId, final String entityType) {
+    final TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    removeAssignee(repository, entityId, entityType);
+  }
+
+  static void removeAssignee(
+      final TaskRepository repository, final UUID entityId, final String entityType) {
+    final List<EntityReference> taskReferences =
         repository.findTo(entityId, entityType, Relationship.ASSIGNED_TO, Entity.TASK, Include.ALL);
-    Fields fields = repository.getFields("assignees,about,createdBy,reviewers,watchers");
-    for (EntityReference taskReference : taskReferences) {
-      if (Boolean.TRUE.equals(taskReference.getDeleted())) {
-        continue;
+    final Fields fields = repository.getFields(TASK_CLEANUP_FIELDS);
+    for (final EntityReference taskReference : taskReferences) {
+      // A soft-deleted task stays deleted. Its ASSIGNED_TO edge goes with the rest of the deleted
+      // entity's relationships once the hard delete finishes.
+      if (!Boolean.TRUE.equals(taskReference.getDeleted())) {
+        removeFromLiveTask(repository, taskReference.getId(), fields, entityId, entityType);
       }
-      removeAssignee(
-          repository, repository.get(null, taskReference.getId(), fields), entityId, entityType);
     }
   }
 
-  private static void removeAssignee(
-      TaskRepository repository, Task task, UUID entityId, String entityType) {
-    List<EntityReference> assignees = task.getAssignees();
-    boolean changed =
-        assignees != null
-            && assignees.removeIf(
-                reference ->
-                    reference.getId().equals(entityId) && reference.getType().equals(entityType));
-    if (changed) {
-      assignees.sort(EntityUtil.compareEntityReference);
-      task.setAssignees(assignees);
-      repository.createOrUpdate(null, task, Entity.ADMIN_USER_NAME);
+  private static void removeFromLiveTask(
+      final TaskRepository repository,
+      final UUID taskId,
+      final Fields fields,
+      final UUID entityId,
+      final String entityType) {
+    final boolean live =
+        repository.executeInTransaction(
+            () -> removeFromLockedTask(repository, taskId, fields, entityId, entityType));
+    if (!live) {
+      LOG.debug(
+          "Task {} was deleted before assignee cleanup of {} {}", taskId, entityType, entityId);
     }
+  }
+
+  /**
+   * Reads, changes and writes the task under its row lock. The task is built from the locked row,
+   * not from an earlier read, so a concurrent edit that committed in between is kept instead of
+   * overwritten. A soft delete that commits first leaves no live row to lock, and one that comes
+   * later waits for this write, so the task never goes back from deleted to live.
+   */
+  private static boolean removeFromLockedTask(
+      final TaskRepository repository,
+      final UUID taskId,
+      final Fields fields,
+      final UUID entityId,
+      final String entityType) {
+    final String lockedJson =
+        repository.getDao().findJsonByIdForUpdate(taskId, Include.NON_DELETED);
+    if (lockedJson == null) {
+      return false;
+    }
+    final Task original = repository.getDao().jsonToEntity(lockedJson, taskId);
+    repository.setFieldsInternal(original, fields);
+    final List<EntityReference> remaining =
+        withoutAssignee(original.getAssignees(), entityId, entityType);
+    if (remaining.size() != listOrEmpty(original.getAssignees()).size()) {
+      final Task updated = JsonUtils.deepCopy(original, Task.class);
+      updated.setAssignees(remaining);
+      handOverToOwnersIfUnassigned(repository, updated, entityId, entityType);
+      repository.update(
+          null, original, updated, Entity.ADMIN_USER_NAME, null, ASSIGNEE_PATCH_FIELDS);
+    }
+    return true;
+  }
+
+  /**
+   * An open task that loses its last assignee goes to the owners of the asset it is about, by the
+   * rule a task gets at creation, and never back to the entity being deleted
+   * (ADR:2026-11-27-hard-deleting-an-assignee-hands-an-unassigned-task-to-the-assets-owners).
+   */
+  private static void handOverToOwnersIfUnassigned(
+      final TaskRepository repository,
+      final Task task,
+      final UUID entityId,
+      final String entityType) {
+    if (task.getAssignees().isEmpty() && !TaskRepository.isTerminalStatus(task.getStatus())) {
+      repository.setDefaultAssigneesFromEntityOwners(task);
+      task.setAssignees(withoutAssignee(task.getAssignees(), entityId, entityType));
+    }
+  }
+
+  private static List<EntityReference> withoutAssignee(
+      final List<EntityReference> assignees, final UUID entityId, final String entityType) {
+    final List<EntityReference> remaining = new ArrayList<>(listOrEmpty(assignees));
+    remaining.removeIf(ref -> entityId.equals(ref.getId()) && entityType.equals(ref.getType()));
+    remaining.sort(EntityUtil.compareEntityReference);
+    return remaining;
   }
 }

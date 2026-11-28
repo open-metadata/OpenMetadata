@@ -22,10 +22,11 @@ class PinotProfilerSource(ProfilerSource):
         """Make a copy of the service config and update the database name
 
         Args:
-            database (_type_): a database entity
+            config (OpenMetadataWorkflowConfig): the workflow config
+            database (Database): a database entity
 
         Returns:
-            DatabaseService.__config__
+            pinotDBConnection.PinotDBConnection
         """
         service_config: pinotDBConnection.PinotDBConnection = super()._copy_service_config(config, database)
         conn_args = service_config.connectionArguments

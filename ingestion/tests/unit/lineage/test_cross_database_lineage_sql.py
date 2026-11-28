@@ -211,6 +211,83 @@ class CrossDatabaseLineageSQLTest(TestCase):
                 table="test_table",
             )
 
+    @staticmethod
+    def _search_only_matching(matches):
+        """search_table_entities stub: only the database-wildcard lookup (database=None) finds `matches`."""
+
+        def search(metadata, service_names, database, database_schema, table):
+            return matches if database is None else None
+
+        return search
+
+    def test_cross_database_fallback_resolves_table_under_another_database(self):
+        """A view's `schema.table` resolves when another service ingested it under a different database"""
+        with patch("metadata.ingestion.lineage.sql_lineage.search_table_entities") as mock_search:
+            mock_search.side_effect = self._search_only_matching([self.mock_table2])
+
+            result = get_table_entities_from_query(
+                metadata=self.mock_metadata,
+                service_names=["views_service", "tables_service"],
+                database_name="views_catalog",
+                database_schema="schema2",
+                table_name="schema2.test_table",
+            )
+
+            self.assertEqual(result, [self.mock_table2])
+            wildcard_calls = [c for c in mock_search.call_args_list if c.kwargs["database"] is None]
+            self.assertEqual(len(wildcard_calls), 1)
+            # Only the cross-database services are wildcarded, never the current one
+            self.assertEqual(wildcard_calls[0].kwargs["service_names"], ["tables_service"])
+            self.assertEqual(wildcard_calls[0].kwargs["database_schema"], "schema2")
+
+    def test_cross_database_fallback_never_overrides_a_database_the_query_names(self):
+        """`db.schema.table` keeps the named database: no wildcard lookup"""
+        with patch("metadata.ingestion.lineage.sql_lineage.search_table_entities") as mock_search:
+            mock_search.side_effect = self._search_only_matching([self.mock_table2])
+
+            result = get_table_entities_from_query(
+                metadata=self.mock_metadata,
+                service_names=["views_service", "tables_service"],
+                database_name="views_catalog",
+                database_schema="schema2",
+                table_name="scratch.schema2.test_table",
+            )
+
+            self.assertIsNone(result)
+            self.assertFalse([c for c in mock_search.call_args_list if c.kwargs["database"] is None])
+
+    def test_cross_database_fallback_is_off_without_cross_database_services(self):
+        """With only the current service (cross-database lineage off), no wildcard lookup"""
+        with patch("metadata.ingestion.lineage.sql_lineage.search_table_entities") as mock_search:
+            mock_search.side_effect = self._search_only_matching([self.mock_table2])
+
+            for service_names in ("views_service", ["views_service"]):
+                result = get_table_entities_from_query(
+                    metadata=self.mock_metadata,
+                    service_names=service_names,
+                    database_name="views_catalog",
+                    database_schema="schema2",
+                    table_name="test_table",
+                    schema_fallback=True,
+                )
+                self.assertIsNone(result)
+            self.assertFalse([c for c in mock_search.call_args_list if c.kwargs["database"] is None])
+
+    def test_cross_database_fallback_leaves_ambiguous_matches_unresolved(self):
+        """Two tables with the same schema and name under different databases are not linked"""
+        with patch("metadata.ingestion.lineage.sql_lineage.search_table_entities") as mock_search:
+            mock_search.side_effect = self._search_only_matching([self.mock_table1, self.mock_table2])
+
+            result = get_table_entities_from_query(
+                metadata=self.mock_metadata,
+                service_names=["views_service", "tables_service"],
+                database_name="views_catalog",
+                database_schema="schema2",
+                table_name="test_table",
+            )
+
+            self.assertIsNone(result)
+
     def test_get_lineage_by_query_single_service(self):
         """Test get_lineage_by_query with single service (backward compatibility)"""
         # Mock the lineage parser and other dependencies

@@ -849,7 +849,7 @@ def test_get_users_stops_on_an_empty_page():
 
 
 def test_documents_response_accepts_object_shaped_labels():
-    """The documents API reports labels as objects. Typing them as plain strings
+    """The documents API can report labels as objects. Typing them as plain strings
     made one labelled document invalidate its whole page, and `get_documents`
     turns a page failure into an empty list -- dropping every dashboard."""
     from metadata.ingestion.source.dashboard.omni.models import DocumentsResponse
@@ -870,6 +870,32 @@ def test_documents_response_accepts_object_shaped_labels():
     assert [d.identifier for d in response.records] == ["a", "b"]
     assert response.records[0].label_names == []
     assert response.records[1].label_names == ["Company North Star", "Executive"]
+
+
+def test_documents_response_accepts_string_labels():
+    """Some instances report labels as bare names, alone or mixed with objects."""
+    from metadata.ingestion.source.dashboard.omni.models import DocumentsResponse
+
+    page = {
+        "records": [
+            {"identifier": "a", "name": "Funnel", "hasDashboard": True, "labels": ["Finance"]},
+            {"identifier": "b", "name": "Sales", "hasDashboard": True, "labels": ["Sales", {"name": "Executive"}]},
+            {"identifier": "c", "name": "Unlabelled", "hasDashboard": True, "labels": None},
+        ],
+        "pageInfo": {"hasNextPage": False},
+    }
+    response = DocumentsResponse.model_validate(page)
+    assert [d.label_names for d in response.records] == [["Finance"], ["Sales", "Executive"], []]
+
+
+def test_document_rejects_labels_that_are_not_a_list():
+    """A bare string is neither one label nor a list of its characters."""
+    from pydantic import ValidationError
+
+    from metadata.ingestion.source.dashboard.omni.models import OmniDocument
+
+    with pytest.raises(ValidationError):
+        OmniDocument.model_validate({"identifier": "demo", "labels": "ops"})
 
 
 def test_yield_tags_emits_document_labels(omni_source):

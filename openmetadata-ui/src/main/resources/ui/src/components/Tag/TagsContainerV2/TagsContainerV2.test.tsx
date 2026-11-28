@@ -146,6 +146,29 @@ const piiSensitiveTag: EntityTags = {
   appliedAt: new Date(APPLIED_AT_ISO),
 };
 
+const tierTag: EntityTags = {
+  tagFQN: TIER_GOLD_FQN,
+  source: TagSource.Classification,
+  labelType: LabelType.Manual,
+  state: State.Confirmed,
+};
+
+const certificationTag: EntityTags = {
+  tagFQN: 'Certification.Gold',
+  source: TagSource.Classification,
+  labelType: LabelType.Manual,
+  state: State.Confirmed,
+};
+
+const mrrTerm: EntityTags = {
+  tagFQN: 'Finance.MRR',
+  source: TagSource.Glossary,
+  labelType: LabelType.Automated,
+  state: State.Suggested,
+  appliedBy: 'bot-glossary',
+  appliedAt: new Date(APPLIED_AT_ISO),
+};
+
 const renderTagsContainer = (props: {
   selectedTags: EntityTags[];
   onSelectionChange: jest.Mock;
@@ -380,6 +403,27 @@ describe('TagsContainerV2 handleClassificationTagsChange', () => {
     expect(added?.appliedBy).toBeUndefined();
     expect(added?.appliedAt).toBeUndefined();
   });
+
+  it('keeps the hidden Tier and Certification tags and the glossary terms when tags are saved', async () => {
+    const onSelectionChange = jest.fn().mockResolvedValue(undefined);
+    renderTagsContainer({
+      selectedTags: [personalDataTag, tierTag, certificationTag, mrrTerm],
+      onSelectionChange,
+    });
+
+    expect(capturedClassificationProps?.value).toEqual([personalDataTag]);
+
+    await act(async () => {
+      await emitClassificationChange([piiSensitiveTag]);
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith([
+      expect.objectContaining({ tagFQN: PII_SENSITIVE_FQN }),
+      tierTag,
+      certificationTag,
+      mrrTerm,
+    ]);
+  });
 });
 
 describe('TagsContainerV2 click propagation', () => {
@@ -508,17 +552,8 @@ describe('TagsContainerV2 click propagation', () => {
   });
 });
 
-const GLOSSARY_MRR_FQN = 'Finance.MRR';
+const GLOSSARY_MRR_FQN = mrrTerm.tagFQN;
 const GLOSSARY_ARR_FQN = 'Finance.ARR';
-
-const mrrTerm: EntityTags = {
-  tagFQN: GLOSSARY_MRR_FQN,
-  source: TagSource.Glossary,
-  labelType: LabelType.Automated,
-  state: State.Suggested,
-  appliedBy: 'bot-glossary',
-  appliedAt: new Date(APPLIED_AT_ISO),
-};
 
 // A term freshly picked from the glossary listing: no server-managed fields.
 const arrTerm = {
@@ -629,6 +664,45 @@ describe('TagsContainerV2 glossary picker', () => {
         labelType: LabelType.Manual,
         state: State.Confirmed,
       }),
+      piiSensitiveTag,
+    ]);
+  });
+
+  it('keeps the hidden Tier tag when glossary terms are saved', async () => {
+    const onSelectionChange = jest.fn().mockResolvedValue(undefined);
+    renderGlossaryContainer({
+      selectedTags: [mrrTerm, tierTag, piiSensitiveTag],
+      onSelectionChange,
+    });
+
+    await act(async () => {
+      await emitGlossaryChange([arrTerm]);
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith([
+      expect.objectContaining({ tagFQN: GLOSSARY_ARR_FQN }),
+      tierTag,
+      piiSensitiveTag,
+    ]);
+  });
+
+  it('keeps a classification tag that shares its FQN with a removed glossary term', async () => {
+    const sameFqnTerm: EntityTags = {
+      ...piiSensitiveTag,
+      source: TagSource.Glossary,
+    };
+    const onSelectionChange = jest.fn().mockResolvedValue(undefined);
+    renderGlossaryContainer({
+      selectedTags: [sameFqnTerm, piiSensitiveTag],
+      onSelectionChange,
+    });
+
+    await act(async () => {
+      await emitGlossaryChange([arrTerm]);
+    });
+
+    expect(onSelectionChange).toHaveBeenCalledWith([
+      expect.objectContaining({ tagFQN: GLOSSARY_ARR_FQN }),
       piiSensitiveTag,
     ]);
   });

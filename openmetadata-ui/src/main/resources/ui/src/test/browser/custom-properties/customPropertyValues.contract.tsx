@@ -163,9 +163,6 @@ export const describeCustomPropertyValues = (
         http.get('/api/v1/lineage/getPaginationInfo', () =>
           HttpResponse.json({ upstreamDepthInfo: [], downstreamDepthInfo: [] })
         ),
-        http.get('/api/v1/dataQuality/testCases', () =>
-          HttpResponse.json(EMPTY_LIST)
-        ),
         http.get('/api/v1/dataQuality/testCases/testCaseIncidentStatus', () =>
           HttpResponse.json(EMPTY_LIST)
         )

@@ -12,18 +12,26 @@
  */
 
 import { ComponentType, FC, ReactElement, ReactNode } from 'react';
+import type { PagingHandlerParams } from '../components/common/NextPrevious/NextPrevious.interface';
 import {
   TaskDetailDescriptor,
   TaskStatTilesProps,
 } from '../components/discovery/personal-space/InboxPage/taskDetail.types';
 import type { ProfileHeaderOverride } from '../components/discovery/personal-space/Profile/profileNavConfig';
+import type {
+  Agent,
+  AgentRun,
+} from '../components/ServiceAgents/AgentsPage.interface';
 import { PluginRouteProps } from '../components/Settings/Applications/plugins/AppPlugin';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../enums/service.enum';
+import type { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Task } from '../generated/entity/tasks/task';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
+import type { UsePagingInterface } from '../hooks/paging/usePaging';
 import { ServicesType } from '../interface/service.interface';
+import type { CollateAgentAutomation } from '../rest/applicationAPI';
 
 /**
  * Extension Point Type Definitions
@@ -361,6 +369,59 @@ export interface TestConnectionActionProps {
 export interface TestConnectionActionContribution {
   key: string;
   component: ComponentType<TestConnectionActionProps>;
+}
+
+/** The AutoPilot trigger with the live state that disables it while a run is in flight. */
+export interface AutoPilotAction {
+  onTrigger: () => Promise<void>;
+  isLoading: boolean;
+  isDisabled: boolean;
+  disabledMessage?: string;
+}
+
+/**
+ * Props for a `SERVICE_DETAILS_AI_AGENTS_WIDGET` contribution. The page owns the AI automations
+ * list (and its refresh) so the Agents tab badge and the Insights tab read the same one.
+ */
+export interface AiAgentsWidgetProps {
+  serviceCategory: ServiceCategory;
+  serviceDetails: ServicesType;
+  collateAgentsList: CollateAgentAutomation[];
+  collateAgentPagingInfo: UsePagingInterface;
+  isCollateAgentLoading: boolean;
+  autoPilotAction: AutoPilotAction;
+  onCollateAgentPageChange: (params: PagingHandlerParams) => void;
+  onRefresh: () => void;
+}
+
+export interface AiAgentsWidgetContribution {
+  key: string;
+  component: ComponentType<AiAgentsWidgetProps>;
+}
+
+/** Props for a `SERVICE_DETAILS_ADD_AGENT_ACTION` contribution. */
+export interface AddAgentActionProps {
+  serviceCategory: ServiceCategory;
+  serviceDetails: ServicesType;
+  serviceName: string;
+  ingestionList: IngestionPipeline[];
+}
+
+export interface AddAgentActionContribution {
+  key: string;
+  component: ComponentType<AddAgentActionProps>;
+}
+
+/** Props for a `SERVICE_DETAILS_AGENT_RUN_ACTIONS` contribution: a failed or partial run. */
+export interface AgentRunActionProps {
+  agent: Agent;
+  run: AgentRun;
+  onClose: () => void;
+}
+
+export interface AgentRunActionContribution {
+  key: string;
+  component: ComponentType<AgentRunActionProps>;
 }
 
 /**
