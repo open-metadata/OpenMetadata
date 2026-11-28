@@ -291,8 +291,8 @@ snyk-report:  ## Uses Snyk CLI to run a security scan of the different pieces of
 export-snyk-pdf-report:  ## export json file from security-report/ to HTML
 	@echo "Reading all results"
 	npm install snyk-to-html -g
-	ls security-report | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
-	pip install pdfkit
+	ls security-report | grep -E '^[^_].*\.json$$' | xargs -I % snyk-to-html -i security-report/% -o security-report/%.html
+	pip install weasyprint
 	pip install PyPDF2
 	python scripts/html_to_pdf.py
 

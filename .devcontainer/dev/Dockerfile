@@ -22,7 +22,6 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
         libssl-dev \
         libffi-dev \
         libevent-dev \
-        wkhtmltopdf \
         libkrb5-dev \
         jq \
     && apt-get clean \
