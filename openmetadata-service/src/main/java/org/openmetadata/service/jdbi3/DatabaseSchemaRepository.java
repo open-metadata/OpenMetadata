@@ -172,6 +172,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void setFields(DatabaseSchema schema, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(schema);
+    schema.withDatabase(currentReference(schema.getDatabase()));
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)

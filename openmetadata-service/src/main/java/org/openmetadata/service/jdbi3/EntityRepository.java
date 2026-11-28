@@ -7134,6 +7134,50 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return Collections.emptyList();
   }
 
+  /**
+   * A parent reference kept in a child's stored JSON carries the parent's name, displayName and
+   * description from when the child was last written. Re-read it so a parent renamed since then
+   * shows its current labels; a parent that is gone keeps its stored copy
+   * (ADR:2026-11-27-stored-parent-references-are-resolved-on-read).
+   */
+  protected static EntityReference currentReference(EntityReference storedReference) {
+    EntityReference current = storedReference;
+    if (storedReference != null && storedReference.getId() != null) {
+      try {
+        current =
+            Entity.getEntityReferenceById(storedReference.getType(), storedReference.getId(), ALL);
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Stored parent reference not found, keeping stored copy: {}", e.getMessage());
+      }
+    }
+    return current;
+  }
+
+  /** Bulk form of {@link #currentReference}: one query for the parents of a page of entities. */
+  protected static <E> void refreshStoredReferences(
+      List<E> entities,
+      String parentType,
+      Function<E, EntityReference> getter,
+      BiConsumer<E, EntityReference> setter) {
+    List<UUID> parentIds =
+        entities.stream()
+            .map(getter)
+            .filter(ref -> ref != null && ref.getId() != null)
+            .map(EntityReference::getId)
+            .distinct()
+            .toList();
+    Map<UUID, EntityReference> currentById = new HashMap<>();
+    Entity.getEntityReferencesByIds(parentType, parentIds, ALL)
+        .forEach(ref -> currentById.put(ref.getId(), ref));
+    entities.forEach(
+        entity -> {
+          EntityReference stored = getter.apply(entity);
+          if (stored != null && stored.getId() != null) {
+            setter.accept(entity, currentById.getOrDefault(stored.getId(), stored));
+          }
+        });
+  }
+
   protected ObjectNode storageJsonNode(T entity) {
     ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
     node.remove(FIELDS_STORED_AS_RELATIONSHIPS);
