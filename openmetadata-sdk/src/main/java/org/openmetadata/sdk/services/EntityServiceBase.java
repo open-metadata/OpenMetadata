@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -316,8 +317,16 @@ public abstract class EntityServiceBase<T> {
       // and the user set it to null, the snapshot still has the field but the updated
       // JSON (NON_NULL) omits it, producing a "remove" patch operation.
       JsonNode snapshot = entitySnapshots.get(id);
-      JsonNode originalNode =
-          snapshot == null ? fetchUpdateBaseline(id, entity, updatedNode) : snapshot.deepCopy();
+      JsonNode originalNode;
+      if (snapshot == null) {
+        // No caller snapshot available: fetch current state and constrain the diff to the
+        // fields the caller explicitly submitted, to avoid accidental remove ops for
+        // server-populated fields the caller never touched (e.g. /service, /displayName).
+        originalNode = fetchUpdateBaseline(id, entity, updatedNode);
+        pruneFieldsNotPresentInUpdated(originalNode, updatedNode);
+      } else {
+        originalNode = snapshot.deepCopy();
+      }
       normalizeTagBaseline(entity, originalNode, updatedNode);
 
       // Remove computed/read-only fields that cannot be patched
@@ -401,6 +410,29 @@ public abstract class EntityServiceBase<T> {
 
     T stored = fetchEntity(id, fields.isEmpty() ? null : String.join(",", fields));
     return objectMapper.valueToTree(stored);
+  }
+
+  /**
+   * When update() is called without a prior get(), we don't know caller intent for unloaded
+   * fields. Restricting the diff scope avoids accidental remove ops for unrelated fields. This
+   * mirrors {@link org.openmetadata.sdk.resources.BaseResource#update} and only runs in the
+   * no-snapshot fallback path, so the documented "field cleared after a fetch emits a remove op"
+   * behavior (which relies on a stored snapshot) keeps working.
+   */
+  private void pruneFieldsNotPresentInUpdated(JsonNode originalNode, JsonNode updatedNode) {
+    if (!(originalNode instanceof ObjectNode originalObj) || !updatedNode.isObject()) {
+      return;
+    }
+
+    Iterator<String> names = originalObj.fieldNames();
+    while (names.hasNext()) {
+      String fieldName = names.next();
+      if (!updatedNode.has(fieldName)) {
+        names.remove();
+        continue;
+      }
+      pruneFieldsNotPresentInUpdated(originalObj.get(fieldName), updatedNode.get(fieldName));
+    }
   }
 
   private boolean requiresFetch(T entity, String field, JsonNode value) {
