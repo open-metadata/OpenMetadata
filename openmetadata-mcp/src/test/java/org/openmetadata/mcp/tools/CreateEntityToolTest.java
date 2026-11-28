@@ -287,7 +287,7 @@ class CreateEntityToolTest {
   }
 
   @Test
-  void entityTypesWithDedicatedCreateLifecyclesAreRejectedByBothTools() {
+  void dedicatedCreateLifecyclesStayProtectedWhenOntologySchemasAreDescribed() {
     for (String entityType :
         List.of(
             Entity.USER,
@@ -310,17 +310,23 @@ class CreateEntityToolTest {
               () ->
                   new CreateEntityTool()
                       .execute(null, null, securityContext(), params(entityType)));
-      IllegalArgumentException describeFailure =
-          assertThrows(
-              IllegalArgumentException.class,
-              () ->
-                  new DescribeEntityTypeTool()
-                      .execute(null, null, Map.of("entityType", entityType)));
-
       assertTrue(
           createFailure.getMessage().contains("cannot be created through create_entity"),
           createFailure.getMessage());
-      assertEquals(createFailure.getMessage(), describeFailure.getMessage());
+      if (Entity.ONTOLOGY_CHANGE_SET.equals(entityType)) {
+        final Map<String, Object> schema =
+            new DescribeEntityTypeTool()
+                .execute(null, null, Map.of("entityType", entityType, "schema", "relationship"));
+        assertEquals("create_ontology_change_set", schema.get("createTool"));
+      } else {
+        final IllegalArgumentException describeFailure =
+            assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    new DescribeEntityTypeTool()
+                        .execute(null, null, Map.of("entityType", entityType)));
+        assertEquals(createFailure.getMessage(), describeFailure.getMessage());
+      }
     }
   }
 

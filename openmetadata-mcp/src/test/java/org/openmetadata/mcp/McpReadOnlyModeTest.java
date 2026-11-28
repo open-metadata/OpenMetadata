@@ -35,6 +35,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
@@ -60,6 +62,10 @@ class McpReadOnlyModeTest {
           "patch_entity",
           "create_lineage",
           "create_test_case",
+          "create_term_relation",
+          "create_ontology_change_set",
+          "ontology_change_set_lease",
+          "submit_ontology_change_set",
           "describe_entity_type");
 
   private static final MCPConfiguration READ_ONLY = new MCPConfiguration().withReadOnly(true);
@@ -97,13 +103,21 @@ class McpReadOnlyModeTest {
     assertEquals(tools, exposed(tools, null));
   }
 
-  @Test
-  void aRegisteredWriteToolIsRefusedOnceReadOnlyIsTurnedOn() {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "patch_entity",
+        "create_term_relation",
+        "create_ontology_change_set",
+        "ontology_change_set_lease",
+        "submit_ontology_change_set"
+      })
+  void aRegisteredWriteToolIsRefusedOnceReadOnlyIsTurnedOn(final String toolName) {
     DefaultToolContext toolContext = succeedingToolContext();
 
-    McpSchema.CallToolResult result = callInReadOnlyMode(toolContext, "patch_entity");
+    McpSchema.CallToolResult result = callInReadOnlyMode(toolContext, toolName);
 
-    assertTrue(result.isError(), "patch_entity must not run in read-only mode");
+    assertTrue(result.isError(), toolName + " must not run in read-only mode");
     assertEquals(403, ((Map<?, ?>) result.structuredContent()).get("statusCode"));
     verify(toolContext, never()).callToolWithMetadata(any(), any(), any(), any(), any());
   }
@@ -125,12 +139,21 @@ class McpReadOnlyModeTest {
     assertEquals(tools.size() - 1, exposed.size());
   }
 
-  @Test
-  void aRegisteredDisabledToolIsRefusedOnEveryCall() {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "search_metadata",
+        "create_term_relation",
+        "create_ontology_change_set",
+        "get_ontology_change_set",
+        "ontology_change_set_lease",
+        "submit_ontology_change_set"
+      })
+  void aRegisteredDisabledToolIsRefusedOnEveryCall(final String toolName) {
     DefaultToolContext toolContext = succeedingToolContext();
-    MCPConfiguration config = new MCPConfiguration().withDisabledTools(Set.of("search_metadata"));
+    MCPConfiguration config = new MCPConfiguration().withDisabledTools(Set.of(toolName));
 
-    McpSchema.CallToolResult result = call(toolContext, "search_metadata", config);
+    McpSchema.CallToolResult result = call(toolContext, toolName, config);
 
     assertTrue(result.isError(), "a disabled tool must not run");
     assertEquals(403, ((Map<?, ?>) result.structuredContent()).get("statusCode"));

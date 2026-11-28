@@ -50,7 +50,7 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. This is also how you answer 'show me everything tagged X': a 'term' clause on 'tags.tagFQN' in 'queryFilter' matches every asset carrying that classification tag OR glossary term, since both land in the 'tags' array. To list a metric's variants, set entityType='metric' and use a 'term' clause on 'parent.name' with the parent metric's name, plus fields='metricExpression' to get each variant's SQL in the same call. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed carries no 'testCaseStatus' and is flagged 'neverRun': true, which is distinct from Success/Failed/Aborted and is NOT the same as passing. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information. Before answering a business question, check Context Center Memories (team guidance such as how customers are identified) with entityType='contextMemory', a short keyword query and fields='question,answer,entityStatus'.",
+      "description": "To discover the governed relationship vocabulary, search with entityType='relationshipType' and query='*'; follow nextCursor to continue the catalog. Request fields='rdfPredicate,category,inverse,domain,range,characteristics,cardinality,propertyChain,disjointWith,crossGlossaryAllowed,entityStatus,replacedBy,systemDefined', then use get_entity_details with the returned fullyQualifiedName to read relevant definitions under the caller's permissions before relying on their constraints. This keyword lookup does not require RDF. Search follows the deployment's search access-control settings; discovering a type does not grant permission to use or edit it. Keyword-based search for data assets and data quality entities in OpenMetadata. TWO RULES THAT ARE EASY TO GET SILENTLY WRONG: (1) To read several KNOWN entities at once, use a 'terms' clause on 'fullyQualifiedName' in 'queryFilter' together with 'fields' — that hydrates them all in ONE call instead of one get_entity_details per entity. (2) To find a table's data-quality tests, match on 'originEntityFQN', NOT 'entityFQN'. A column-level test stores the COLUMN's FQN in 'entityFQN', so matching the table FQN silently returns only table-level tests with a clean, wrong total. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. This is also how you answer 'show me everything tagged X': a 'term' clause on 'tags.tagFQN' in 'queryFilter' matches every asset carrying that classification tag OR glossary term, since both land in the 'tags' array. To list a metric's variants, set entityType='metric' and use a 'term' clause on 'parent.name' with the parent metric's name, plus fields='metricExpression' to get each variant's SQL in the same call. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Descriptions are shortened in results and flagged with 'descriptionTruncated': true when cut — call get_entity_details for the full text. A testCase that has never executed carries no 'testCaseStatus' and is flagged 'neverRun': true, which is distinct from Success/Failed/Aborted and is NOT the same as passing. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information. Before answering a business question, check Context Center Memories (team guidance such as how customers are identified) with entityType='contextMemory', a short keyword query and fields='question,answer,entityStatus'.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties. The active persona's search scope is applied automatically; only search beyond it after a scoped miss and with the user's agreement.",
         "type": "object",
@@ -61,7 +61,7 @@
           },
           "entityType": {
             "type": "string",
-            "description": "Filter by entity type (if not set, searches all data assets, including the AI governance types llmModel, mcpServer and aiApplication). Use the singular form. Common data assets: table, dashboard, topic, pipeline, container, chart, metric, mlmodel, searchIndex, storedProcedure, apiEndpoint, apiCollection, dashboardDataModel, spreadsheet, worksheet, file, directory, llmModel, mcpServer, aiApplication. Containers and services: database, databaseSchema, databaseService, dashboardService, messagingService, pipelineService, mlmodelService, storageService, searchService, apiService, metadataService, driveService, securityService. Governance: glossary, glossaryTerm, tag, classification, domain, dataProduct, user, team. Data quality: testCase (includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus': Success/Failed/Aborted once run; a test that has never executed carries no status and is flagged 'neverRun': true). IMPORTANT when finding a table's tests: a COLUMN-level test stores the column's FQN in 'entityFQN' (e.g. '...dim_address.zip'), so an exact term/terms match on the table FQN silently returns only table-level tests and a clean, wrong total. Match on 'originEntityFQN' instead - it rolls up to the tested asset for both table and column tests - or use a wildcard on 'entityFQN'., testSuite, testCaseResult, testCaseResolutionStatus. Also resolvable and under-used: tableColumn (a real per-column index — search column names/descriptions/tags directly instead of paging get_entity_details over a wide table) and page (Knowledge Center articles); both are inside the default 'dataAsset' scope, so entityType='table' and an unfiltered search can both return column documents — read 'entityType' on each hit rather than assuming. Outside the default scope, so they must be set explicitly: query (SQL that has actually run against an asset, with 'queryUsedIn'), contextMemory and contextFile (Context Center knowledge)."
+            "description": "Filter by entity type (if not set, searches all data assets, including the AI governance types llmModel, mcpServer and aiApplication). Use the singular form. Common data assets: table, dashboard, topic, pipeline, container, chart, metric, mlmodel, searchIndex, storedProcedure, apiEndpoint, apiCollection, dashboardDataModel, spreadsheet, worksheet, file, directory, llmModel, mcpServer, aiApplication. Containers and services: database, databaseSchema, databaseService, dashboardService, messagingService, pipelineService, mlmodelService, storageService, searchService, apiService, metadataService, driveService, securityService. Governance: glossary, glossaryTerm, tag, classification, domain, dataProduct, user, team. Data quality: testCase (includes the tested asset's FQN in 'entityFQN' and latest status in 'testCaseStatus': Success/Failed/Aborted once run; a test that has never executed carries no status and is flagged 'neverRun': true). IMPORTANT when finding a table's tests: a COLUMN-level test stores the column's FQN in 'entityFQN' (e.g. '...dim_address.zip'), so an exact term/terms match on the table FQN silently returns only table-level tests and a clean, wrong total. Match on 'originEntityFQN' instead - it rolls up to the tested asset for both table and column tests - or use a wildcard on 'entityFQN'., testSuite, testCaseResult, testCaseResolutionStatus. Also resolvable and under-used: tableColumn (a real per-column index — search column names/descriptions/tags directly instead of paging get_entity_details over a wide table) and page (Knowledge Center articles); both are inside the default 'dataAsset' scope, so entityType='table' and an unfiltered search can both return column documents — read 'entityType' on each hit rather than assuming. Outside the default scope, so they must be set explicitly: query (SQL that has actually run against an asset, with 'queryUsedIn'), contextMemory and contextFile (Context Center knowledge). relationshipType is the governed ontology relation catalog; it is outside the default asset scope, so set entityType explicitly. Its keyword search and named get_entity_details reads work with RDF disabled."
           },
           "queryFilter": {
             "type": "string",
@@ -88,7 +88,7 @@
           },
           "fields": {
             "type": "string",
-            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames, and parent, childrenCount and metricGroup on entities that have them (metrics, glossary terms, containers, folders, pages).\n\nAdditional fields by entity type:\n- Table entities: columns, schemaDefinition, upstreamLineage, entityRelationship, aiContext (materialized structural context: columns, primaryKey, foreignKeys, frequentJoins, partitionColumns)\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- TestCase entities: testCaseResult (full latest result; a slim status/timestamp/result version is returned by default), testDefinition, testSuite, testSuites, parameterValues, table\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash, certification (the certification badge is NOT returned by default - request it explicitly when trustworthiness matters)\n\nBulk fields (columns, charts, tasks, upstreamLineage) are capped per hit and flagged with '<field>Truncated' plus '<field>Total' — search hits are for choosing between assets; use get_entity_details for the full list (get_entity_lineage for upstreamLineage). upstreamLineage returns each upstream edge as its 'fromEntity' (fullyQualifiedName and type), plus 'pipeline' (fullyQualifiedName and type, pipeline or storedProcedure) when the edge has one, without column mappings or SQL. For every edge, call get_entity_lineage with upstreamDepth=1 and downstreamDepth=0 and follow its nextCursor; add includeColumnLineage=true or includeSql=true for column mappings or SQL. Example: 'columns' for table column details, or 'aiContext' for the structural context (keys, joins, partitions) in the search hit itself. To read SQL that has actually run against an asset, search entityType='query' instead — 'queries' is not retrievable as a field.\n\nReferences (service, database, databaseSchema, parent, metricGroup, owners, domains) and tags (tags, tier) are returned as fully-qualified-name STRINGS, not nested objects — pass them directly to another tool. An owner inherited from the parent database or schema is suffixed '(inherited)', so a real steward is distinguishable from a cascaded placeholder."
+            "description": "Comma-separated additional fields to include. Default returns: name, displayName, fullyQualifiedName, description, entityType, service, database, databaseSchema, serviceType, href, tags, owners, tier, tableType, columnNames, and parent, childrenCount and metricGroup on entities that have them (metrics, glossary terms, containers, folders, pages).\n\nAdditional fields by entity type:\n- relationshipType: rdfPredicate, category, inverse, domain, range, characteristics, cardinality, propertyChain, disjointWith, crossGlossaryAllowed, entityStatus, replacedBy, systemDefined (governed relation constraints and lifecycle)\n- Table entities: columns, schemaDefinition, upstreamLineage, entityRelationship, aiContext (materialized structural context: columns, primaryKey, foreignKeys, frequentJoins, partitionColumns)\n- Topic entities: messageSchema, partitions, replicationFactor  \n- Dashboard entities: charts, dataModels, project\n- Pipeline entities: tasks, pipelineUrl, scheduleInterval\n- TestCase entities: testCaseResult (full latest result; a slim status/timestamp/result version is returned by default), testDefinition, testSuite, testSuites, parameterValues, table\n- All entities: createdAt, updatedAt, changeDescription, extension, domain, dataProducts, lifeCycle, sourceHash, certification (the certification badge is NOT returned by default - request it explicitly when trustworthiness matters)\n\nBulk fields (columns, charts, tasks, upstreamLineage) are capped per hit and flagged with '<field>Truncated' plus '<field>Total' — search hits are for choosing between assets; use get_entity_details for the full list (get_entity_lineage for upstreamLineage). upstreamLineage returns each upstream edge as its 'fromEntity' (fullyQualifiedName and type), plus 'pipeline' (fullyQualifiedName and type, pipeline or storedProcedure) when the edge has one, without column mappings or SQL. For every edge, call get_entity_lineage with upstreamDepth=1 and downstreamDepth=0 and follow its nextCursor; add includeColumnLineage=true or includeSql=true for column mappings or SQL. Example: 'columns' for table column details, or 'aiContext' for the structural context (keys, joins, partitions) in the search hit itself. To read SQL that has actually run against an asset, search entityType='query' instead — 'queries' is not retrievable as a field.\n\nReferences (service, database, databaseSchema, parent, metricGroup, owners, domains) and tags (tags, tier) are returned as fully-qualified-name STRINGS, not nested objects — pass them directly to another tool. An owner inherited from the parent database or schema is suffixed '(inherited)', so a real steward is distinguishable from a cascaded placeholder."
           },
           "includeAggregations": {
             "type": "boolean",
@@ -346,6 +346,11 @@
             "minimum": 1,
             "maximum": 10,
             "default": 3
+          },
+          "includeVersion": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include the current entity version in a metadata read, for example to use as baseVersion in an existing-target ontology proposal. Applies to metadata results, including batches."
           }
         },
         "required": []
@@ -588,13 +593,29 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Return the 'attributes' create_entity accepts for one entityType: each field's name, type, whether it is required, and its allowed values. Call this before create_entity when the type's requirements are not already known, rather than guessing attribute names.",
+      "description": "Return the 'attributes' create_entity accepts for one entityType: each field's name, type, whether it is required, and its allowed values. Call this before create_entity when the type's requirements are not already known, rather than guessing attribute names. For ontologyChangeSet, returns canonical proposal/operation payload schemas and their local references for create_ontology_change_set, without reading entity instances or enabling generic create_entity. Use schema to select the payload; only the dedicated tool's advertised parameters may be sent when creating a proposal.",
       "parameters": {
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
             "description": "Registered entity type whose create attributes to return."
+          },
+          "schema": {
+            "type": "string",
+            "enum": [
+              "proposal",
+              "operation",
+              "relationship",
+              "mapping",
+              "term",
+              "glossary",
+              "axiom",
+              "concept",
+              "property"
+            ],
+            "default": "operation",
+            "description": "Only for entityType=ontologyChangeSet: select the canonical schema and its referenced schemas. Fetch a specific payload to keep the response small. schema=proposal is the canonical REST request; create_ontology_change_set accepts only its advertised subset of fields."
           }
         },
         "required": [
@@ -1096,6 +1117,335 @@
             "description": "Cap on the body size in bytes. Defaults to the server's MCP response budget, which is also the maximum; min 1024."
           }
         }
+      }
+    },
+    {
+      "name": "create_term_relation",
+      "title": "Suggest a typed term relation",
+      "description": "Add a typed glossary-term relation with server-stamped AiSuggested provenance and the normal Unprocessed lifecycle status. Read the relationshipType catalog first with search_metadata(entityType=relationshipType), then get_entity_details to inspect constraints. Requires caller ViewAll on both terms and EditAll on the source; canonical validation, idempotence and approval holds apply. A pendingApproval result is not a persisted edge. AiSuggested records provenance; it does not itself guarantee a reviewer task. For multi-operation proposals use create_ontology_change_set. Works without RDF.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sourceTermId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetTermId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "relationType": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact governed relationshipType name."
+          }
+        },
+        "required": [
+          "sourceTermId",
+          "targetTermId",
+          "relationType"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "create_ontology_change_set",
+      "title": "Create an ontology proposal",
+      "description": "Create a DRAFT OntologyChangeSet with typed operations through the canonical scope-authorized creation API and normal limits. This only stores a proposal; it does not apply operations or publish an ontology release. Choose either glossaries (FQNs) or a native ontology FQN. Retain sourceMemoryIds, rationale, confidence and modelId where applicable. Then get_ontology_change_set, acquire an explicit ontology_change_set_lease and submit_ontology_change_set. Returns a compact acknowledgement with id, state, counts and the canonical write outcome; read operation details in get_ontology_change_set pages. The server stamps the caller and DRAFT state. No admin shortcut or RDF requirement. For an existing target, first call get_entity_details with includeVersion=true and use its current version as baseVersion; never guess a version.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "glossaries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "ontology": {
+            "type": "string"
+          },
+          "baseWorkingRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Canonical OntologyChangeOperation, not JSON Patch. Fetch canonical payload schemas on demand with describe_entity_type(entityType=ontologyChangeSet, schema=relationship|mapping|term|glossary|axiom|concept|property); the default schema=operation returns the operation contract. Existing targets require baseVersion. Scope authorization and validation use the normal API.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "operationType": {
+                  "type": "string",
+                  "enum": [
+                    "CREATE_GLOSSARY",
+                    "CREATE_TERM",
+                    "UPDATE_TERM",
+                    "DELETE_TERM",
+                    "ADD_RELATIONSHIP",
+                    "UPDATE_RELATIONSHIP",
+                    "DELETE_RELATIONSHIP",
+                    "UPSERT_MAPPING",
+                    "DELETE_MAPPING",
+                    "UPSERT_AXIOM",
+                    "DELETE_AXIOM",
+                    "UPSERT_CONCEPT",
+                    "DELETE_CONCEPT",
+                    "UPSERT_PROPERTY",
+                    "DELETE_PROPERTY"
+                  ]
+                },
+                "targetId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "baseVersion": {
+                  "description": "Version used for optimistic concurrency. Omitted for create operations.",
+                  "type": "number",
+                  "minimum": 0.1,
+                  "multipleOf": 0.1
+                },
+                "relationship": {
+                  "type": "object"
+                },
+                "mapping": {
+                  "type": "object"
+                },
+                "axiom": {
+                  "type": "object"
+                },
+                "term": {
+                  "type": "object"
+                },
+                "glossary": {
+                  "type": "object"
+                },
+                "sourceMemoryIds": {
+                  "description": "Published context memories that support this AI suggestion.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "uniqueItems": true,
+                  "maxItems": 20
+                },
+                "confidence": {
+                  "description": "Model confidence in this AI suggestion, from 0 to 1.",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "rationale": {
+                  "description": "Model explanation of the evidence behind this AI suggestion.",
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "modelId": {
+                  "description": "Identifier of the model that produced this AI suggestion.",
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE"
+                  ],
+                  "default": "ACTIVE"
+                },
+                "requiresConceptIris": {
+                  "description": "IRIs of concepts that an import expects to create in the same change set. Applying the operation without an UPSERT_CONCEPT operation for each of them is refused.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "concept": {
+                  "type": "object"
+                },
+                "property": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "id",
+                "operationType",
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "name",
+          "displayName",
+          "description",
+          "operations"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_ontology_change_set",
+      "title": "Read an ontology proposal",
+      "description": "Read a non-deleted OntologyChangeSet through canonical draft-scope and entity-view authorization on every page. Returns compact identity/lifecycle metadata and pages of complete operations (default) or applicationResults, or compact scope identifiers with section=glossaries. Native ontology identifiers remain in metadata. limit defaults to 10, maximum 25; the response budget may return fewer items. Follow hasMore/nextCursor until complete. Cursors bind proposal content and section; if changed or invalid, restart without cursor. Application counters remain visible while result rows are paged separately. Free-form description, display name and change diffs are omitted. No returned operation/result is cut and no operations are applied. A single item too large to fit with metadata still requires the REST API. Works without RDF.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "section": {
+            "type": "string",
+            "enum": [
+              "operations",
+              "applicationResults",
+              "glossaries"
+            ],
+            "default": "operations"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25,
+            "default": 10
+          },
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "Opaque nextCursor from the same proposal and section; omit to start or restart after a change."
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ontology_change_set_lease",
+      "title": "Manage an ontology proposal lease",
+      "description": "Explicitly ACQUIRE or RELEASE the caller-owned edit lease for an accessible OntologyChangeSet. Requires canonical change-set edit authorization and readable draft scope. Use a unique sessionId; ACQUIRE returns version for submit. Renew by ACQUIRE with the current expectedVersion. Foreign, expired and stale lease rules are enforced by the normal API; never retry by stealing a lease. RELEASE after submission. No operations are applied. Works without RDF.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "ACQUIRE",
+              "RELEASE"
+            ]
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "leaseSeconds": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 300,
+            "default": 60
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "sessionId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "submit_ontology_change_set",
+      "title": "Submit an ontology proposal",
+      "description": "Transition an existing DRAFT OntologyChangeSet to SUBMITTED through canonical scope authorization and the current caller-owned edit lease. Read the proposal first; provide the sessionId and version returned by ontology_change_set_lease. Submission stores review intent, not approval, application, release publication or guaranteed reviewer-task creation. Existing governance and review must continue through the normal OpenMetadata UI/API; this tool never applies changes. Returns a compact acknowledgement with id, state, counts and the canonical write outcome; use get_ontology_change_set pages for details. Release the lease after submission. Works without RDF.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lease": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "sessionId",
+              "version"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "lease"
+        ],
+        "additionalProperties": false
       }
     }
   ]

@@ -211,6 +211,9 @@ public class SearchMetadataTool implements McpTool {
       from = cursor.get().offset();
     }
 
+    if (size < 0) {
+      throw new IllegalArgumentException("'size' must be non-negative; use 0 to count matches.");
+    }
     size = Math.min(size, 50);
     requireWithinResultWindow(from);
     // The engine refuses from + size past its result window, so the last page is shortened.
@@ -515,6 +518,9 @@ public class SearchMetadataTool implements McpTool {
    * ADR:2026-11-05-search-metadata-counts-exactly-and-pages-within-the-result-window
    */
   private static void requireWithinResultWindow(int from) {
+    if (from < 0) {
+      throw new IllegalArgumentException("'from' must be non-negative.");
+    }
     if (from >= MAX_RESULT_HITS) {
       throw new IllegalArgumentException(
           String.format(

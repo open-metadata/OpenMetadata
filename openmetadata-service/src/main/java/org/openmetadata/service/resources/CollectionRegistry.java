@@ -91,6 +91,19 @@ public final class CollectionRegistry {
     return functionMap.get(clz);
   }
 
+  /** Reuses an initialized transport resource without re-registering its permission mappings. */
+  public <T> T getResource(final Class<T> resourceClass) {
+    return collectionMap.values().stream()
+        .map(CollectionDetails::getResource)
+        .filter(resourceClass::isInstance)
+        .map(resourceClass::cast)
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Resource is not registered: " + resourceClass.getName()));
+  }
+
   @VisibleForTesting
   boolean hasCollection(final String path) {
     return collectionMap.containsKey(path);
