@@ -135,6 +135,33 @@ class SearchEntityTypeCountsTest {
   }
 
   @Test
+  void preciseQueriesAreScopedToEachEntityIndex() throws IOException {
+    SearchEntityTypeCounts counts =
+        new SearchEntityTypeCounts(
+            repository,
+            (request, settings) -> {
+              ObjectNode prepared = prepared(request, settings);
+              prepared
+                  .putObject("query")
+                  .putObject("match_phrase")
+                  .put("description", "data quality");
+              return prepared;
+            },
+            (body, index) -> {
+              for (String type : List.of("databaseSchema", "table")) {
+                JsonNode precise = body.at("/aggs/" + type + "/aggs/precise/filter/bool");
+                assertEquals(
+                    repository.getIndexOrAliasName(type),
+                    precise.at("/filter/term/_index").asText());
+                assertEquals("data quality", precise.at("/must/match_phrase/description").asText());
+              }
+              return response(body);
+            },
+            this::unexpectedHint);
+    search(counts, request().withQuery("data quality"), "table,databaseSchema", ranked);
+  }
+
+  @Test
   void precisionIsSelectedIndependentlyForEachType() throws IOException {
     SearchEntityTypeCounts counts =
         counts(
@@ -209,7 +236,8 @@ class SearchEntityTypeCountsTest {
               for (int i = 0; i < types.size(); i++) {
                 String target = repository.getIndexOrAliasName(types.get(i));
                 JsonNode broad = body.at("/query/bool/should/" + i + "/bool/must/bool");
-                JsonNode precise = body.at("/aggs/" + types.get(i) + "/aggs/precise/filter/bool");
+                JsonNode precise =
+                    body.at("/aggs/" + types.get(i) + "/aggs/precise/filter/bool/must/bool");
                 assertEquals(filter, broad.path("filter"));
                 assertEquals(filter, precise.path("filter"));
                 assertEquals(target, broad.at("/must/term/target").asText());
